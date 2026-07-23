@@ -17,6 +17,7 @@
 | URL | credentialを除いたabsolute HTTPS URL |
 | nullable | TOMLではfield省略、JSONではschemaが認めるfieldだけnull |
 | enum | 本仕様記載のASCII小文字・hyphen |
+| client version | 日本時間release日の `YYYY.mm.DD.XX`。13章1.2節の検証・比較規則 |
 
 TOML stateはunknown keyを拒否する。JSON APIは同一schema major内でunknown fieldを無視してよいが、required field欠落は拒否する。
 
@@ -27,7 +28,7 @@ schema = 1
 state_schema = 1
 created_at = 2026-07-22T00:00:00Z
 last_migrated_at = 2026-07-22T00:00:00Z
-client_version = "1.0.0"
+client_version = "2026.07.23.00"
 mode = "portable"
 root_id = "<uuid>"
 ```
@@ -82,7 +83,7 @@ origin_path = "D:/definitions/my-tool.toml"
 bundle_sha256 = "<64 lowercase hex>"
 approved_at = 2026-07-22T00:00:00Z
 last_used_at = 2026-07-22T00:00:00Z
-client_version = "1.0.0"
+client_version = "2026.07.23.00"
 decision = "allow"
 
 [[artifacts]]
@@ -114,7 +115,7 @@ before_sha256 = "<digest>"
 after_sha256 = "<digest>"
 backup = "setup-backups/<timestamp>/<file>"
 applied_at = 2026-07-22T00:00:00Z
-client_version = "1.0.0"
+client_version = "2026.07.23.00"
 active = true
 ```
 
@@ -125,7 +126,7 @@ registry値ではtypeに`reg-sz`等、backupに値type/contentを安全にencode
 ```toml
 schema = 1
 revision = 8
-client_version = "1.0.0"
+client_version = "2026.07.23.00"
 registry_version = "1.3.0"
 registry_manifest_sha256 = "<digest>"
 generated_at = 2026-07-22T00:00:00Z

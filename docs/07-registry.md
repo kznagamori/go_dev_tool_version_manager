@@ -120,7 +120,7 @@ tool節に「公開commandは実在するもの」等の条件付き記述があ
 schema = 1
 registry_version = "1.0.0"
 created_at = 2026-07-22T00:00:00Z
-min_client_version = "1.0.0"
+min_client_version = "2026.07.23.00"
 tool_definition_schema = 1
 helper_definition_schema = 1
 key_id = "registry-root-2026"
@@ -137,6 +137,8 @@ role = "tool"
 `role` は `tool`, `helper`, `script`, `schema`, `message`, `key-set`, `revocation`, `license`, `upstream-key` のいずれかで、pathの既定directoryと一致させる。実装が知らないroleは同じschema majorでは拒否する。
 
 `max_client_version` は任意fieldであり、上限なしの場合はfield自体を省略する。空文字を特別値として使わない。
+
+`min_client_version` と `max_client_version` はクライアント版 `YYYY.mm.DD.XX` で記録し、年、月、日、通番の4整数tupleとして比較する。registry自身の `registry_version` と `registry-v<SemVer>` tagは7章のSemVerであり、クライアント版と同じparserや比較器を使用してはならない。
 
 ### 3.1 canonical profile
 
@@ -163,7 +165,40 @@ role = "tool"
 
 秘密鍵はrepositoryへ置かない。CIの保護secretまたはoffline signing環境に置く。
 
-### 4.1 初回の信頼鍵準備からmanifest生成まで
+### 4.1 registry鍵・失効file
+
+registry branchの`keys.toml`は次の形式とする。
+
+```toml
+schema = 1
+
+[[keys]]
+id = "registry-root-2026-01"
+algorithm = "ed25519"
+public_key_base64 = "<standard base64 of exactly 32 raw bytes>"
+status = "active"
+introduced_registry_version = "1.0.0"
+```
+
+最上位keyは`schema`, `keys`だけ、entryは`id`, `algorithm`, `public_key_base64`, `status`, `introduced_registry_version`, `retired_registry_version`だけを許す。`retired_registry_version`はstatusが`retired`の場合だけ必須、それ以外は禁止する。statusは`active|next|retired`。`next`は将来鍵の配布用で、その鍵によるmanifest署名をclientがまだ受理してはならない。entryはID順、IDとraw keyはそれぞれ一意、registry versionは正しいSemVerとする。
+
+`keys.toml`は署名済みmanifestのmetadataであり、それだけでclient trust rootを増やさない。manifestの`key_id`はclient embedded trust storeの`active|verify-only` keyで検証できなければならない。rotationは`next`掲載、clientへの埋込み、1 client release以上の重複、registry署名鍵切替、旧鍵retireの順とする。
+
+初期状態を含む`revoked.toml`はfileを省略せず、失効がなくても`schema = 1`と空配列を持つ。形式は次とする。
+
+```toml
+schema = 1
+artifacts = []
+definitions = []
+```
+
+artifact失効entryのfieldは`tool_id`, `version`, `platform_id`, `variant`, `artifact_sha256`, `reason`, `severity`, `advisory_url`, `revoked_at`, `replacement_version`とする。definition失効entryは`path`, `definition_sha256`, `reason`, `severity`, `advisory_url`, `revoked_at`とする。`replacement_version`と`advisory_url`は任意で、省略により値なしを表す。
+
+`artifact_sha256`と`definition_sha256`は64桁小文字hex、severityは`warning|error|critical`、`revoked_at`はUTC RFC 3339、pathはmanifestと同じ安全な相対POSIX pathとする。artifact entryはtool ID、version、platform ID、variant、digestの順、definition entryはpath、digest順にcanonical sortし、完全重複を拒否する。同じ対象に複数entryがある場合は最も高いseverityを適用し、すべてのreason/advisoryを監査表示する。
+
+`warning`はinstall前警告とdoctor warning、`error`は新規installを拒否し既存installをdoctor error、`critical`は新規実行・installを拒否して既存selectionを無効扱いにする。ただしpayloadを自動削除しない。失効はoffline cache、`--force`、旧catalogで回避できず、active snapshotが参照する`revoked.toml`を常に適用する。
+
+### 4.2 初回の信頼鍵準備からmanifest生成まで
 
 本仕様でいう「証明書の作成」は、registry署名用Ed25519鍵pairの生成を指す。X.509証明書は使用しない。初回構築時は、次の順序を変更してはならない。
 
@@ -177,11 +212,72 @@ role = "tool"
 
 manifest generatorには秘密鍵fileのpathを明示的に渡す。既定pathをrepository内に設けたり、秘密鍵をregistry branchへcopyしたりしてはならない。generatorとCIは秘密鍵の内容およびpathをlogへ出力しない。
 
+### 4.3 maintainer utility
+
+registry公開作業には同一Go module内の`cmd/gdtvm-registry`をbuildしたmaintainer専用CLI `gdtvm-registry`を使用する。この実体はclient release artifactへ同梱せず、一般利用者の`gdtvm` command treeにも追加しない。鍵変換、trust store更新、manifest生成、署名、検証の実装をrelease scriptへ重複させてはならない。
+
+基本構文は次とする。
+
+```text
+gdtvm-registry [--json] <command> [options]
+```
+
+対応commandは次に固定する。
+
+| command | 目的 |
+|---|---|
+| `key inspect` | SPKI PEM公開鍵を検査し、raw key、base64、fingerprintを表示 |
+| `key add` | 検査済み公開鍵とkey IDをclient trust storeへ登録 |
+| `manifest build` | registry treeを検査してmanifest生成・署名 |
+| `manifest verify` | manifest署名、全file hash、構造を独立検証 |
+| `release check` | tag作成前のclient/registry/schema/tool/helper完全性検査 |
+
+#### 4.3.1 trust store
+
+client公開鍵の正本はsource branchの`internal/security/trust/registry-keys.toml`とし、client build時にread-only dataとしてbinaryへ埋め込む。形式は次とする。
+
+```toml
+schema = 1
+
+[[keys]]
+id = "registry-root-2026-01"
+algorithm = "ed25519"
+public_key_base64 = "<standard base64 of exactly 32 raw bytes>"
+status = "active"
+```
+
+許可keyは最上位`schema`, `keys`、key entryの`id`, `algorithm`, `public_key_base64`, `status`だけである。`status`は`active|verify-only|retired`。`active`は新規manifest署名を許し、`verify-only`は既存署名検証だけ、`retired`は通常検証対象外だがreceipt/audit表示用metadataとして保持する。IDはASCII小文字・数字・hyphenの3～64文字で一意、entryはIDのUTF-8 byte順とする。同じraw公開鍵を別IDで重複登録してはならない。
+
+#### 4.3.2 key command
+
+```text
+gdtvm-registry key inspect --public-key <absolute-spki-pem>
+gdtvm-registry key add --public-key <absolute-spki-pem> --key-id <id> [--status active|verify-only]
+```
+
+`key inspect`はfileを書き換えず、algorithm、raw key byte length、standard base64、SPKI DERのSHA-256 fingerprintを返す。`key add`はrepository rootをGitから検出し、固定pathのtrust storeだけをatomic更新する。private key入力を受け付けず、PEMがPKCS#8 private keyなら内容を表示せず拒否する。既存IDの別鍵、別IDの同じ鍵、非Ed25519、32 bytes以外、壊れたPEMを拒否する。成功後にtrust store全体を再parseし、正規順へ生成する。
+
+#### 4.3.3 manifest command
+
+```text
+gdtvm-registry manifest build --root <absolute-registry-root> --registry-version <semver> --created-at <rfc3339-utc> --min-client-version <YYYY.mm.DD.XX> --key-id <id> --public-key <absolute-spki-pem> --private-key <absolute-pkcs8-pem> [--max-client-version <YYYY.mm.DD.XX>]
+gdtvm-registry manifest verify --root <absolute-registry-root> --trust-store <absolute-registry-keys-toml>
+gdtvm-registry release check --root <absolute-registry-root> --trust-store <absolute-registry-keys-toml>
+```
+
+`manifest build`は`manifest.toml`と`manifest.sig`を除く全許可fileを検査し、canonical manifestを生成してからPKCS#8 Ed25519秘密鍵で署名する。`--private-key`はrepository worktree、registry root、その子directoryを指してはならず、regular file、非symlink/reparse point、owner-only相当permissionを必須とする。private keyの内容、path、PEM parse errorの秘密部分をevent/logへ出さない。
+
+`--public-key`は鍵pair生成時にrepository外へ保存したSPKI PEMを指定する。utilityはprivate keyから導出したraw public key、指定公開鍵、registry rootの`keys.toml`にある同じkey IDの公開鍵がすべて一致することを必須とする。source branchで`key add`後に記録した公開鍵fingerprintとも作業記録上で照合する。これによりorphan branchへswitchした後にsource branchの作業treeを必要とせず、別鍵による誤署名を拒否する。
+
+`manifest verify`はprivate keyを受け取らず、指定trust storeの公開鍵でraw manifest bytesを検証し、manifest記載の全file、size、SHA-256、余分file、path安全性を検査する。`release check`はverifyに加え、17 tool、2 helper、schema、ja/en message、license、keys、revocation、client互換版、registry SemVer、required probe fixtureの存在を検査する。いずれもnetwork、Git commit、tag、push、GitHub Release作成を行わない。
+
+`--json`なしのstdoutは結果要約、stderrはwarning/errorとする。`--json`は単一JSON documentとし、秘密情報を含めない。終了codeは`0`成功、`1`一般失敗、`2`usage、`3`schema/構造、`6`鍵・署名・digest・security違反とする。一部成功はなく、出力fileは全検査成功後にatomic置換する。
+
 ## 5. 発行手順
 
 registry release generatorは次を順に行う。
 
-1. 初回発行では4.1節の手順1から5までを完了する。通常の更新では、client source branchの必要な変更を先にcommitする。
+1. 初回発行では4.2節の手順1から5までを完了する。通常の更新では、client source branchの必要な変更を先にcommitする。
 2. 初回発行では1章の手順でorphan branchを作成し、既存branchの更新では `git switch registry` でそのbranchへ切り替える。
 3. registry構成fileを配置または更新する。
 4. 全TOMLとschemaをstrict validationする。

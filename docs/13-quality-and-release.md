@@ -26,6 +26,22 @@ Go release policy参照: `https://go.dev/doc/devel/release`
 
 コメントは日本語または英語で記載できるが、同一package内では原則として使用言語を統一する。識別子、error code、schema key、CLI名は正確な表記を保ち、翻訳によって別名を作らない。コメントだけを仕様の唯一の記載場所にせず、外部から観測できる契約は必ず本仕様、schema、testにも反映する。
 
+### 1.2 クライアントバージョン
+
+`go_dev_tool_version_manager` クライアントの正規versionは `YYYY.mm.DD.XX` とする。
+
+- `YYYY`は4桁の西暦年、`mm`と`DD`は2桁zero paddingした月・日、`XX`は2桁zero paddingした日次通番である。
+- 日付はGit tag作成・release公開を行う時点の日本時間（IANA timezone `Asia/Tokyo`）の暦日を使う。build machineのlocal timezoneやUTC日付へ依存しない。
+- その日の通常初版は`00`とする。同じ日のbug fix、差替えを伴わない追加release、または特別なreleaseは`01`, `02`の順に1ずつ増やす。
+- 正規表現は `^[0-9]{4}[.](0[1-9]|1[0-2])[.](0[1-9]|[12][0-9]|3[01])[.][0-9]{2}$` とし、正規表現一致後に実在するGregorian calendarの日付であることも検査する。
+- `XX`は`00`～`99`とする。同日中に次の値が100になる場合は形式を拡張せずreleaseを停止し、仕様改訂を行う。翌日の日付を先取りしてはならない。
+- 比較は`YYYY`, `mm`, `DD`, `XX`を10進整数へ変換した4要素tupleの辞書順とする。文字列の部分一致、zero padding省略、SemVerへの変換を行わない。
+- prerelease/build metadataを付加しない。正式公開前の成果物はversionを変形せず、release対象外のcommit SHAとCI run IDで識別する。
+- client release tagは `v<client-version>`、例として `v2026.07.23.00` とする。registry tag `registry-v<SemVer>`とは別体系である。
+- versionの正本はrepository rootの`/VERSION`だけとする。UTF-8 BOMなしASCII、内容は正規`YYYY.mm.DD.XX`の1行、末尾LFちょうど1つとし、comment、空行、前後空白を禁止する。
+- build/release処理は`/VERSION`をstrict検証してbuild metadataへ注入する。release binaryが実行時に外部`VERSION` fileを読む構成にはせず、埋込み値を`gdtvm --version`、`gdtvm version --short`、状態の`client_version`へ使用する。
+- release tag、archive名、GitHub Release versionは`/VERSION`と完全一致させる。通常development buildだけは埋込み値`devel`を許すが、release artifact、state migration fixture、署名対象clientでは拒否する。
+
 ## 2. build target
 
 | GOOS | GOARCH | CGO | artifact |
@@ -43,7 +59,7 @@ gdtvm本体は起動basenameでCLI/shimを分岐するmulti-call binaryとする
 
 `gdtvm version` が次を返せるよう、release buildへ値を固定する。
 
-- client SemVer
+- client calendar version `YYYY.mm.DD.XX`
 - Git commit SHA（dirty禁止）
 - UTC build timeまたはreproducible buildではSOURCE_DATE_EPOCH
 - Go toolchain version
@@ -296,11 +312,11 @@ console levelとfile levelを分離できる。既定はconsole info、file info
 
 1. 全unit/integration/security/contract test。
 2. 4target buildとnative smoke。
-3. version/schema/public key確認。
+3. 日本時間のrelease日、日次通番、`YYYY.mm.DD.XX`形式、schema、public keyを確認。
 4. SBOM、checksums、provenance/signature生成。
 5. clean VMでexe-only first-run bootstrap。
 6. GitHub releaseをdraft作成、artifact照合。
-7. tagを作成し公開。
+7. `v<client-version>` tagを作成し公開。
 8. latest downloadを再取得しchecksum/起動確認。
 
 client releaseとregistry releaseは独立する。client公開時に互換registryが最低1版存在することを必須とする。

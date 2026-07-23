@@ -85,7 +85,7 @@ refresh policyは `never`, `if-missing`, `if-stale`, `force`。
 
 **入力**: なし。
 
-**出力**: client SemVer、commit、build time、Go version、OS/arch、state schema、tool definition schema、対応registry schema、active registry version nullable。
+**出力**: client calendar version `YYYY.mm.DD.XX`、commit、build time、Go version、OS/arch、state schema、tool definition schema、対応registry schema、active registry version nullable。
 
 build時埋込み値とruntime stateをServiceで型検査して返す。CLIの`--version`/`version`と将来GUIのAbout画面はこの結果を使い、CLI packageがstate fileを直接読まない。
 
@@ -297,7 +297,7 @@ CLI終了コードへのmappingは [04-cli.md](04-cli.md) に従う。GUIはcode
 
 ## 10. versioning
 
-内部API型にschema整数を持つのは永続化またはWails bridgeを越える値だけとする。CLIとGUIを同じreleaseで配布するため、公開SemVer互換は不要。ただしWails bridgeの破壊変更ではfrontend生成物とcontract testを同時更新する。
+内部API型にschema整数を持つのは永続化またはWails bridgeを越える値だけとする。CLIとGUIを同じreleaseで配布するため、クライアント版とは別の公開API versionを設けない。ただしWails bridgeの破壊変更ではfrontend生成物とcontract testを同時更新する。
 
 ## 11. thread safety
 

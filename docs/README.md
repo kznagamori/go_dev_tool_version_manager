@@ -26,6 +26,7 @@
 | [14-data-contracts.md](14-data-contracts.md) | 状態、カタログ、JSON出力、helper、制限値の機械契約 |
 | [15-reference-definition.md](15-reference-definition.md) | 完全なツール定義例、実装時の解釈基準、設定駆動受入条件 |
 | [16-implementation-progress.md](16-implementation-progress.md) | Windows先行・Linux後続の実装、評価、停止・再開用進捗チェックリスト |
+| [17-repository-documentation.md](17-repository-documentation.md) | GitHub公開用README、詳細操作ガイド、build・registry署名鍵説明の作成仕様 |
 
 ## 文書の規範領域と矛盾の扱い
 
@@ -49,6 +50,7 @@
 | TOML/JSON/receipt/Plan/helperの機械契約と上限 | 14 |
 | tool definitionの完全fixture | 15 |
 | 実装・評価の順序、進捗、停止・再開 | 16 |
+| GitHub公開README・詳細操作ガイド | 17 |
 
 同じ意味の規則に差がある場合、番号の大小や記載順で一方を選んではならない。実装とregistry作成を停止し、矛盾する両箇所と影響するtest・進捗項目を同時に改訂してから再開する。正本の一般則に対して別章が対象を限定して明示した例外は、その対象だけに適用する。例外か矛盾か判断できない場合も仕様改訂を必要とする。
 
@@ -92,6 +94,7 @@
 ## 固定された製品判断
 
 - 製品名は `go_dev_tool_version_manager`、CLI名は `gdtvm` とする。
+- クライアント版は日本時間のリリース日を使う `YYYY.mm.DD.XX` とし、同日の通常初版は`00`、同日中のbug fixまたは特別releaseごとに`XX`を1増やす。
 - 設定およびツール定義は TOML とする。
 - Windows amd64/arm64、Linux amd64/arm64をクライアント対象とする。
 - ポータブル方式を既定とし、OSのユーザーデータ方式も提供する。

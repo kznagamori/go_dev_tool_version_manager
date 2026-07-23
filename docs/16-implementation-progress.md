@@ -84,7 +84,7 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 
 ## 5. W00 Windows開発準備・仕様固定
 
-- [ ] **W00-01** `README.md`と番号付き01～16の全17文書を読み、規範用語、未決事項、矛盾のissue一覧を作成する。依存: なし。完了: 未決事項が実装者の暗黙判断として残らない。証跡: 未記録
+- [ ] **W00-01** `docs/README.md`と番号付き01～17の全18文書を読み、規範用語、未決事項、矛盾のissue一覧を作成する。依存: なし。完了: 未決事項が実装者の暗黙判断として残らない。証跡: 未記録
 - [ ] **W00-02** Windows対象matrixを固定する。Windows 10/11、amd64必須、arm64 build/評価方法、NTFS、標準ユーザー、cmd、Windows PowerShell 5.1、PowerShell 7、VS Codeを含める。依存: W00-01。証跡: 未記録
 - [ ] **W00-03** Go toolchain、module path、format、lint、unit/integration/E2E command、coverage取得方法を固定する。依存: W00-01。証跡: 未記録
 - [ ] **W00-04** test artifact、log、coverage、SBOM、署名、benchmarkを保存するdirectoryと命名規則を定める。secretを保存しない。依存: W00-03。証跡: 未記録
@@ -142,6 +142,8 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 - [ ] **W04-07** local definition discovery、precedence、content hash承認、変更時再承認を実装・testする。依存: W03, W02-05。証跡: 未記録
 - [ ] **W04-08** registry release generatorのvalidation、manifest、signature、tag入力検査を実装・testする。秘密鍵をrepository外から受ける。依存: W04-02。証跡: 未記録
 - [ ] **W04-09** orphan branch作成、公開鍵commit後switch、manifest生成、署名、tag発行の手順をdry-run評価する。依存: W04-08。証跡: 未記録
+- [ ] **W04-10** maintainer CLI `gdtvm-registry`の`key inspect`, `key add`, `manifest build`, `manifest verify`, `release check`を07章4.3節どおり実装し、秘密鍵拒否・非漏えい、trust store atomic更新、positive/negative署名をtestする。依存: W04-01～W04-09。証跡: 未記録
+- [ ] **W04-11** registryの`keys.toml`と`revoked.toml`を07章4.1節どおりstrict実装し、鍵rotation、空失効一覧、severity別install/runtime/doctor動作、offline/force非回避をtestする。依存: W04-01～W04-10。証跡: 未記録
 
 ## 10. W05 HTTP・download・archive・外部process
 
@@ -336,7 +338,7 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 
 ## 25. R01 Release・配布・運用評価
 
-- [ ] **R01-01** client version、commit、build time、Go version、schema versionを再現可能に埋め込む。依存: G-CROSS。証跡: 未記録
+- [ ] **R01-01** 日本時間のrelease日と日次通番からrepository rootの`/VERSION`へclient version `YYYY.mm.DD.XX`を確定し、commit、build time、Go version、schema versionとともに再現可能に埋め込む。`00`開始、同日increment、実在日、全表示・state・archive・tag一致をtestする。依存: G-CROSS。証跡: 未記録
 - [ ] **R01-02** Windows amd64/arm64、Linux amd64/arm64のrelease artifact、checksum、SBOM、signatureを生成・検証する。証跡: 未記録
 - [ ] **R01-03** Windows Defender/SmartScreen注意とLinux実行permissionを含む導入文面を検証する。証跡: 未記録
 - [ ] **R01-04** registry鍵生成、repository外保存、公開鍵code登録、commit、registry switch、manifest/signature生成を実地確認する。証跡: 未記録
@@ -345,7 +347,9 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 - [ ] **R01-07** clean machineでexeだけからregistry bootstrapし、Windows→Linuxの順でsmoke testする。証跡: 未記録
 - [ ] **R01-08** client update、registry update、旧snapshot保持、downgrade拒否、repair fallbackを評価する。証跡: 未記録
 - [ ] **R01-09** release checklist、known issues、supported matrix、license notice、security連絡先を確定する。証跡: 未記録
-- [ ] **R01-10** G-RELEASEとG-DONEを判定し、最終スナップショットを`完了`へ更新する。証跡: 未記録
+- [ ] **R01-10** 17章に従いrepository rootの日本語`README.md`と`USER_GUIDE.md`を作成し、badge、導入、基本操作、build、全command、設定、外部program、registry署名鍵を記載する。証跡: 未記録
+- [ ] **R01-11** README/USER_GUIDEのlink、anchor、badge、全command例、build再現、鍵positive/negative test、secret非混入をWindows→Linuxの順で評価する。証跡: 未記録
+- [ ] **R01-12** G-RELEASEとG-DONEを判定し、最終スナップショットを`完了`へ更新する。依存: R01-01～R01-11。証跡: 未記録
 
 ## 26. 仕様章別カバレッジ確認
 
@@ -367,6 +371,7 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 - [ ] **COV-14** 14 data contract：W02-05、W03-10、W06-03、W09-06
 - [ ] **COV-15** 15 完全定義fixture：W03-11～W03-12、X01-05
 - [ ] **COV-16** 16 進捗運用：停止・再開記録と全gate
+- [ ] **COV-17** 17 GitHub公開文書：R01-10～R01-11
 
 ## 27. 最終未完了一覧
 
