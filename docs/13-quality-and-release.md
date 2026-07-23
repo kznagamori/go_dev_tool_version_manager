@@ -10,6 +10,22 @@
 
 Go release policy参照: `https://go.dev/doc/devel/release`
 
+### 1.1 ソースコメント
+
+実装するGoソースには、コードを読むだけでは把握しにくい契約と処理意図を残すため、次のコメントを必須とする。
+
+- 各packageには、そのpackageの責務、扱う範囲、依存してよい層を説明するpackage documentation commentを1件置く。複数fileに重複して書かない。
+- exportされるtype、function、method、variable、constantにはGoのdocumentation conventionに従うドキュメントコメントを書く。コメントは原則として宣言名から始め、用途、重要な入力制約、戻り値、状態変更、並行安全性、error条件のうち利用者が判断に必要な内容を記載する。
+- exportされない宣言でも、Application Service境界、domain invariant、security検査、永続化schema、transaction、platform固有処理、複雑なalgorithmを担うものには、その責務または不変条件を説明するコメントを書く。
+- 複数段階の処理には、段階を分ける理由、順序を変えてはならない理由、rollback境界、外部processを実行する理由などを、処理の直前へ適度に記載する。
+- Windows junctionの非原子的置換、Linux symlink安全性、path containment、署名・digest検証、lock順序、Plan fingerprint、secret maskなど、安全性やplatform差に関わる判断は「何をしているか」だけでなく「なぜ必要か」を記載する。
+- 設定定義や仕様から導出される処理では、tool名を前提とした説明を避け、schema fieldまたはdomain contractとの関係を説明する。標準tool固有の動作をGoコメントで補完してはならず、TOML定義または仕様へ記載する。
+- 自明な代入、loop、条件分岐を日本語へ置き換えただけの行単位コメント、コードと同じ内容の反復、コメントアウトした旧コードは禁止する。
+- コメントと実装が一致しない状態を禁止する。挙動変更時は関連コメントも同じ変更で更新し、reviewではコードとコメントを一つの契約として確認する。
+- `TODO`, `FIXME`を残す場合は追跡先issue ID、未完了理由、完了条件を併記する。追跡先のない一時コメントをmain/release branchへ残さない。
+
+コメントは日本語または英語で記載できるが、同一package内では原則として使用言語を統一する。識別子、error code、schema key、CLI名は正確な表記を保ち、翻訳によって別名を作らない。コメントだけを仕様の唯一の記載場所にせず、外部から観測できる契約は必ず本仕様、schema、testにも反映する。
+
 ## 2. build target
 
 | GOOS | GOARCH | CGO | artifact |

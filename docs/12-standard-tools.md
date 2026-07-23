@@ -4,6 +4,8 @@
 
 本章は初期registryに必ず収録する17ツールの機能仕様である。実際のURL、asset名、checksum位置は上流変更に追随してregistry PATCHで更新できるが、取得元、処理の意味、公開command、環境は本章を満たす。
 
+各節は説明資料ではなく、`registry` branchの `tools/<正規ID>.toml` を作成するための規範要件である。必須file名、旧 `anyvm_win` との対応、helperおよび付随fileの収録範囲は[07-registry.mdの2.1節](07-registry.md#21-初期registryに登録する内容)に従う。
+
 旧実装がWindows amd64で提供した17ツールはすべて引き継ぐ。Linux/arm64では上流が検証可能なportable artifactを提供する組合せだけを公開し、見つからない版を他architectureのemulation前提で表示しない。
 
 各節で別記しないarchive toolは`selection_strategy="link"`, `relocation="portable"`, `mutable_payload=false`とする。Android SDKとFlutterは節記載どおりmutable、Rustはbackendである。実registry CIはportable root移動後のrequired probeも実施し、埋込み絶対pathが判明したtoolを根拠なくportableのままにしない。

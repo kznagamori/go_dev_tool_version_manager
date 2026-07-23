@@ -10,6 +10,15 @@
 
 `registry` branchはクライアントソース履歴と親を共有しない。tagは同一repositoryのGit objectを指す。tag名prefixによりクライアントrelease tagと区別する。
 
+`registry` 用のorphan branchを初めて作成する場合は、作業ツリーに未コミットの変更がないことを確認したうえで、次の順序で作成する。標準のブランチ名を使用する場合、`<空ブランチ名>` は `registry` とする。
+
+```text
+git checkout --orphan <空ブランチ名>
+git rm -rf .
+```
+
+`git rm -rf .` は切り替え元の追跡対象ファイルを、新しいorphan branchのインデックスと作業ツリーから除去する操作である。未保存の作業を失わないよう、実行前に作業ツリーがcleanであることを必ず確認する。実行後は未追跡ファイルも確認し、後述のregistry構成に含まれるファイルだけを登録する。この手順はorphan branchの初回作成時だけに使用し、既存の `registry` branchを更新するときは再実行しない。
+
 クライアントはGit実行ファイルを前提にせず、HTTPSとGitHub REST/codeload/raw endpointで取得する。GitHub API仕様の参照先は以下とする。
 
 - Git references: `https://docs.github.com/en/rest/git/refs`
@@ -45,6 +54,63 @@
 ```
 
 schemaの規範は本仕様であり、registry内JSON SchemaはCI・editor補助とする。食い違い時は本仕様を優先し、修正版registryを発行する。
+
+### 2.1 初期registryに登録する内容
+
+初回公開するregistry snapshotには、旧 `anyvm_win` が対応していた全17ツールを標準定義として登録する。各tool fileは[12-standard-tools.md](12-standard-tools.md)の同名節を規範とし、[06-tool-definition-schema.md](06-tool-definition-schema.md)の完全なtool definition TOMLとして作成する。単なるtool名一覧やURL一覧では受入れない。
+
+| registry path | 正規tool ID | 入力alias | 旧 `anyvm_win` 対応 |
+|---|---|---|---|
+| `tools/android-sdk.toml` | `android-sdk` | `androidsdk` | `AndroidSDKVm` |
+| `tools/bazel.toml` | `bazel` | なし | `BazelVm` |
+| `tools/cmake.toml` | `cmake` | なし | `CMakeVm` |
+| `tools/dart.toml` | `dart` | なし | `DartVm` |
+| `tools/dotnet.toml` | `dotnet` | `.net` | `dotnetVm` |
+| `tools/flutter.toml` | `flutter` | なし | `FlutterVm` |
+| `tools/go.toml` | `go` | なし | `GoVm` |
+| `tools/gradle.toml` | `gradle` | なし | `GradleVm` |
+| `tools/jdk.toml` | `jdk` | `java` | `JDKVm` |
+| `tools/kotlin.toml` | `kotlin` | なし | `KotlinVm` |
+| `tools/llvm.toml` | `llvm` | なし | `LLVMVm` |
+| `tools/mingw.toml` | `mingw` | なし | `MinGWVm` |
+| `tools/ninja.toml` | `ninja` | なし | `NinjaVm` |
+| `tools/node.toml` | `node` | `nodejs` | `NodejsVm` |
+| `tools/python.toml` | `python` | なし | `PythonVm` |
+| `tools/rust.toml` | `rust` | なし | `RustVm` |
+| `tools/winlibs.toml` | `winlibs` | なし | `WinLibsVm` |
+
+各 `tools/<id>.toml` は、対応platformごとに次の該当情報をすべて登録する。schema上そのtoolに適用されない項目は省略できるが、値が未決定であることを理由に省略してはならない。
+
+1. 正規ID、alias、表示名、説明、homepage、license、version scheme、default channel、manager。
+2. OS、architecture、libc、variant、priority、対応可否、artifact種別、relocation、payload可変性、選択方式。
+3. version discovery source、完全versionへの正規化規則、stable/prerelease/EOL分類、version sort、catalog更新方式。
+4. artifactの取得元、asset選択条件、redirect許可host、file形式、size上限、checksum取得・検証規則。
+5. download、digest検証、展開、配置、helper実行、backend実行からなる依存順付きinstall step。
+6. 公開commandごとのlauncher、payload相対target、固定引数、codepage、interpreter、signal伝播。
+7. PATH、環境変数、共有cache/home、version間で保持するdirectoryとuninstall時の扱い。
+8. required/optional dependency、system prerequisite、競合tool、利用者へ表示する注意・第三者artifact警告。
+9. version probe、command probe、file/directory probe、期待完全version、timeoutおよび失敗条件。
+10. Windows標準ユーザーおよびLinux非rootでのinstall/use/uninstall可否と、対応外platformの明示理由。
+
+外部programを必要とする処理はbinaryをregistryへ直接登録せず、次のhelper definitionを必須登録する。helper TOMLには完全版、platform、公式取得元、artifact名、SHA-256、展開方法、公開entrypoint、license、利用toolを記載する。
+
+| registry path | helper ID | 利用tool | 用途 |
+|---|---|---|---|
+| `helpers/seven-zip.toml` | `seven-zip` | `llvm`, `mingw`, `winlibs` | 7z archiveおよびself-extracting installerの管理root内展開 |
+| `helpers/wix.toml` | `wix` | `python`（Windows） | Python installerからMSIを抽出する `dark.exe` |
+
+初期snapshotには上記に加え、次の該当fileをすべて登録する。
+
+- `schemas/tool-definition-v1.json`, `schemas/helper-definition-v1.json`, `schemas/registry-manifest-v1.json`
+- `messages/ja.toml`, `messages/en.toml`
+- `keys.toml`, `revoked.toml`
+- 7-Zipを収録する場合の `licenses/LicenseRef-7zip-unRAR.txt` と、helper/tool定義が要求するその他のlicense text
+- 上流signatureを検証する定義がある場合、その検証に必要な `upstream-keys/<provider-key-file>`
+- hookが必要な定義に限る `scripts/<tool-id>/...`。組込みstepだけで表現できるtoolにはscriptを登録しない。
+
+`manifest.toml` と `manifest.sig` はこれらの登録内容から発行時に生成する成果物であり、手書きの初期入力ではない。`manifest.toml` の `files` には両者自身を除く全登録fileを漏れなく列挙する。17件のtool definitionまたは必須helperが欠けたsnapshotは初期registryとして発行してはならない。
+
+tool節に「公開commandは実在するもの」等の条件付き記述がある場合でも、発行する個々のplatform recipeではcommand名、launcher、target、固定引数を有限のTOML entryとして完全列挙する。clientがpayloadを走査して未定義commandを自動公開したり、file名から環境変数や導入stepを推測したりしてはならない。発行時CIは列挙した全required command targetとprobeの実在を検査する。
 
 ## 3. manifest
 
@@ -97,19 +163,36 @@ role = "tool"
 
 秘密鍵はrepositoryへ置かない。CIの保護secretまたはoffline signing環境に置く。
 
+### 4.1 初回の信頼鍵準備からmanifest生成まで
+
+本仕様でいう「証明書の作成」は、registry署名用Ed25519鍵pairの生成を指す。X.509証明書は使用しない。初回構築時は、次の順序を変更してはならない。
+
+1. client source branch上で、offline環境または秘密情報を扱える管理環境を使い、registry署名専用のEd25519公開鍵と秘密鍵を生成する。既存サービスの鍵やSSH署名鍵を流用しない。
+2. 秘密鍵をrepositoryの作業ツリー外へ移動し、所有者だけが読み取れる権限を設定する。復旧用backupも暗号化したrepository外の保管先へ置く。秘密鍵、そのseed、生成時の一時fileをcommit、registry、release asset、logへ含めてはならない。
+3. 公開鍵に一意な `key_id` を割り当て、公開鍵と `key_id` をclientの埋込み信頼鍵一覧へ登録する。manifestの `key_id` と完全一致する値を使用する。
+4. clientの署名検証testを実行し、登録した公開鍵で正しい署名を受理し、別の鍵または改変されたmanifestを拒否することを確認する。
+5. 公開鍵の登録と関連testをclient source branchへcommitする。commit前に、秘密鍵および秘密情報が追跡対象にも未追跡fileにも存在しないことを確認する。
+6. commit完了後、既存のregistry branchへ `git switch registry` で切り替える。registry branchがまだ存在しない場合だけ、1章に記載した `git checkout --orphan <空ブランチ名>` と `git rm -rf .` の手順で作成する。
+7. registry構成fileを配置または更新してから、5章の発行手順に従って `manifest.toml` を生成し、repository外の秘密鍵で `manifest.sig` を作成する。
+
+manifest generatorには秘密鍵fileのpathを明示的に渡す。既定pathをrepository内に設けたり、秘密鍵をregistry branchへcopyしたりしてはならない。generatorとCIは秘密鍵の内容およびpathをlogへ出力しない。
+
 ## 5. 発行手順
 
 registry release generatorは次を順に行う。
 
-1. 全TOMLとschemaをstrict validationする。
-2. 全tool ID、alias、command、helper、dependency DAGを横断検査する。
-3. source URLがHTTPS、artifact checksum方針が適合することを検査する。
-4. filesのsize/SHA-256を計算しmanifestをcanonical生成する。
-5. manifestをEd25519署名する。
-6. cleanなorphan branch commitを作る。
-7. 保護された `registry-vX.Y.Z` tagをそのcommitへ作る。
-8. tagから再取得して署名・hashを独立検証する。
-9. smoke clientで4 client platformのparse/plan testを行う。
+1. 初回発行では4.1節の手順1から5までを完了する。通常の更新では、client source branchの必要な変更を先にcommitする。
+2. 初回発行では1章の手順でorphan branchを作成し、既存branchの更新では `git switch registry` でそのbranchへ切り替える。
+3. registry構成fileを配置または更新する。
+4. 全TOMLとschemaをstrict validationする。
+5. 全tool ID、alias、command、helper、dependency DAGを横断検査する。
+6. source URLがHTTPS、artifact checksum方針が適合することを検査する。
+7. filesのsize/SHA-256を計算しmanifestをcanonical生成する。
+8. repository外に保存した秘密鍵でmanifestをEd25519署名する。
+9. registry構成に含まれるfileだけを登録し、cleanなorphan branch commitを作る。
+10. 保護された `registry-vX.Y.Z` tagをそのcommitへ作る。
+11. tagから再取得して署名・hashを独立検証する。
+12. smoke clientで4 client platformのparse/plan testを行う。
 
 公開済みtagを移動・上書きしてはならない。修正は新SemVerを発行する。
 

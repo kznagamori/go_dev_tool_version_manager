@@ -310,6 +310,33 @@ CLI終了コードへのmappingは [04-cli.md](04-cli.md) に従う。GUIはcode
 
 ## 12. CLI薄層の判定
 
+### 12.1 CLIとApplication Serviceの対応
+
+CLIは次の対応で型付きrequestを1回構築する。複数の状態変更を伴う操作はApplication Service側が統合Planまたは子Planとして構成し、CLIが個別serviceを任意順に連結してはならない。
+
+| CLI | Application Service | CLI固有処理 |
+|---|---|---|
+| `setup`, `setup --remove` | `PlanSetup` → `ExecutePlan` | shell名とflagをSetup requestへ変換 |
+| `tools` | `ListTools` | filter flagと表示 |
+| `available` | `ListAvailable` | `--refresh`をrefresh policyへ変換 |
+| `refresh` | `PlanRefreshCatalog` → `ExecutePlan` | 任意toolと`--force`を変換 |
+| `install` | `PlanInstall` → `ExecutePlan` | `tool@version`または`--latest`を排他的に解析 |
+| `uninstall` | `PlanUninstall` → `ExecutePlan` | exact versionとflagを変換 |
+| `installed` | `ListInstalled` | 任意tool filterと表示 |
+| `use` | `PlanUse` → `ExecutePlan` | scopeをuser/projectへ変換。未導入時のInstall連鎖はServiceが構成 |
+| `disable` | `PlanDisable` → `ExecutePlan` | tool一覧/allとscopeを変換 |
+| `current` | `ResolveCurrent` | 任意toolとexplainを変換 |
+| `registry update` | `PlanUpdateRegistry` → `ExecutePlan` | 任意registry完全版と`--force`を変換 |
+| `doctor` | `Diagnose` | tool、deep、offlineからnetwork_allowedを決定 |
+| `repair` | `PlanRepair` → `ExecutePlan` | toolとdry-runを変換 |
+| `exec` | `PlanExec` → `ExecutePlan` | `--`境界までをinstall key入力、以降を未加工argvとして変換 |
+| `completion` | `BuildCompletion` | shell enum検査とtext出力 |
+| `version`, global `--version` | `GetBuildInfo` | 通常/short表示だけを選択 |
+
+`PlanExec` は状態を変更しない場合でも、依存・競合・target・環境・外部processを実行前に固定するためPlanを作る。CLIは戻されたtargetやenvironmentを組み直さず、そのPlanを実行する。`doctor --deep`のnetwork可否は共通要求のofflineと矛盾してはならず、offlineなら常にfalseとする。
+
+### 12.2 CLIへ置ける責務
+
 CLI内に置いてよい処理:
 
 - flag/argument構文解析
