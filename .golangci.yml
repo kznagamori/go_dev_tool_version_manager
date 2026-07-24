@@ -1,0 +1,23 @@
+# golangci-lint v2 設定。運用決定は docs/reports/W00-planning.md W00-03 参照。
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  # standard = errcheck, govet, ineffassign, staticcheck, unused
+  default: standard
+  enable:
+    - misspell
+    - revive
+  settings:
+    revive:
+      rules:
+        # 13章1.1節: export宣言にドキュメントコメントを必須とする
+        - name: exported
+          disabled: false
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

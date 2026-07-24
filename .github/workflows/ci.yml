@@ -1,0 +1,97 @@
+name: CI
+
+# Windows非依存の検証はLinux jobで実施する。Windows jobは利用者がWindows固有testを
+# 行うための足場であり、標準ユーザー相当のGitHub-hosted runnerで走る。
+# release workflow(R01)ではactionをSHA固定・最小permission・protected environmentにする。
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux (platform-neutral)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Detect packages
+        id: pkgs
+        run: |
+          if [ -n "$(go list ./... 2>/dev/null)" ]; then
+            echo "have=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "have=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Goパッケージ未作成のためbuild/test系をskip"
+          fi
+      - name: gofmt check
+        run: |
+          files=$(gofmt -l .)
+          if [ -n "$files" ]; then echo "gofmt required for:"; echo "$files"; exit 1; fi
+      - name: go vet
+        if: steps.pkgs.outputs.have == 'true'
+        run: go vet ./...
+      - name: build
+        if: steps.pkgs.outputs.have == 'true'
+        run: CGO_ENABLED=0 go build ./...
+      - name: test
+        if: steps.pkgs.outputs.have == 'true'
+        run: go test ./...
+      - name: race test
+        if: steps.pkgs.outputs.have == 'true'
+        run: go test -race ./...
+      - name: coverage
+        if: steps.pkgs.outputs.have == 'true'
+        run: |
+          mkdir -p .artifacts/coverage
+          go test -covermode=atomic -coverprofile=.artifacts/coverage/coverage.out ./...
+          go tool cover -func=.artifacts/coverage/coverage.out | tail -1
+      - name: govulncheck
+        if: steps.pkgs.outputs.have == 'true'
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          "$(go env GOPATH)/bin/govulncheck" ./...
+      - name: golangci-lint
+        if: steps.pkgs.outputs.have == 'true'
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.5.0
+          "$(go env GOPATH)/bin/golangci-lint" run ./...
+
+  windows:
+    name: Windows (standard user) — 利用者がWindows固有testを実行
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Detect packages
+        id: pkgs
+        shell: pwsh
+        run: |
+          if (go list ./... 2>$null) {
+            "have=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          } else {
+            "have=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            Write-Host "::notice::Goパッケージ未作成のためbuild/testをskip"
+          }
+      - name: build
+        if: steps.pkgs.outputs.have == 'true'
+        shell: pwsh
+        env:
+          CGO_ENABLED: "0"
+        run: go build ./...
+      - name: test
+        if: steps.pkgs.outputs.have == 'true'
+        shell: pwsh
+        run: go test ./...

@@ -32,3 +32,7 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# gdtvm 開発build/CI出力（docs/reports/W00-planning.md W00-04）
+/.artifacts/
+/gdtvm

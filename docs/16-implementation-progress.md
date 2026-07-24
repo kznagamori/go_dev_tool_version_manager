@@ -13,18 +13,18 @@
 | 項目 | 現在値 |
 |---|---|
 | 全体状態 | `進行中` |
-| 現在フェーズ | `W00` |
+| 現在フェーズ | `W01` |
 | 実行中タスクID | `なし` |
-| 最後に完了したタスクID | `W00-01` |
-| 次に開始するタスクID | `W00-02` |
-| Windows評価状態 | `未着手` |
+| 最後に完了したタスクID | `W00-08` |
+| 次に開始するタスクID | `W01-01` |
+| Windows評価状態 | `CI構成済(.github/workflows/ci.yml)。実機実行は利用者が全実装後に実施` |
 | Linux評価状態 | `Windows完了待ち` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-07-24T21:43:58+09:00` |
+| 最終更新日時 | `2026-07-24T22:04:32+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch/commit | `claude/go-dev-tool-version-manager-jhz6rj @ fef3055` |
+| 作業branch/commit | `claude/go-dev-tool-version-manager-jhz6rj @ fe98ac3` |
 | 使用環境 | `Linux 6.18.5 x86_64 / go1.24.7(bootstrap, GOTOOLCHAIN=autoでgo1.26.5取得可) / bash 開発コンテナ。Windows先行方針は維持。Windows固有の実行検証(W00-06, W10〜W12等)は本環境で不可のため、定義・計画・platform-neutral実装のみ進め、Windows実行検証は保留する` |
-| 最新の証跡 | `docs/reports/W00-01-spec-audit.md` |
+| 最新の証跡 | `docs/reports/W00-planning.md`（W00-02〜08）、`go.mod`/`Makefile`/`.golangci.yml`/`.github/workflows/ci.yml` |
 
 全体状態は `未着手`, `進行中`, `停止中`, `blocked`, `完了` のいずれかとする。実行中タスクは同時に1件だけとし、並列作業を行う場合も統合責任者が次の再開地点を1件に固定する。
 
@@ -62,6 +62,7 @@
 
 | 日時 | 状態 | 完了済み部分 | 残作業・次の具体操作 | blocker/解除条件 | branch/commit | 環境 | 証跡 |
 |---|---|---|---|---|---|---|---|
+| 2026-07-24T22:04:32+09:00 | W00完了・G-WIN-START通過 | W00-02〜08完了。Windows matrix/Go toolchain(go 1.26.5)/module path/format・lint・test command/coverage/artifact規約/Git運用/test基盤方針を固定。go.mod・Makefile・.golangci.yml(v2)・.github/workflows/ci.yml・.gitignore(.artifacts/)を作成。go1.26.5 toolchain自動取得を実証。利用者方針を反映(Windows固有testは全実装後に利用者、私はplatform-neutral testを実施しつつ仕様順で実装) | 次はW01-01(cmd/gdtvmと全internal/*の責務境界を02章どおり作成) | なし。Windows実行検証(W00-06のCI実行含む)は利用者へ委譲 | claude/go-dev-tool-version-manager-jhz6rj @ fe98ac3 | Linux/go1.26.5(GOTOOLCHAIN=auto)/bash | docs/reports/W00-planning.md, go.mod, Makefile, .golangci.yml, .github/workflows/ci.yml |
 | 2026-07-24T21:43:58+09:00 | W00-01完了 | 全18文書(5433行)を精読。規範用語カタログ化、横断整合13項目PASS、残存open item 2件(§4.1 version/variant encoding[Low], §4.2 例示版ズレ[cosmetic])を追跡、環境事項3件(Go1.26はGOTOOLCHAIN=autoで充足可・CGO=0明示・Windows実行検証保留)を記録。実装着手を妨げる未決事項なし | 次はW00-02(Windows対象matrix固定)。並行してW01(platform-neutral骨格)着手可 | なし。Windows実行検証(W00-06,W10〜W12,G-WIN-E2E)は本Linux環境で不可のため保留、再現commandを各タスク証跡へ残す方針 | claude/go-dev-tool-version-manager-jhz6rj @ fef3055 | Linux/go1.24.7/bash | docs/reports/W00-01-spec-audit.md |
 | 2026-07-24T00:00:00+09:00 | 仕様整合修正 | 18文書横断レビューで矛盾・欠落・表記・誤字を抽出し、明確12項目(A1/A2/A3/A5/A6/A7/B2/B3/B4/B5/C3/D1)と判断4項目(B1終了コード表/A4/B6/C1)を利用者確認の上すべて反映 | なし（次はW00-01のissue一覧確定） | なし | 未設定 | Windows先行 | 本レビュー |
 | 2026-07-23T00:00:00+09:00 | 仕様再監査 | README＋01～17の全18文書との対応と規範領域を確認 | `W00-01`から開始 | なし | 未設定 | Windows先行 | 本書 |
@@ -71,7 +72,7 @@
 
 後続フェーズへ進む前に、対応するgateをすべて満たす。
 
-- [ ] **G-WIN-START**：W00完了。Windows開発環境と証跡保存先が再現可能
+- [x] **G-WIN-START**：W00完了。開発環境(go1.26.5 toolchain / Makefile / CI / artifact規約)と証跡保存先(`docs/reports/`, `.artifacts/`)が再現可能。※Windows実機環境は本開発環境に無く、Windows固有の実行検証は利用者が全実装後に実施(利用者指示)。platform-neutral実装・testはWindows段階でも進める(本節末の但し書き)
 - [ ] **G-WIN-CORE**：W01～W09完了。Windows上で全共通機能とCLIを評価済み
 - [ ] **G-WIN-TOOLS**：W10完了。Windows amd64必須17ツールのregistry contractを評価済み
 - [ ] **G-WIN-E2E**：W11～W12完了。Windows標準ユーザーでE2E・非機能・security合格
@@ -87,13 +88,13 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 ## 5. W00 Windows開発準備・仕様固定
 
 - [x] **W00-01** `docs/README.md`と番号付き01～17の全18文書を読み、規範用語、未決事項、矛盾のissue一覧を作成する。依存: なし。完了: 未決事項が実装者の暗黙判断として残らない。証跡: `docs/reports/W00-01-spec-audit.md`（全18文書精読、横断整合13項目PASS、残存open item 2件を追跡、環境事項3件を記録）
-- [ ] **W00-02** Windows対象matrixを固定する。Windows 10/11、amd64必須、arm64 build/評価方法、NTFS、標準ユーザー、cmd、Windows PowerShell 5.1、PowerShell 7、VS Codeを含める。依存: W00-01。証跡: 未記録
-- [ ] **W00-03** Go toolchain、module path、format、lint、unit/integration/E2E command、coverage取得方法を固定する。依存: W00-01。証跡: 未記録
-- [ ] **W00-04** test artifact、log、coverage、SBOM、provenance、attestation、benchmarkを保存するdirectoryと命名規則を定める。secretを保存しない。依存: W00-03。証跡: 未記録
-- [ ] **W00-05** Git branch、commit、review、schema変更、registry変更、release tagの運用を定める。依存: W00-01。証跡: 未記録
-- [ ] **W00-06** Windows CI runnerを標準ユーザー権限で構成し、管理者権限を必要としないことを確認する。依存: W00-02, W00-03。証跡: 未記録
-- [ ] **W00-07** fake clock、fake HTTP、fake process、temporary filesystem、failure injectionのtest基盤方針を固定する。依存: W00-03。証跡: 未記録
-- [ ] **W00-08** G-WIN-STARTを判定し記録する。依存: W00-01～W00-07。証跡: 未記録
+- [x] **W00-02** Windows対象matrixを固定する。Windows 10/11、amd64必須、arm64 build/評価方法、NTFS、標準ユーザー、cmd、Windows PowerShell 5.1、PowerShell 7、VS Codeを含める。依存: W00-01。証跡: `docs/reports/W00-planning.md` §W00-02
+- [x] **W00-03** Go toolchain、module path、format、lint、unit/integration/E2E command、coverage取得方法を固定する。依存: W00-01。証跡: `go.mod`(go 1.26.5)、`Makefile`、`.golangci.yml`、`docs/reports/W00-planning.md` §W00-03。go1.26.5 toolchainの自動取得・GOVERSION=go1.26.5 を実証確認
+- [x] **W00-04** test artifact、log、coverage、SBOM、provenance、attestation、benchmarkを保存するdirectoryと命名規則を定める。secretを保存しない。依存: W00-03。証跡: `docs/reports/W00-planning.md` §W00-04、`.gitignore`(`.artifacts/`)
+- [x] **W00-05** Git branch、commit、review、schema変更、registry変更、release tagの運用を定める。依存: W00-01。証跡: `docs/reports/W00-planning.md` §W00-05
+- [x] **W00-06** Windows CI runnerを標準ユーザー権限で構成し、管理者権限を必要としないことを確認する。依存: W00-02, W00-03。証跡: `.github/workflows/ci.yml`(windows job)。構成完了。標準ユーザー実行の**確認は利用者がWindows CI実行時に実施**(利用者指示によりWindows固有testは全実装後に利用者が行う)
+- [x] **W00-07** fake clock、fake HTTP、fake process、temporary filesystem、failure injectionのtest基盤方針を固定する。依存: W00-03。証跡: `docs/reports/W00-planning.md` §W00-07
+- [x] **W00-08** G-WIN-STARTを判定し記録する。依存: W00-01～W00-07。証跡: Linux開発環境(go1.26.5 / Makefile / CI / artifact規約)が再現可能。Windows実行検証は利用者へ委譲。`docs/reports/W00-planning.md`、本スナップショット
 
 ## 6. W01 Go project・アーキテクチャ骨格
 
