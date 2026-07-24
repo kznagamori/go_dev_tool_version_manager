@@ -13,18 +13,18 @@
 | 項目 | 現在値 |
 |---|---|
 | 全体状態 | `進行中` |
-| 現在フェーズ | `W01` |
+| 現在フェーズ | `W02` |
 | 実行中タスクID | `なし` |
-| 最後に完了したタスクID | `W01-08` |
-| 次に開始するタスクID | `W01-03` |
+| 最後に完了したタスクID | `W01-07` |
+| 次に開始するタスクID | `W02-01` |
 | Windows評価状態 | `CI構成済(.github/workflows/ci.yml)。実機実行は利用者が全実装後に実施` |
 | Linux評価状態 | `Windows完了待ち` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-07-24T22:21:46+09:00` |
+| 最終更新日時 | `2026-07-24T23:10:03+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch/commit | `claude/go-dev-tool-version-manager-jhz6rj @ 65815fc` |
+| 作業branch/commit | `claude/go-dev-tool-version-manager-jhz6rj @ 15a69de` |
 | 使用環境 | `Linux 6.18.5 x86_64 / go1.24.7(bootstrap, GOTOOLCHAIN=autoでgo1.26.5取得可) / bash 開発コンテナ。Windows先行方針は維持。Windows固有の実行検証(W00-06, W10〜W12等)は本環境で不可のため、定義・計画・platform-neutral実装のみ進め、Windows実行検証は保留する` |
-| 最新の証跡 | `internal/domain/`＋`cmd/gdtvm/`（W01-01/02/05/08）。`go test -race ./...` 成功、coverage 全体93.2%（domain 94.2%） |
+| 最新の証跡 | `internal/{domain,ports,events,i18n,security,infra,app,porttest}/`＋`cmd/gdtvm/`（W01完了）。build/vet/test/-race/golangci-lint(0 issues)全緑。coverage app100%/security97%/domain94.2%/i18n92.9%/infra92.5% |
 
 全体状態は `未着手`, `進行中`, `停止中`, `blocked`, `完了` のいずれかとする。実行中タスクは同時に1件だけとし、並列作業を行う場合も統合責任者が次の再開地点を1件に固定する。
 
@@ -62,6 +62,7 @@
 
 | 日時 | 状態 | 完了済み部分 | 残作業・次の具体操作 | blocker/解除条件 | branch/commit | 環境 | 証跡 |
 |---|---|---|---|---|---|---|---|
+| 2026-07-24T23:10:03+09:00 | W01完了 | W01-03(internal/ports 13 port＋internal/events EventSink/Approval)、W01-04(internal/app Service DI、global state無しをtest)、W01-06(security mask＋infra UUID/clock/logger)、W01-07(i18n strict loader＋ja/en parity＋go:embed)を完了。TOML基盤にpelletier/go-toml/v2導入。golangci-lint(go1.26.5 build)で0 issues。build/vet/test/-race全緑 | 次はW02(設定・path・保存状態)。W02-01(portable/user/multi-user mode、config locator、優先順位) | なし。02章非掲載のinternal/{ports,infra,porttest}を追加(hexagonal port抽象/OS非依存既定実装/test fake。02章5節でport名は概念名と明示) | claude/go-dev-tool-version-manager-jhz6rj @ 15a69de | Linux/go1.26.5/bash | internal/, cmd/gdtvm/, coverage・lint緑 |
 | 2026-07-24T22:21:46+09:00 | W01一部完了(01/02/05/08) | cmd/gdtvm＋internal/*全18パッケージ骨格(doc.go)を作成(W01-01)。internal/domainにToolID/Version/OS/Arch/Libc/Platform/Scope/Mode/Channel/Digest/InstallID/InstallKey/Origin/Selection/EffectiveSelectionと不変条件・sentinel error(W01-02)。CoreError＋30 E_*コード＋Category＋cmd/gdtvmの終了コードmapping(W01-05)。全export docコメント(W01-08)。go build/vet/test/-race 全緑、coverage全体93.2% | 次はW01-03(port定義: FileSystem/LinkManager/HTTPClient/ProcessRunner/ArchiveExtractor/security/lock/clock/event)。続いてW01-07(i18n)、W01-06(opID/logger/mask)、W01-04(Service DI) | なし | claude/go-dev-tool-version-manager-jhz6rj @ 65815fc | Linux/go1.26.5/bash | internal/domain/, cmd/gdtvm/, coverage 93.2% |
 | 2026-07-24T22:04:32+09:00 | W00完了・G-WIN-START通過 | W00-02〜08完了。Windows matrix/Go toolchain(go 1.26.5)/module path/format・lint・test command/coverage/artifact規約/Git運用/test基盤方針を固定。go.mod・Makefile・.golangci.yml(v2)・.github/workflows/ci.yml・.gitignore(.artifacts/)を作成。go1.26.5 toolchain自動取得を実証。利用者方針を反映(Windows固有testは全実装後に利用者、私はplatform-neutral testを実施しつつ仕様順で実装) | 次はW01-01(cmd/gdtvmと全internal/*の責務境界を02章どおり作成) | なし。Windows実行検証(W00-06のCI実行含む)は利用者へ委譲 | claude/go-dev-tool-version-manager-jhz6rj @ fe98ac3 | Linux/go1.26.5(GOTOOLCHAIN=auto)/bash | docs/reports/W00-planning.md, go.mod, Makefile, .golangci.yml, .github/workflows/ci.yml |
 | 2026-07-24T21:43:58+09:00 | W00-01完了 | 全18文書(5433行)を精読。規範用語カタログ化、横断整合13項目PASS、残存open item 2件(§4.1 version/variant encoding[Low], §4.2 例示版ズレ[cosmetic])を追跡、環境事項3件(Go1.26はGOTOOLCHAIN=autoで充足可・CGO=0明示・Windows実行検証保留)を記録。実装着手を妨げる未決事項なし | 次はW00-02(Windows対象matrix固定)。並行してW01(platform-neutral骨格)着手可 | なし。Windows実行検証(W00-06,W10〜W12,G-WIN-E2E)は本Linux環境で不可のため保留、再現commandを各タスク証跡へ残す方針 | claude/go-dev-tool-version-manager-jhz6rj @ fef3055 | Linux/go1.24.7/bash | docs/reports/W00-01-spec-audit.md |
@@ -101,11 +102,11 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 
 - [x] **W01-01** `cmd/gdtvm` と全`internal/*`責務境界を02章どおり作成する。依存: G-WIN-START。証跡: `cmd/gdtvm/`＋`internal/{app,config,definition,registry,update,catalog,install,selection,runtime,shim,shell,store,platform,security,doctor,events,i18n,domain}/doc.go` を02章2節どおり作成。`go build ./...` 成功
 - [x] **W01-02** Domain値（ToolID、Version、Platform、Scope、Mode、Digest、InstallKey、Selection）と不変条件を実装・unit testする。依存: W01-01。証跡: `internal/domain/{toolid,version,platform,scope,digest,installkey,selection,id}.go`＋各_test.go。`go test ./internal/domain` 成功、coverage 94.2%（Channel/Origin/EffectiveSelection含む）
-- [ ] **W01-03** FileSystem、LinkManager、HTTPClient、ProcessRunner、ArchiveExtractor、security、lock、clock、eventのportを定義する。依存: W01-01。証跡: 未記録
-- [ ] **W01-04** Application Service生成時の依存注入を実装し、package global mutable stateがないことをtestする。依存: W01-03。証跡: 未記録
+- [x] **W01-03** FileSystem、LinkManager、HTTPClient、ProcessRunner、ArchiveExtractor、security、lock、clock、eventのportを定義する。依存: W01-01。証跡: `internal/ports/`（FileSystem/LinkManager/HTTPClient/ProcessRunner/ArchiveExtractor/HashCalculator/LockManager/Clock/IDGenerator/Logger/LocaleProvider/ReleaseIntegrityVerifier/SignatureVerifier）＋`internal/events/`（EventSink/ApprovalProvider）。02章5節はport名を概念名とするため循環回避のため`ports`へ集約。テスト用fake/stubは`internal/porttest/`
+- [x] **W01-04** Application Service生成時の依存注入を実装し、package global mutable stateがないことをtestする。依存: W01-03。証跡: `internal/app/service.go`（Dependencies＋NewServiceで全port検証）、`service_test.go`で独立2 Serviceの採番非干渉を確認。coverage 100%
 - [x] **W01-05** CoreError、stable error code、cause、remediation、CLI終了code mappingを実装・testする。依存: W01-02。証跡: `internal/domain/coreerror.go`（30 E_*コード＋Category＋options）、`cmd/gdtvm/exit.go`（04章7節の終了コード対応、E_TIMEOUT文脈分岐）＋各_test.go。全コード網羅を検証
-- [ ] **W01-06** operation ID、context cancellation、structured logger、secret maskの共通基盤を実装・testする。依存: W01-03。証跡: 未記録
-- [ ] **W01-07** locale-neutral message IDとja/en catalog loaderを実装しplaceholder一致をtestする。依存: W01-01。証跡: 未記録
+- [x] **W01-06** operation ID、context cancellation、structured logger、secret maskの共通基盤を実装・testする。依存: W01-03。証跡: `internal/security/mask.go`（header/env/URL secret mask）、`internal/infra/`（UUIDv4 IDGenerator、systemClock、JSON構造化Logger）。context cancellationはport全体がcontext.Context受領で担保。coverage security 97%/infra 92.5%
+- [x] **W01-07** locale-neutral message IDとja/en catalog loaderを実装しplaceholder一致をtestする。依存: W01-01。証跡: `internal/i18n/`（strict TOML loader、`ValidateParity`でja/en ID・placeholder一致検査）、同梱`messages/ja.toml`・`en.toml`をgo:embed。coverage 92.9%
 - [x] **W01-08** 13章1.1節に従いpackage、export宣言、重要な内部契約、非自明な処理へドキュメントコメントと意図説明コメントを記載し、review基準を確立する。依存: W01-01。証跡: 全package docコメント＋export宣言docコメントを記載。review基準は`.golangci.yml`のrevive `exported`ルール＋W00-planning §W00-05で確立。以降のpackageも同基準で継続適用
 
 ## 7. W02 設定・path・保存状態

@@ -1,0 +1,22 @@
+# Client built-in base messages (English). Tool-specific notes are supplied by the
+# registry messages and must not override base errors (section 14.15). Placeholders
+# must exactly match ja.toml.
+schema = 1
+language = "en"
+
+[messages]
+"error.usage" = "The command was used incorrectly."
+"error.tool_unknown" = "Tool {tool_id} was not found."
+"error.version_invalid" = "Version {version} is not a valid exact version."
+"error.version_not_found" = "Version {version} of {tool_id} was not found from the source."
+"error.version_not_installed" = "{tool_id}@{version} is not installed."
+"error.platform_unsupported" = "{tool_id} is not supported on the current platform."
+"error.offline" = "Network access is disabled by the offline setting."
+"error.network" = "Failed to communicate with {host}."
+"error.catalog_missing" = "No verified catalog is available for {tool_id}."
+"error.digest_mismatch" = "The downloaded artifact's digest does not match."
+"error.home_not_writable" = "Cannot write to the management root {path}."
+"error.registry_invalid" = "The bundled registry is invalid or incompatible."
+"error.command_ambiguous" = "Multiple active tools provide the command {command}."
+"error.locked" = "Could not acquire the lock; another operation is in progress."
+"error.cancelled" = "The operation was cancelled."

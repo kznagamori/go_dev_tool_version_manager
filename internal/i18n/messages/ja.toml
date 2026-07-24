@@ -1,0 +1,21 @@
+# client 本体同梱の基本 message（日本語）。tool 固有 notes は registry の message で
+# 補い、基本 error を上書きしない（14章15節）。placeholder は en.toml と完全一致させる。
+schema = 1
+language = "ja"
+
+[messages]
+"error.usage" = "コマンドの使い方が正しくありません。"
+"error.tool_unknown" = "ツール {tool_id} は見つかりません。"
+"error.version_invalid" = "バージョン {version} は完全な形式ではありません。"
+"error.version_not_found" = "{tool_id} のバージョン {version} は配布元に見つかりません。"
+"error.version_not_installed" = "{tool_id}@{version} は導入されていません。"
+"error.platform_unsupported" = "{tool_id} は現在のプラットフォームに対応していません。"
+"error.offline" = "オフライン指定のためネットワークにアクセスできません。"
+"error.network" = "{host} への通信に失敗しました。"
+"error.catalog_missing" = "{tool_id} の検証済みカタログがありません。"
+"error.digest_mismatch" = "ダウンロードした成果物のダイジェストが一致しません。"
+"error.home_not_writable" = "管理ルート {path} に書き込めません。"
+"error.registry_invalid" = "同梱レジストリが不正または非互換です。"
+"error.command_ambiguous" = "コマンド {command} を提供するツールが複数有効です。"
+"error.locked" = "他の操作が実行中のためロックを取得できません。"
+"error.cancelled" = "操作は取り消されました。"

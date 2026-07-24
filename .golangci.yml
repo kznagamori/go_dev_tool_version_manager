@@ -16,6 +16,14 @@ linters:
         # 13章1.1節: export宣言にドキュメントコメントを必須とする
         - name: exported
           disabled: false
+  exclusions:
+    rules:
+      # internal/porttest は test 専用の stub/fake であり、interface 実装のための
+      # 多数の exported メソッドに doc コメントを要求しない（13章1.1節は production path 対象）。
+      - path: internal/porttest/
+        linters:
+          - revive
+        text: 'should have comment or be unexported'
 
 formatters:
   enable:
