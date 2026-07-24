@@ -12,19 +12,19 @@
 
 | 項目 | 現在値 |
 |---|---|
-| 全体状態 | `未着手` |
+| 全体状態 | `進行中` |
 | 現在フェーズ | `W00` |
 | 実行中タスクID | `なし` |
-| 最後に完了したタスクID | `なし` |
-| 次に開始するタスクID | `W00-01` |
+| 最後に完了したタスクID | `W00-01` |
+| 次に開始するタスクID | `W00-02` |
 | Windows評価状態 | `未着手` |
 | Linux評価状態 | `Windows完了待ち` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-07-23T00:00:00+09:00` |
-| 更新者 | `未設定` |
-| 作業branch/commit | `未設定` |
-| 使用環境 | `Windows先行。詳細未記録` |
-| 最新の証跡 | `なし` |
+| 最終更新日時 | `2026-07-24T21:43:58+09:00` |
+| 更新者 | `Claude Code` |
+| 作業branch/commit | `claude/go-dev-tool-version-manager-jhz6rj @ fef3055` |
+| 使用環境 | `Linux 6.18.5 x86_64 / go1.24.7(bootstrap, GOTOOLCHAIN=autoでgo1.26.5取得可) / bash 開発コンテナ。Windows先行方針は維持。Windows固有の実行検証(W00-06, W10〜W12等)は本環境で不可のため、定義・計画・platform-neutral実装のみ進め、Windows実行検証は保留する` |
+| 最新の証跡 | `docs/reports/W00-01-spec-audit.md` |
 
 全体状態は `未着手`, `進行中`, `停止中`, `blocked`, `完了` のいずれかとする。実行中タスクは同時に1件だけとし、並列作業を行う場合も統合責任者が次の再開地点を1件に固定する。
 
@@ -62,6 +62,7 @@
 
 | 日時 | 状態 | 完了済み部分 | 残作業・次の具体操作 | blocker/解除条件 | branch/commit | 環境 | 証跡 |
 |---|---|---|---|---|---|---|---|
+| 2026-07-24T21:43:58+09:00 | W00-01完了 | 全18文書(5433行)を精読。規範用語カタログ化、横断整合13項目PASS、残存open item 2件(§4.1 version/variant encoding[Low], §4.2 例示版ズレ[cosmetic])を追跡、環境事項3件(Go1.26はGOTOOLCHAIN=autoで充足可・CGO=0明示・Windows実行検証保留)を記録。実装着手を妨げる未決事項なし | 次はW00-02(Windows対象matrix固定)。並行してW01(platform-neutral骨格)着手可 | なし。Windows実行検証(W00-06,W10〜W12,G-WIN-E2E)は本Linux環境で不可のため保留、再現commandを各タスク証跡へ残す方針 | claude/go-dev-tool-version-manager-jhz6rj @ fef3055 | Linux/go1.24.7/bash | docs/reports/W00-01-spec-audit.md |
 | 2026-07-24T00:00:00+09:00 | 仕様整合修正 | 18文書横断レビューで矛盾・欠落・表記・誤字を抽出し、明確12項目(A1/A2/A3/A5/A6/A7/B2/B3/B4/B5/C3/D1)と判断4項目(B1終了コード表/A4/B6/C1)を利用者確認の上すべて反映 | なし（次はW00-01のissue一覧確定） | なし | 未設定 | Windows先行 | 本レビュー |
 | 2026-07-23T00:00:00+09:00 | 仕様再監査 | README＋01～17の全18文書との対応と規範領域を確認 | `W00-01`から開始 | なし | 未設定 | Windows先行 | 本書 |
 | 2026-07-22T00:00:00+09:00 | 初期作成 | チェックリスト作成 | `W00-01`から開始 | なし | 未設定 | Windows先行 | 本書 |
@@ -85,7 +86,7 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 
 ## 5. W00 Windows開発準備・仕様固定
 
-- [ ] **W00-01** `docs/README.md`と番号付き01～17の全18文書を読み、規範用語、未決事項、矛盾のissue一覧を作成する。依存: なし。完了: 未決事項が実装者の暗黙判断として残らない。証跡: 未記録
+- [x] **W00-01** `docs/README.md`と番号付き01～17の全18文書を読み、規範用語、未決事項、矛盾のissue一覧を作成する。依存: なし。完了: 未決事項が実装者の暗黙判断として残らない。証跡: `docs/reports/W00-01-spec-audit.md`（全18文書精読、横断整合13項目PASS、残存open item 2件を追跡、環境事項3件を記録）
 - [ ] **W00-02** Windows対象matrixを固定する。Windows 10/11、amd64必須、arm64 build/評価方法、NTFS、標準ユーザー、cmd、Windows PowerShell 5.1、PowerShell 7、VS Codeを含める。依存: W00-01。証跡: 未記録
 - [ ] **W00-03** Go toolchain、module path、format、lint、unit/integration/E2E command、coverage取得方法を固定する。依存: W00-01。証跡: 未記録
 - [ ] **W00-04** test artifact、log、coverage、SBOM、provenance、attestation、benchmarkを保存するdirectoryと命名規則を定める。secretを保存しない。依存: W00-03。証跡: 未記録
