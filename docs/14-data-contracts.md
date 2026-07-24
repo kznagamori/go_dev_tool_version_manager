@@ -53,23 +53,29 @@ install_id = "00000000-0000-4000-8000-000000000001"
 
 user選択は一つの管理ルートにつきtoolごとに1件である。同じportable rootを別OS/archから共用した場合、receipt platformが現在platformと一致しない選択は自動で別artifactへ読み替えずinactiveとして扱う。別platformで`use`すると同toolのuser選択を置換する。複数platformのuser選択を同時保持する機能はschema 1の非目標とする。
 
-## 5. `state/registry.toml`
+## 5. `state/update.toml`
 
 ```toml
 schema = 1
 revision = 4
-active_version = "1.3.0"
-active_tag = "registry-v1.3.0"
-commit_sha = "<40 or 64 lowercase hex>"
-manifest_sha256 = "<64 lowercase hex>"
-key_id = "registry-root-2026"
-verified_at = 2026-07-22T00:00:00Z
-source = "https://github.com/kznagamori/go_dev_tool_version_manager"
-previous_version = "1.2.1"
+current_client_version = "2026.07.23.00"
+current_registry_tree_sha256 = "<64 lowercase hex>"
 last_checked_at = 2026-07-22T00:00:00Z
+available_client_version = "2026.07.24.00"
+last_success_at = 2026-07-22T00:00:00Z
+last_release_tag = "v2026.07.23.00"
+last_release_id = 123456789
+last_asset_name = "gdtvm_2026.07.23.00_windows_amd64.zip"
+last_asset_id = 987654321
+last_archive_sha256 = "<64 lowercase hex>"
+rollback_relative_path = ".gdtvm-update/previous/2026.07.22.00"
 ```
 
-`active_version`が示すsnapshot directoryとmanifest版が一致しなければstate corruption。previousは検証済みsnapshotがある場合だけ。
+最上位で許すkeyは上例のfieldだけとする。このfileはsetup前または一度も更新確認していないuserでは存在しなくてよい。`current_client_version`と`current_registry_tree_sha256`はfile作成時に必須とする。
+
+実行中binaryや同梱registryと値が一致しない場合、multi-user配置を管理者が更新したか、利用者がrelease archiveを手動再展開した可能性があるため、それだけで全state corruptionにしない。binary埋込みversion、registry compatibility、registry tree strict validation、binary埋込みexpected registry tree SHA-256との一致がすべて成功した場合はstale update metadataとしてwarning/auditし、現在値へatomic再同期する。どれかが失敗した場合だけ`E_REGISTRY_INVALID`または`E_STATE_CORRUPT`として通常の変更操作を拒否する。
+
+`last_checked_at`と`available_client_version`はcheck成功時だけ、`last_success_at`から`last_archive_sha256`までは更新成功時だけ組として存在する。更新候補がないcheck成功時は`last_checked_at`だけを更新し、`available_client_version`を削除する。release IDとasset IDはGitHub APIが返した正の64 bit整数、tag/name/digestとともにauditへ記録する。`rollback_relative_path`はdistribution root内の自己更新backupが存在する場合だけ記録し、absolute pathや`..`を禁止する。自己更新のcommit完了後にatomic更新し、失敗時は旧fileを維持する。
 
 ## 6. `state/approvals.toml`
 
@@ -127,8 +133,8 @@ registry値ではtypeに`reg-sz`等、backupに値type/contentを安全にencode
 schema = 1
 revision = 8
 client_version = "2026.07.23.00"
-registry_version = "1.3.0"
-registry_manifest_sha256 = "<digest>"
+registry_schema = 1
+registry_tree_sha256 = "<digest>"
 generated_at = 2026-07-22T00:00:00Z
 
 [[commands]]
@@ -138,7 +144,7 @@ runtime_command_id = "node"
 definition_sha256 = "<digest>"
 ```
 
-commandsはname、tool_id、runtime_command_idのbyte順。同じnameを異なるtoolが公開するentryは許すが、3項目が同一の重複は拒否する。local definition originの場合はregistry versionでなくapproval bundle hashもentryへ持つ。target version/payload absolute pathは保存しない。shimは同名候補の有効selectionを解決し、複数候補が有効なら `E_COMMAND_AMBIGUOUS` とする。
+commandsはname、tool_id、runtime_command_idのbyte順。同じnameを異なるtoolが公開するentryは許すが、3項目が同一の重複は拒否する。local definition originの場合はregistry tree hashでなくapproval bundle hashもentryへ持つ。target version/payload absolute pathは保存しない。shimは同名候補の有効selectionを解決し、複数候補が有効なら `E_COMMAND_AMBIGUOUS` とする。
 
 ## 9. receipt完全形
 
@@ -162,7 +168,8 @@ selection_strategy = "link"
 
 [definition]
 origin = "registry"
-registry_version = "1.3.0"
+client_version = "2026.07.23.00"
+registry_tree_sha256 = "<digest>"
 path = "tools/node.toml"
 sha256 = "<digest>"
 
@@ -241,7 +248,7 @@ environment profileは次の正規契約を持つ。
 - variableの`override_allowed`, `shell_export`はbool。profileの`shell_export_path`もbool。
 - Windowsではvariable nameをcase-insensitiveに一意化する。root外へ出るpath、absolute `path`、未定義rootを拒否する。
 
-空配列は省略できる。receiptに保存するruntime契約はinstall時に検証済みdefinitionから確定し、後のregistry更新で書き換えない。definition origin/hashは説明、監査、repair、uninstall hook照合に使う。standard registry snapshotは参照receiptがある間保持し、local definitionの旧hookが取得不能またはhash不一致なら実行せず、安全な管理root内削除だけをplanへ示す。
+空配列は省略できる。receiptに保存するruntime契約はinstall時に検証済みdefinitionから確定し、後のself-updateで書き換えない。definition origin/hashは説明、監査、repair、uninstall hook照合に使う。自己更新で標準definitionが変わってもreceipt内runtime契約を保持する。local definitionの旧hookが取得不能またはhash不一致なら実行せず、安全な管理root内削除だけをplanへ示す。
 
 `approvals`は実際に承認を要した項目だけを持つ。通常の確認省略installでは空または省略する。third-party、unverified、local definition、hook等ではkind、approval ID、decision、evidence hash、時刻を残すが、prompt本文や秘密値は保存しない。
 
@@ -293,7 +300,7 @@ artifact要素:
 
 `id`, `role`, `priority`, `platform_id`, `recipe_id`, `source`（template/asset）, `asset_name` nullable, `url`, `file`, `format`, `kind`, `size` nullable, `license`, `homepage`, `checksum` object, `signature` object nullable, `availability` object, `metadata`。同一version/platform/roleはexactly 1件で、primary roleを必須とする。補助roleはcatalogへ確定保存してよいが、install definitionから未参照ならdownloadしない。
 
-checksum objectは `algorithm`, `value` nullable, `source`, `required`, `status`（`resolved`, `pending`, `unavailable`）を持つ。`pending`は署名definitionにchecksum取得URL/asset/pointerと一意なparse規則があり、refresh時に値だけを遅延取得した状態である。catalogには保存してよいが、Install Plan前のResolve段階でchecksumを取得・cacheして`resolved`にしなければdownloadへ進めない。offlineでは検証済みchecksum cacheがなければ`E_CATALOG_MISSING`。`unavailable`か取得規則自体がないrequired checksumはinstallableにしない。これによりNode等の全過去版についてrefresh時にchecksum fileを一括downloadせず、安全性を落とさず遅延解決できる。JSON object keyはgeneratorで辞書順、versionsはversion降順、artifactsはrole順＋priority降順＋ID順。
+checksum objectは `algorithm`, `value` nullable, `source`, `required`, `status`（`resolved`, `pending`, `unavailable`）を持つ。`pending`は検証済みdefinitionにchecksum取得URL/asset/pointerと一意なparse規則があり、refresh時に値だけを遅延取得した状態である。catalogには保存してよいが、Install Plan前のResolve段階でchecksumを取得・cacheして`resolved`にしなければdownloadへ進めない。offlineでは検証済みchecksum cacheがなければ`E_CATALOG_MISSING`。`unavailable`か取得規則自体がないrequired checksumはinstallableにしない。これによりNode等の全過去版についてrefresh時にchecksum fileを一括downloadせず、安全性を落とさず遅延解決できる。JSON object keyはgeneratorで辞書順、versionsはversion降順、artifactsはrole順＋priority降順＋ID順。
 
 ## 11. operation journal JSON Lines
 
@@ -341,7 +348,7 @@ Action required fields:
 
 Warning required fields: `id`, `severity`, `kind`, `message_id`, `args`, `approval_required`, `evidence`。
 
-Plan fingerprintは、global security関連設定、project file bytes、selection revision、definition bundle hash、catalog entry hash、active registry manifest hashのSHA-256集合からcanonical生成する。
+Plan fingerprintは、global security関連設定、project file bytes、selection revision、definition bundle hash、catalog entry hash、同梱registry tree hashのSHA-256集合からcanonical生成する。
 
 ## 14. helper definition
 
@@ -417,7 +424,7 @@ required = true
 - platform: id, os, arch, libc, entrypoint, artifacts, dependencies, install_steps, validation
 - artifacts/checksum/signature、dependencies、install_steps、validationはtool definitionの同名schema subset
 
-helperはversion sourceを持たずregistry releaseごとに完全版固定する。platformは現在OS/arch/libcにexact matchする1件だけを選ぶ。同一条件の複数variantやpriority選択はhelper schema 1では許さない。artifactは`source="template"`だけを許し、primary roleを必須とする。補助roleも定義できるため、7-Zipのbootstrap実体と完全版installerを別々に検証できる。すべてのartifactでSHA-256必須、checksum `none`は禁止する。
+helperはversion sourceを持たずclient releaseごとに完全版固定する。platformは現在OS/arch/libcにexact matchする1件だけを選ぶ。同一条件の複数variantやpriority選択はhelper schema 1では許さない。artifactは`source="template"`だけを許し、primary roleを必須とする。補助roleも定義できるため、7-Zipのbootstrap実体と完全版installerを別々に検証できる。すべてのartifactでSHA-256必須、checksum `none`は禁止する。
 
 install stepは`ensure-dir`, `download`, `verify-digest`, `verify-signature`, `extract`, `move`, `rename`, `copy-file`, `remove`, `run`, `probe`, `discover-files`, `select-files`, `set-output`だけを許す。`write-file`, `patch-text`, `extract-msi-admin`, shell hookはhelper自身の導入では禁止する。`run`で起動できるのは同operationでdigest検証済みのartifact、先行stepで展開済みのhelper staging実体、または明示したsystem dependencyだけである。helper-specific templateは`{{helper.version}}`, `{{helper.staging}}`, `{{helper.payload}}`で、toolの`{{version}}`, `{{staging}}`, `{{payload}}`を混在させない。
 
@@ -425,7 +432,7 @@ entrypointは完成helper payloadからのPOSIX slash相対pathで、absolute pa
 
 `run-helper`はhelper IDとregistryが固定したversion/platformを依存planから解決し、receiptのentrypoint digestを毎回検査して絶対path起動する。OSやPATHに偶然存在する同名commandへfallbackしない。複数toolが同じhelperを要求した場合はhelper install lockで一度だけ導入し共有する。tool uninstallでhelperを削除せず、参照receiptがなくcache policyが削除可能と判断した場合だけ清掃する。
 
-helper同士の依存はDAGで許可するが、user選択、shim公開、system変更hook、shell integration、runtime command公開は禁止する。SPDX `LicenseRef-*` を使う場合は対応license textをmanifestの`license` roleで同梱する。
+helper同士の依存はDAGで許可するが、user選択、shim公開、system変更hook、shell integration、runtime command公開は禁止する。SPDX `LicenseRef-*` を使う場合は対応license textをrelease archive内の`registry/licenses/`へ同梱する。
 
 Windows `msiexec.exe`のようなOS componentはdownload helperに偽装しない。`system-command` dependencyとしてsystem directory APIから絶対pathを解決し、署名/所有元、非昇格probe、version情報をreceipt/journalへ記録する。見つからない場合にネットワークから同名exeを取得してはならない。
 
@@ -451,11 +458,13 @@ client本体の基本messageはbinary同梱。registry messageはtool固有notes
 
 | 対象 | 既定 | hard maximum |
 |---|---:|---:|
-| manifest bytes | 2 MiB | 16 MiB |
+| `registry/registry.toml` bytes | 2 MiB | 16 MiB |
 | 1 definition bytes | 2 MiB | 16 MiB |
-| signature bytes | 4 KiB | 4 KiB |
+| release metadata response/file | 2 MiB | 16 MiB |
+| release client archive | 1 GiB | 4 GiB |
 | catalog response | 32 MiB | 256 MiB |
 | artifact download | 64 GiB | 256 GiB |
+| download cache total | 10 GiB | 1 TiB |
 | archive entries | 1,000,000 | 2,000,000 |
 | total extracted | 128 GiB | 512 GiB |
 | single extracted file | 64 GiB | 256 GiB |
@@ -467,7 +476,7 @@ client本体の基本messageはbinary同梱。registry messageはtool固有notes
 | template rendered string | 32 KiB | 1 MiB |
 | path components | 256 | OS上限以下 |
 
-definitionはこれらを増加できない。global configだけがhard maximum以内で変更できる。expected artifact sizeが上限を超えるtoolはinstall前に上限変更を案内し、途中までdownloadしない。
+definitionはこれらを増加できない。05章の`gdtvm.toml`に対応fieldが公開されている対象だけをhard maximum以内で変更でき、対応fieldのない`registry/registry.toml`、definition step count、dependency nodes、template rendered string、path components等は表のbuilt-in既定値に固定する。expected artifact sizeが設定済み上限を超えるtoolはinstall前に、変更可能なfieldであれば上限変更を案内し、変更不能なbuilt-in上限またはhard maximumを超える場合は非対応理由を示す。いずれも途中までdownloadしない。
 
 ## 17. migration
 

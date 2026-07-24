@@ -2,9 +2,9 @@
 
 ## 1. 共通方針
 
-本章は初期registryに必ず収録する17ツールの機能仕様である。実際のURL、asset名、checksum位置は上流変更に追随してregistry PATCHで更新できるが、取得元、処理の意味、公開command、環境は本章を満たす。
+本章は初期registryに必ず収録する17ツールの機能仕様である。実際のURL、asset名、checksum位置は上流変更に追随して`/registry/`のTOMLを変更し、新しいclient releaseで更新できるが、取得元、処理の意味、公開command、環境は本章を満たす。
 
-各節は説明資料ではなく、`registry` branchの `tools/<正規ID>.toml` を作成するための規範要件である。必須file名、旧 `anyvm_win` との対応、helperおよび付随fileの収録範囲は[07-registry.mdの2.1節](07-registry.md#21-初期registryに登録する内容)に従う。
+各節は説明資料ではなく、client sourceと同じ開発branchの`/registry/tools/<正規ID>.toml`を作成するための規範要件である。必須file名、旧`anyvm_win`との対応、helperおよび付随fileの収録範囲は[07-registry.mdの3節](07-registry.md#3-初期registryの標準定義)に従う。
 
 旧実装がWindows amd64で提供した17ツールはすべて引き継ぐ。Linux/arm64では上流が検証可能なportable artifactを提供する組合せだけを公開し、見つからない版を他architectureのemulation前提で表示しない。
 
@@ -44,7 +44,7 @@
 - archive内の単一top-level directoryはstrip/renameし、完成payload直下がtool rootになるようにする。
 - download archive/installerは成功後削除する。
 - link方式のcurrent linkはuser選択だけ。runtime表の `{{tool}}` は選択payload、shell exportでは利用可能ならcurrent linkを指す。backend方式はshared rootと完全selectorを使う。
-- checksumは上流提供SHA-256を優先する。上流が提供しない既存toolでは、registry release工程で取得・検証したdigestを版catalog metadataとして署名registryに置く方式を許す。この場合もartifact download後にSHA-256照合する。
+- checksumは上流提供SHA-256を優先する。上流が提供しない既存toolでは、標準定義更新工程で取得・検証したdigestを版catalog metadataとして`/registry/`へ固定する方式を許す。この場合もsource CIで根拠を監査し、artifact download後にSHA-256照合する。
 - command名がtool間で重なる場合、shimは有効選択が一つに定まるときだけ起動する。標準定義が同時利用を安全に構成できないtoolは相互`conflicts`を宣言し、列挙順で暗黙選択しない。
 - script launcherはinterpreterを暗黙PATH探索しない。definitionに`sh`/`bash`等のsystem dependencyとinterpreter IDを記載し、install planで解決した絶対pathをreceiptへ固定する。不足時はpackage導入hintだけを表示する。
 
@@ -263,7 +263,7 @@ JDK dependency必須。Kotlin版とJava版の互換probeを定義する。
 - Windows amd64旧asset: `LLVM-<version>-win64.exe`
 - 他platformはrelease assetを列挙し、公式prebuilt archiveがある版だけ公開。
 
-**helper**: Windows self-extracting installerの管理root内展開に署名registryで固定した7-Zip helperを使う。旧来のように7-Zip download HTMLからその時点の`-x64.exe`を都度選ばず、helper definitionが完全版、公式URL、SHA-256を固定する。bootstrap `7zr.exe` が必要ならそれもhelper digestで固定する。
+**helper**: Windows self-extracting installerの管理root内展開にrelease同梱registryで固定した7-Zip helperを使う。旧来のように7-Zip download HTMLからその時点の`-x64.exe`を都度選ばず、helper definitionが完全版、公式URL、SHA-256を固定する。bootstrap `7zr.exe` が必要ならそれもhelper digestで固定する。
 
 **導入**: helperでinstaller/archiveをstagingへ展開し、LLVM rootをpayloadへmove。systemへinstaller登録しない。
 
@@ -481,7 +481,7 @@ LLVMを含まない構成ではLIBCLANG_PATHを設定しない。
 - 上流: `https://www.7-zip.org/`
 - license: `LGPL-2.1-or-later AND BSD-3-Clause AND LicenseRef-7zip-unRAR` と対応する上流license textをregistryへ収録。
 - Windows architectureごとの完全版をregistryで固定。
-- 公式SHA-256が得られない版をhelperとして自動導入しない。registry release工程で信頼可能に検証したdigestを署名manifest配下へ固定する。
+- 公式SHA-256が得られない版をhelperとして自動導入しない。標準定義更新工程で信頼可能に検証したdigestをhelper definitionへ固定し、source CIとrelease package validationを通す。
 - `7zr.exe` bootstrapとfull `7z.exe`の二段が必要なら両方を別artifactとして検証。
 - toolごとに重複downloadせずcache helperを共有する。
 - `7zr.exe`とfull packageが両方必要ならartifact role `bootstrap`と`primary`に分け、両方のdigest検証後だけbootstrapを起動する。download page HTMLをinstall時に解析して「その時点の最新版」を選ばない。

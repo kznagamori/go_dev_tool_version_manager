@@ -51,7 +51,7 @@
 
 1. 進捗スナップショットと最新の停止記録を読む。
 2. 記録されたbranch/commitと作業tree差分が一致することを確認する。
-3. Windows/Linux、OS version、architecture、filesystem、shell、Go version、registry snapshotを記録と照合する。
+3. Windows/Linux、OS version、architecture、filesystem、shell、Go version、client version、registry tree revisionを記録と照合する。
 4. blockerの現状を確認する。
 5. 最後に成功した関連testを再実行し、環境が再現できることを確認する。
 6. 「次に開始するタスクID」だけを進行中にして作業を再開する。
@@ -77,7 +77,7 @@
 - [ ] **G-LINUX-CORE**：L01～L04完了。Linux固有portとshell/runtime評価済み
 - [ ] **G-LINUX-TOOLS**：L05完了。Linux必須/条件/第三者tool contractを評価済み
 - [ ] **G-CROSS**：X01完了。Windows/Linux共通contractと配布物を評価済み
-- [ ] **G-RELEASE**：R01完了。clientとregistryのrelease手順、rollback、署名を評価済み
+- [ ] **G-RELEASE**：R01完了。clientと同梱registryの一括release手順、checksum、attestation、rollbackを評価済み
 - [ ] **G-DONE**：全必須タスク完了、延期項目に承認済み判断記録あり
 
 Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTより前に実装しない。ただしplatform抽象のinterface、fake、Windows上で動くplatform-neutral test fixtureはWindowsフェーズで実装する。
@@ -87,7 +87,7 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 - [ ] **W00-01** `docs/README.md`と番号付き01～17の全18文書を読み、規範用語、未決事項、矛盾のissue一覧を作成する。依存: なし。完了: 未決事項が実装者の暗黙判断として残らない。証跡: 未記録
 - [ ] **W00-02** Windows対象matrixを固定する。Windows 10/11、amd64必須、arm64 build/評価方法、NTFS、標準ユーザー、cmd、Windows PowerShell 5.1、PowerShell 7、VS Codeを含める。依存: W00-01。証跡: 未記録
 - [ ] **W00-03** Go toolchain、module path、format、lint、unit/integration/E2E command、coverage取得方法を固定する。依存: W00-01。証跡: 未記録
-- [ ] **W00-04** test artifact、log、coverage、SBOM、署名、benchmarkを保存するdirectoryと命名規則を定める。secretを保存しない。依存: W00-03。証跡: 未記録
+- [ ] **W00-04** test artifact、log、coverage、SBOM、provenance、attestation、benchmarkを保存するdirectoryと命名規則を定める。secretを保存しない。依存: W00-03。証跡: 未記録
 - [ ] **W00-05** Git branch、commit、review、schema変更、registry変更、release tagの運用を定める。依存: W00-01。証跡: 未記録
 - [ ] **W00-06** Windows CI runnerを標準ユーザー権限で構成し、管理者権限を必要としないことを確認する。依存: W00-02, W00-03。証跡: 未記録
 - [ ] **W00-07** fake clock、fake HTTP、fake process、temporary filesystem、failure injectionのtest基盤方針を固定する。依存: W00-03。証跡: 未記録
@@ -106,14 +106,14 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 
 ## 7. W02 設定・path・保存状態
 
-- [ ] **W02-01** portable/user mode、bootstrap locator、CLI/env/config優先順位を実装・testする。依存: W01。証跡: 未記録
+- [ ] **W02-01** portable/user/multi-user mode、実行file隣接config locator、CLI/config/許可環境変数の優先順位を実装・testする。依存: W01。証跡: 未記録
 - [ ] **W02-02** global TOML schema、既定値、未知key、duration、上限、security制約をstrict実装・testする。依存: W02-01。証跡: 未記録
 - [ ] **W02-03** `.gdtvm.toml`完全版、disabled、未知tool、Git境界、境界越え設定、symlink loopを実装・testする。依存: W02-01。証跡: 未記録
 - [ ] **W02-04** Windows portable/user directory構造とPathResolverを実装し、管理root containmentをtestする。依存: W02-01。証跡: 未記録
 - [ ] **W02-05** state/schema、selection、registry、approval、setup、shim index、receipt、catalog、journalのcodecを14章どおり実装する。依存: W01-02, W02-04。証跡: 未記録
 - [ ] **W02-06** atomic write、flush、backup、revision、optimistic conflict、corruption recoveryを実装・failure injection testする。依存: W02-05。証跡: 未記録
 - [ ] **W02-07** lock順序、Windows process間lock、stale判定、timeoutを実装・並行testする。依存: W02-04。証跡: 未記録
-- [ ] **W02-08** cache保持、参照snapshot保護、LRU、log rotation、audit保持を実装・testする。依存: W02-05。証跡: 未記録
+- [ ] **W02-08** cache保持、self-update rollback backup保護、LRU、log rotation、audit保持を実装・testする。依存: W02-05。証跡: 未記録
 - [ ] **W02-09** schema migration、未来schema read-only failure、backup/rollbackを実装・testする。依存: W02-05, W02-06。証跡: 未記録
 
 ## 8. W03 定義schema・設定駆動engine
@@ -131,19 +131,19 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 - [ ] **W03-11** 15章のGo定義fixtureをstrict parseし、Planまで生成するcontract testを作る。依存: W03-01～W03-10。証跡: 未記録
 - [ ] **W03-12** 新tool fixtureをTOML追加だけでavailable/install/use/shim/uninstallでき、tool名によるGo分岐がないことをtestする。依存: W03-11, W06～W08の該当機能。完了は後続実装後に判定。証跡: 未記録
 
-## 9. W04 Registry・署名・bootstrap
+## 9. W04 Registry・release整合性・self-update
 
-- [ ] **W04-01** Ed25519 embedded trust root、manifest raw byte署名、key ID検証を実装・testする。依存: W01-03。証跡: 未記録
-- [ ] **W04-02** manifest canonical生成・strict parse、path、role、size、SHA-256、互換版検査を実装・testする。依存: W03-01, W04-01。証跡: 未記録
-- [ ] **W04-03** GitHub tag列挙、annotated/lightweight tag解決、commit SHA pin、rate limit/token maskを実装・testする。依存: W01-03。証跡: 未記録
-- [ ] **W04-04** registry archive安全取得、全file照合、snapshot atomic有効化、previous保持を実装する。依存: W04-02, W04-03, W02-06。証跡: 未記録
-- [ ] **W04-05** 初回auto bootstrap、offline、互換候補探索、downgrade防止、明示rollback確認を実装・testする。依存: W04-04。証跡: 未記録
-- [ ] **W04-06** key rotation、keys.toml、revoked.toml、min/max client compatibilityを実装・testする。依存: W04-01, W04-04。証跡: 未記録
-- [ ] **W04-07** local definition discovery、precedence、content hash承認、変更時再承認を実装・testする。依存: W03, W02-05。証跡: 未記録
-- [ ] **W04-08** registry release generatorのvalidation、manifest、signature、tag入力検査を実装・testする。秘密鍵をrepository外から受ける。依存: W04-02。証跡: 未記録
-- [ ] **W04-09** orphan branch作成、公開鍵commit後switch、manifest生成、署名、tag発行の手順をdry-run評価する。依存: W04-08。証跡: 未記録
-- [ ] **W04-10** maintainer CLI `gdtvm-registry`の`key inspect`, `key add`, `manifest build`, `manifest verify`, `release check`を07章4.3節どおり実装し、秘密鍵拒否・非漏えい、trust store atomic更新、positive/negative署名をtestする。依存: W04-01～W04-09。証跡: 未記録
-- [ ] **W04-11** registryの`keys.toml`と`revoked.toml`を07章4.1節どおりstrict実装し、鍵rotation、空失効一覧、severity別install/runtime/doctor動作、offline/force非回避をtestする。依存: W04-01～W04-10。証跡: 未記録
+- [ ] **W04-01** 実行file隣の`registry/registry.toml`とtree構成をstrict loadし、unknown key、欠落、path逸脱、case衝突、schema互換性をtestする。依存: W01-03, W03-01。証跡: 未記録
+- [ ] **W04-02** registry tree revisionのcanonical SHA-256計算、release binaryへのexpected hash埋込み、package/runtime照合、client version・schemaとの状態契約を実装・testする。依存: W04-01。証跡: 未記録
+- [ ] **W04-03** 開発branchの`/registry/`に17 tool、2 helper、schema、message、license、upstream key、revocationが揃うsource validationを実装する。依存: W03, W04-01。証跡: 未記録
+- [ ] **W04-04** `revoked.toml`のstrict parseとseverity別install/runtime/doctor動作、offline/force非回避を実装・testする。依存: W04-01。証跡: 未記録
+- [ ] **W04-05** local definition discovery、precedence、content hash承認、変更時再承認を実装・testする。依存: W03, W02-05。証跡: 未記録
+- [ ] **W04-06** test用distribution rootへbinary、`gdtvm.toml`、registry、文書、licenseをcopyしてclean startを再現するfixtureを作る。依存: W04-03。証跡: 未記録
+- [ ] **W04-07** official GitHub repository identity、canonical `checksums.txt`、4 archive完全entry集合、release/tag/asset ID固定、SHA-256照合を実装・testする。依存: W01-03。証跡: 未記録
+- [ ] **W04-08** GitHub Releaseの完全client版、OS、architectureに一致するasset解決、rate limit、proxy、token maskを実装・testする。依存: W04-07, W05-01。証跡: 未記録
+- [ ] **W04-09** self-updateのofficial repository/Release identity→canonical checksum→SHA-256→安全展開→package検証→commit→rollbackを実装し、既存`gdtvm.toml`保持と新設定keyのbuilt-in既定値をtestする。依存: W04-06～W04-08, W02-06。証跡: 未記録
+- [ ] **W04-10** Windowsのstaged child置換・親終了待機・自動再起動なしと、Linuxのatomic置換・permission保持を実装・testする。依存: W04-09。証跡: 未記録
+- [ ] **W04-11** release workflowのpackage validation、canonical checksums生成・再計算、SBOM、provenance、artifact attestation、許可asset集合検査を実装・testする。依存: W04-03, W04-07。証跡: 未記録
 
 ## 10. W05 HTTP・download・archive・外部process
 
@@ -195,9 +195,9 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 ## 14. W09 CLI・表示・国際化
 
 - [ ] **W09-01** global option、位置、排他、case、alias、完全version入力規則を実装・table testする。依存: W08。証跡: 未記録
-- [ ] **W09-02** `setup`, `tools`, `available`, `refresh`を薄いadapterとして実装・contract testする。依存: W09-01。証跡: 未記録
-- [ ] **W09-03** `install`, `uninstall`, `installed`, `use`, `disable`, `current`を実装・contract testする。依存: W09-01。証跡: 未記録
-- [ ] **W09-04** `registry update`, `doctor`, `repair`, `exec`, `completion`, `version`を実装・contract testする。依存: W09-01。証跡: 未記録
+- [ ] **W09-02** `setup`, `tools`, `available`, `refresh`を薄いadapterとして実装・contract testする。`setup --mode`の永続化、global `--mode`の一時性、config backup、read-only multi-user拒否、旧data非移行、refreshの全成功・部分成功・全失敗・対象0件の終了codeを含む。依存: W09-01。証跡: 未記録
+- [ ] **W09-03** `install`, `uninstall`, `installed`, `use`, `disable`, `current`を実装・contract testする。disableはuser/project各scopeの単体・`--all`、Plan対象snapshot、project同時編集拒否、後日追加toolを暗黙無効化しないことを含む。依存: W09-01。証跡: 未記録
+- [ ] **W09-04** `self-update`, `doctor`, `repair`, `exec`, `completion`, `version`を実装・contract testする。依存: W09-01。証跡: 未記録
 - [ ] **W09-05** text/table、stdout/stderr、TTY progress、quiet/verbose/color、promptを実装・golden testする。依存: W09-02～W09-04。証跡: 未記録
 - [ ] **W09-06** JSON document/NDJSON event、exec/completion禁止、error envelopeを実装・schema testする。依存: W08-03, W09-02～W09-04。証跡: 未記録
 - [ ] **W09-07** ja/en help、message、placeholder、幅、encoding、Windows console表示を評価する。依存: W01-07, W09-05。証跡: 未記録
@@ -227,23 +227,23 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 - [ ] **W10-17** `winlibs.toml`：GCC/LLVM long ID、7z、layout、LIBCLANG_PATH、競合を評価する。証跡: 未記録
 - [ ] **W10-18** `helpers/seven-zip.toml`の完全版、digest、license、receipt、共有cacheを評価する。証跡: 未記録
 - [ ] **W10-19** `helpers/wix.toml`の完全版、digest、dark.exe entrypoint、licenseを評価する。証跡: 未記録
-- [ ] **W10-20** 17 tool/2 helper/schema/message/license/key/revocationをmanifestへ完全収録し署名検証する。証跡: 未記録
+- [ ] **W10-20** 17 tool/2 helper/schema/message/license/upstream key/revocationを`/registry/`へ完全収録し、source CIとrelease package validationを通す。証跡: 未記録
 - [ ] **W10-21** tool固有Go分岐がないこととTOML-only変更testを完了し、W03-12を判定する。証跡: 未記録
 
 ## 16. W11 Windows integration・E2E評価
 
-- [ ] **W11-01** clean portable folderで`setup`→registry bootstrap→install→use→current→shim→uninstallを評価する。依存: G-WIN-TOOLS。証跡: 未記録
+- [ ] **W11-01** clean portable folderへrelease packageを展開し、`setup`→同梱registry検証→install→use→current→shim→uninstallを評価する。依存: G-WIN-TOOLS。証跡: 未記録
 - [ ] **W11-02** user modeを標準ユーザーで評価し、HKLM/system PATH/UACを使用しないことを確認する。証跡: 未記録
 - [ ] **W11-03** cmd、Windows PowerShell 5.1、PowerShell 7でsetup/再実行/backup/removeを評価する。証跡: 未記録
 - [ ] **W11-04** NTFS junction成功、junction不可時shim-only、hardlink不可時small shim fallbackを評価する。証跡: 未記録
 - [ ] **W11-05** `.gdtvm.toml`探索、Git境界切替、project disabled、user fallback、exec overrideを評価する。証跡: 未記録
 - [ ] **W11-06** cmd/PowerShellから`code.exe .`を起動し、VS Code本体、統合terminal、拡張processの環境継承を評価する。証跡: 未記録
 - [ ] **W11-07** 2版切替でtool tree copyがなく、junctionまたはshim resolverが新versionを参照することを評価する。証跡: 未記録
-- [ ] **W11-08** offline install、cache不足、registry取得失敗、previous snapshot継続を評価する。証跡: 未記録
+- [ ] **W11-08** offline install、cache不足、self-update取得失敗、現在distribution継続を評価する。証跡: 未記録
 - [ ] **W11-09** interrupted download、process failure、commit failure、電源断相当、journal repairをfailure injectionで評価する。証跡: 未記録
 - [ ] **W11-10** concurrent install/refresh/use、lock順序、partial success、cancelを評価する。証跡: 未記録
 - [ ] **W11-11** third-party/unverified/local definition/hook/profile変更の対話・`--yes`・非対話policyを評価する。証跡: 未記録
-- [ ] **W11-12** archive traversal、digest mismatch、signature不正、PATH hijack、secret maskを攻撃fixtureで評価する。証跡: 未記録
+- [ ] **W11-12** archive traversal、digest mismatch、required upstream artifact signature不正、PATH hijack、secret maskを攻撃fixtureで評価する。証跡: 未記録
 
 ## 17. W12 Windows品質・合格判定
 
@@ -251,18 +251,18 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 - [ ] **W12-02** coverageを取得し、security/path/state/transaction/parserの未試験branchを解消または判断記録する。証跡: 未記録
 - [ ] **W12-03** `go vet`、format、lint、dependency/license/vulnerability scanを合格させる。証跡: 未記録
 - [ ] **W12-04** current/shim性能、download memory、large archive、log rotation、disk上限を評価する。証跡: 未記録
-- [ ] **W12-05** Windows amd64 release build、metadata、SBOM、checksum、署名、再現性を評価する。証跡: 未記録
+- [ ] **W12-05** Windows amd64 release build、metadata、SBOM、checksum、provenance、attestation、再現性を評価する。証跡: 未記録
 - [ ] **W12-06** Windows arm64をnative runnerまたは承認済み評価方法でbuild/testし、未評価範囲を明記する。証跡: 未記録
 - [ ] **W12-07** 01章の旧機能対応表と17 tool固有監査を行単位でsign-offする。証跡: 未記録
 - [ ] **W12-08** open defectをblocker/Windows限定/Linuxで確認/延期へ分類し、G-WIN-E2Eを判定する。証跡: 未記録
-- [ ] **W12-09** G-LINUX-STARTの開始判断とWindows baseline commit/registry tagを記録する。証跡: 未記録
+- [ ] **W12-09** G-LINUX-STARTの開始判断とWindows baseline commit/client test tagを記録する。証跡: 未記録
 - [ ] **W12-10** 全Go packageのドキュメントコメント、export宣言コメント、security・transaction・platform固有処理の意図説明コメントをreviewし、陳腐化、自明な反復、追跡先のないTODOがないことを確認する。証跡: 未記録
 
 ## 18. L01 Linux開発環境・platform実装
 
 - [ ] **L01-01** Linux評価matrixを固定する。glibc/musl、amd64/arm64、distribution、filesystem、bash/zsh/fish、非rootを含める。依存: G-LINUX-START。証跡: 未記録
 - [ ] **L01-02** CGO無効Linux amd64/arm64 buildとmusl環境でのclient起動を評価する。証跡: 未記録
-- [ ] **L01-03** Linux user/portable path、permission、umask、XDG、filesystem containmentを実装・testする。証跡: 未記録
+- [ ] **L01-03** Linux user/portable/multi-user path、OS user lookup、permission、umask、環境変数非依存、filesystem containmentを実装・testする。証跡: 未記録
 - [ ] **L01-04** symlink/hardlink、atomic rename、file lock、process signal/tree、executable permissionを実装・testする。証跡: 未記録
 - [ ] **L01-05** libc判定をOS metadataとELF interpreterで実装しunknownを安全に扱う。証跡: 未記録
 - [ ] **L01-06** tar系archiveのLinux symlink安全性、case-sensitive path、permission正規化を評価する。証跡: 未記録
@@ -281,7 +281,7 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 ## 20. L03 Linux core回帰
 
 - [ ] **L03-01** config/state/registry/catalog/install/selection/shimのplatform-neutral testをLinuxで再実行する。依存: L01, L02。証跡: 未記録
-- [ ] **L03-02** registry bootstrap、署名、offline、local definition、rollbackをLinux非rootで評価する。証跡: 未記録
+- [ ] **L03-02** 同梱registry、official Release/checksum照合、self-update、offline、local definition、rollbackをLinux非rootで評価する。証跡: 未記録
 - [ ] **L03-03** download、resume、archive、external process、cancel、lock、repairをLinuxで評価する。証跡: 未記録
 - [ ] **L03-04** JSON/NDJSON、ja/en、UTF-8、TTY/non-TTY、signal終了codeを評価する。証跡: 未記録
 - [ ] **L03-05** Linux固有実装がWindows contractを変更していないことをWindows CI再実行で確認する。証跡: 未記録
@@ -289,7 +289,7 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 ## 21. L04 Linux E2E基盤
 
 - [ ] **L04-01** portable mode初心者scenarioを非root clean homeで評価する。依存: L03。証跡: 未記録
-- [ ] **L04-02** user mode/XDG、shell setup/remove、project固定、execを評価する。証跡: 未記録
+- [ ] **L04-02** user/multi-user mode、shell setup/remove、project固定、execを評価する。証跡: 未記録
 - [ ] **L04-03** glibc環境とmusl環境でclient起動、platform選択、unsupported reasonを評価する。証跡: 未記録
 - [ ] **L04-04** offline、third-party warning、system prerequisite不足、security攻撃fixtureを評価する。証跡: 未記録
 - [ ] **L04-05** interrupted operation、concurrency、repair、portable root移動を評価する。証跡: 未記録
@@ -315,12 +315,12 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 - [ ] **L05-15** Python third-party portable amd64/arm64の警告、provider、license、digest、target tripleを評価する。証跡: 未記録
 - [ ] **L05-16** Rust Linux amd64/arm64必須、完全selector、managed homeを評価する。証跡: 未記録
 - [ ] **L05-17** WinLibsをLinux非対応として正しく診断する。証跡: 未記録
-- [ ] **L05-18** Linux platformを含むregistry manifest、catalog、全required probeを検証する。証跡: 未記録
+- [ ] **L05-18** Linux platformを含む同梱registry tree、catalog、全required probeを検証する。証跡: 未記録
 
 ## 23. L06 Linux品質・合格判定
 
 - [ ] **L06-01** Linux unit/race/integration/contract/E2Eを全実行し証跡を保存する。依存: G-LINUX-TOOLS。証跡: 未記録
-- [ ] **L06-02** Linux amd64/arm64 build、CGO無効、SBOM、checksum、署名、再現性を評価する。証跡: 未記録
+- [ ] **L06-02** Linux amd64/arm64 build、CGO無効、SBOM、checksum、provenance、attestation、再現性を評価する。証跡: 未記録
 - [ ] **L06-03** glibc/musl、非root、shell、filesystem別の未評価範囲を確認する。証跡: 未記録
 - [ ] **L06-04** Linux性能、memory、large archive、signal/cancel、permissionを評価する。証跡: 未記録
 - [ ] **L06-05** open defectを分類しG-LINUX-TOOLSを判定する。証跡: 未記録
@@ -339,15 +339,15 @@ Linux固有コード、Linux向けregistry recipe、Linux E2EをG-LINUX-STARTよ
 ## 25. R01 Release・配布・運用評価
 
 - [ ] **R01-01** 日本時間のrelease日と日次通番からrepository rootの`/VERSION`へclient version `YYYY.mm.DD.XX`を確定し、commit、build time、Go version、schema versionとともに再現可能に埋め込む。`00`開始、同日increment、実在日、全表示・state・archive・tag一致をtestする。依存: G-CROSS。証跡: 未記録
-- [ ] **R01-02** Windows amd64/arm64、Linux amd64/arm64のrelease artifact、checksum、SBOM、signatureを生成・検証する。証跡: 未記録
+- [ ] **R01-02** Windows amd64/arm64 ZIP、Linux amd64/arm64 tar.gzへbinary、`gdtvm.toml`、`registry/`、README、USER_GUIDE、LICENSEを親directoryなしで収録し、canonical entry/mode/time、再現可能SHA-256、規定名のchecksum、SBOM、provenanceを生成・検証する。証跡: 未記録
 - [ ] **R01-03** Windows Defender/SmartScreen注意とLinux実行permissionを含む導入文面を検証する。証跡: 未記録
-- [ ] **R01-04** registry鍵生成、repository外保存、公開鍵code登録、commit、registry switch、manifest/signature生成を実地確認する。証跡: 未記録
-- [ ] **R01-05** orphan `registry` branch、17 tool、2 helper、schema、message、license、key、revocationをrelease generatorで検証する。証跡: 未記録
-- [ ] **R01-06** immutable `registry-vX.Y.Z` tag、commit SHA pin、GitHub Release asset一致を検証する。証跡: 未記録
-- [ ] **R01-07** clean machineでexeだけからregistry bootstrapし、Windows→Linuxの順でsmoke testする。証跡: 未記録
-- [ ] **R01-08** client update、registry update、旧snapshot保持、downgrade拒否、repair fallbackを評価する。証跡: 未記録
+- [ ] **R01-04** branch/tag protection、CODEOWNERS、pinned action、最小workflow permission、protected environment approval、artifact attestationを実地確認する。証跡: 未記録
+- [ ] **R01-05** 開発branchの`/registry/`に17 tool、2 helper、schema、message、license、upstream key、revocationが揃うことをrelease package validatorで検証する。証跡: 未記録
+- [ ] **R01-06** `vYYYY.mm.DD.XX` tag triggerのGitHub Actionsがtag Git objectから改行変換なしの単一registry bundle/hashを作り、全matrixで再利用して4 archiveとcanonical checksumsを生成し、GitHub Release ID・asset ID/name/sizeと一致することを検証する。証跡: 未記録
+- [ ] **R01-07** clean machineでrelease archiveを展開し、Windows→Linuxの順でsetupと同梱registryのsmoke testを行う。証跡: 未記録
+- [ ] **R01-08** `self-update --check`、完全client版更新、設定保持、新設定既定値、downgrade拒否、Windows child置換、Linux置換、rollbackを評価する。証跡: 未記録
 - [ ] **R01-09** release checklist、known issues、supported matrix、license notice、security連絡先を確定する。証跡: 未記録
-- [ ] **R01-10** 17章に従いrepository rootの日本語`README.md`と`USER_GUIDE.md`を作成し、badge、導入、基本操作、build、全command、設定、外部program、registry署名鍵を記載する。証跡: 未記録
+- [ ] **R01-10** 17章に従いrepository rootの日本語`README.md`と`USER_GUIDE.md`を作成し、badge、導入、基本操作、build、全command、設定、外部program、release checksum・信頼境界・保証限界を記載する。証跡: 未記録
 - [ ] **R01-11** README/USER_GUIDEのlink、anchor、badge、全command例、build再現、鍵positive/negative test、secret非混入をWindows→Linuxの順で評価する。証跡: 未記録
 - [ ] **R01-12** G-RELEASEとG-DONEを判定し、最終スナップショットを`完了`へ更新する。依存: R01-01～R01-11。証跡: 未記録
 

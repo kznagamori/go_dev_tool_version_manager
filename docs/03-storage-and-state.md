@@ -2,30 +2,13 @@
 
 ## 1. モード決定
 
-ポータブルモードを既定とする。管理ルート決定の優先順位は高い順に次とする。
+ポータブルモードをrelease同梱`gdtvm.toml`の既定とする。modeは高い順にCLI `--mode portable|user|multi-user`、実行file隣`gdtvm.toml`、built-in portable既定で決める。
 
-1. CLIグローバルオプション `--home <absolute-path>`
-2. 環境変数 `GDTVM_HOME`
-3. CLIグローバルオプション `--mode portable|user`
-4. 環境変数 `GDTVM_MODE`
-5. 実行ファイルと同じ場所の `gdtvm.bootstrap.toml`
-6. 実行ファイル親が書込み不能で、既知のOSユーザー領域に整合する初期化済み`mode="user"` stateが1件ある場合はユーザーモード
-7. ポータブルモード
+別bootstrap fileや`GDTVM_MODE`を使用しない。`--home`は開発・一時実行用にuser data rootだけをabsolute pathでoverrideし、distribution root、config、registryの場所は変えない。portable modeで`--home`を指定すると配置が分裂するためusage errorとする。
 
-`--home` と `GDTVM_HOME` は明示パスのポータブル相当として扱う。相対パス、空パス、管理ルート自身を含むsymlink loopを拒否する。
+multi-userかつconfigが明示許可した場合だけ`GDTVM_USER_HOME`をuser data rootに使用する。user modeのdata rootは高い順にCLI `--home`、非空の`paths.user_home`、OS既定値、multi-userはCLI `--home`、許可された`GDTVM_USER_HOME`、OS既定値で決める。それ以外のgdtvm固有環境変数はmode/path決定に使用しない。
 
-`--home`/`GDTVM_HOME` と `--mode user`/`GDTVM_MODE=user` を同時指定した場合は意味が衝突するため `E_USAGE` とする。CLIと環境変数で異なるmodeを指定した場合は通常の優先順位でCLIを採用するが、debug logにoverrideを記録する。
-
-`gdtvm setup --mode user` は、書込み可能なら実行ファイルの隣に次のlocatorだけを保存する。
-
-```toml
-schema = 1
-mode = "user"
-```
-
-実行ファイル隣へlocatorを書けない場合でも、ユーザーモードのglobal config/stateに`mode="user"`とroot IDを記録し、setupしたshell initには`GDTVM_MODE=user`を設定する。shell外の直接起動では上記6の既存state検出を使う。検出は既知の固定ユーザー領域だけを読み、複数候補、schema不正、owner不一致なら採用しない。
-
-実行ファイルのフォルダーが書込み不能で、初期化済みuser stateもなくポータブルモードが暗黙選択された場合、対話時はユーザーモードへの切替を提案する。非対話時は `E_HOME_NOT_WRITABLE` で終了し、未初期化の別領域へ暗黙作成しない。
+実行fileと同じdirectoryの`gdtvm.toml`または`registry/`がない場合、別directoryやnetworkを探索せず`E_CONFIG_SCHEMA`または`E_REGISTRY_INVALID`とし、同じrelease archiveの再展開を案内する。
 
 ## 2. ポータブルモード
 
@@ -34,11 +17,12 @@ mode = "user"
 ```text
 <root>/
 ├─ gdtvm[.exe]
-├─ gdtvm.bootstrap.toml       # 任意
-├─ config/
-│  └─ gdtvm.toml
+├─ gdtvm.toml
+├─ README.md
+├─ USER_GUIDE.md
+├─ LICENSE
+├─ registry/                  # release同梱、通常read-only
 ├─ tools/
-├─ registry/
 ├─ cache/
 ├─ state/
 ├─ shims/
@@ -49,29 +33,29 @@ mode = "user"
 
 フォルダー全体を移動した後は `gdtvm repair` を実行する。receiptと状態には管理ルート相対パスを優先して保存し、移動後に絶対パスを一括修復できるようにする。ツール自身が絶対パスを内部ファイルへ埋める場合は、定義に `relocation = "repair-required"` と修復stepを記載する。
 
-## 3. ユーザーモード
+## 3. user・multi-user mode
 
 ### 3.1 Windows
 
 | 種類 | パス |
 |---|---|
-| 設定 | `%APPDATA%\gdtvm\gdtvm.toml` |
+| 実行file/config/registry | distribution root |
 | data root | `%LOCALAPPDATA%\gdtvm` |
 | tools等 | data root直下の同名フォルダー |
 | logs | `%LOCALAPPDATA%\gdtvm\logs` |
 
-環境変数が欠ける場合は既知フォルダーAPIで取得する。文字列連結だけで推測しない。
+Known Folder APIでuser pathを取得し、文字列連結だけで推測しない。multi-userで明示許可された`GDTVM_USER_HOME`があればdata rootを置換する。共有distributionがread-onlyでも各user data rootへ書き込める。
 
 ### 3.2 Linux
 
 | 種類 | パス |
 |---|---|
-| 設定 | `${XDG_CONFIG_HOME:-$HOME/.config}/gdtvm/gdtvm.toml` |
-| data | `${XDG_DATA_HOME:-$HOME/.local/share}/gdtvm` |
-| cache | `${XDG_CACHE_HOME:-$HOME/.cache}/gdtvm` |
-| state/locks | `${XDG_STATE_HOME:-$HOME/.local/state}/gdtvm` |
+| 実行file/config/registry | distribution root |
+| data | `<OS user home>/.local/share/gdtvm` |
+| cache | `<OS user home>/.cache/gdtvm` |
+| state/locks | `<OS user home>/.local/state/gdtvm` |
 
-論理上の管理ルートはdata pathとし、cache/state/locks/logsだけがXDG実体へ分離する。PathResolverが論理名から実パスを返し、他コンポーネントはXDG分離を意識しない。
+OS user homeはOS APIから取得し、`HOME`やXDG環境変数を通常のpath決定に使用しない。論理上のuser data rootはdata pathとし、cache/state/locks/logsは上表へ分離する。multi-userで明示許可された`GDTVM_USER_HOME`があれば全user可変dataをそのroot下へまとめる。共有distributionのconfig/registryをuser別にcopyしない。
 
 ## 4. 詳細ディレクトリ
 
@@ -86,18 +70,15 @@ tools/
    ├─ current                        # link方式だけのuser選択link
    ├─ shared/                        # GOPATH、PUB_CACHE等
    └─ helpers/                       # tool専用の検証済み小型helper
-registry/
-├─ snapshots/<registry-version>/
-└─ bootstrap.toml
 cache/
 ├─ downloads/
 ├─ catalogs/<tool-id>/
-├─ registry/
+├─ updates/
 └─ helpers/
 state/
 ├─ schema.toml
 ├─ selections.toml
-├─ registry.toml
+├─ update.toml
 ├─ approvals.toml
 ├─ setup.toml
 ├─ shim-index.toml
@@ -116,7 +97,8 @@ locks/
 
 ## 5. ユーザー編集可能ファイルと内部状態
 
-- `config/gdtvm.toml`、ユーザーモード設定、`.gdtvm.toml`、ローカルツール定義は利用者が編集可能なTOMLである。
+- distribution rootの`gdtvm.toml`、`.gdtvm.toml`、ローカルツール定義は利用者または共有配置管理者が編集可能なTOMLである。
+- distribution rootの`registry/`はrelease所有であり直接編集をサポートしない。変更はlocal definitionを使う。
 - `state/*.toml` とreceiptもTOMLだが、gdtvm所有であり直接編集をサポートしない。
 - operation journalは追記効率と回復性のためJSON Linesとする。これは設定形式ではない。
 - available catalogはサイズとストリーミング処理のため正規化JSONとする。元レスポンスを永続保存しない。
@@ -151,7 +133,7 @@ install_id = "00000000-0000-4000-8000-000000000001"
 | install_id | UUIDまたは同等の衝突しないID |
 | tool_id/version/variant | 正規値 |
 | platform | OS、arch、libc |
-| definition | registry版、definition相対パス、SHA-256 |
+| definition | client版、registry tree SHA-256、definition相対パス、definition SHA-256 |
 | artifacts | roleごとの最終URL、ファイル名、サイズ、digest、検証方式、source/license |
 | installed_at | UTC |
 | payload_root | link方式ではreceiptからの相対パス。backend方式では省略 |
@@ -164,7 +146,7 @@ install_id = "00000000-0000-4000-8000-000000000001"
 | selection_strategy/backend | link、またはbackend kindと完全selector |
 | hooks | 実行step IDと終了状態。秘密引数は保存しない |
 
-receiptはshimがactive registryやnetworkなしで起動先と子環境を再現できる自己完結runtime契約とする。絶対管理rootを埋め込まず、`payload`、`shared`等のlogical rootと相対pathを保存する。receiptがないディレクトリは導入済みと見なさない。`repair` は安全な内容からreceiptを再生成できる場合だけ採用し、それ以外はorphanとして報告する。
+receiptはshimが同梱registryやnetworkなしで起動先と子環境を再現できる自己完結runtime契約とする。絶対管理rootを埋め込まず、`payload`、`shared`等のlogical rootと相対pathを保存する。receiptがないディレクトリは導入済みと見なさない。`repair` は安全な内容からreceiptを再生成できる場合だけ採用し、それ以外はorphanとして報告する。
 
 ## 8. 原子的書込み
 
@@ -194,8 +176,8 @@ Windowsでantivirus等によりreplaceが一時失敗した場合だけ短い有
 - 成功した導入のarchive/installerは `downloads.retain = false` の既定で削除する。
 - 失敗した`.part`は再開可能な場合だけ期限内保持する。
 - catalogは取得時刻、ETag、Last-Modified、definition hash、platformを持つ。
-- registry archiveは最新2世代を既定保持する。検証済みsnapshotは最新2世代に加え、active/previous、導入receipt、進行中operationのいずれかがdefinition hashで参照する版を保持する。参照がなくなったsnapshotだけをLRU削除できる。
-- `repair` は参照中snapshot、選択中version、進行中operationのデータを削除しない。
+- `updates.retain_previous=true`（既定）の場合、self-update backupは直前releaseを1世代保持する。falseでもtransaction完了までは一時backupを必須とし、成功確認後に削除する。現在distribution、rollback対象、進行中operationが参照するbackupは削除しない。
+- `repair` は現在distribution、rollback対象、選択中version、進行中operationのデータを削除しない。
 - cache上限超過時はLRUだが、未検証downloadを優先削除する。
 
 ## 11. 管理ルート境界

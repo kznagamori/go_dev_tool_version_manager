@@ -139,7 +139,7 @@ backend commandがshared storeを部分変更してrollbackにも失敗した場
 
 | 分類 | 例 | 取得・実行規則 |
 |---|---|---|
-| managed helper | 7-Zip、WiX `dark.exe` | 署名registryのhelper定義からdownload、SHA-256検証、helper receiptの絶対entrypointだけを実行 |
+| managed helper | 7-Zip、WiX `dark.exe` | release同梱registryのhelper定義からdownload、SHA-256検証、helper receiptの絶対entrypointだけを実行 |
 | supplemental tool artifact | Windows `nuget.exe` | toolの補助artifact roleとして主payloadと同じplanで取得・検証し、tool receiptへ含める |
 | backend bootstrap/manager | `rustup-init`, managed `rustup` | bootstrap artifactを検証しmanaged shared homeだけへ導入。以後はmanaged絶対pathを使用 |
 | OS component | `msiexec.exe`, `cmd.exe`, Windows PowerShell | downloadしない。OS API/既知system directoryから解決してprobeし、欠落時は失敗 |
@@ -179,10 +179,16 @@ link方式でcurrent linkが利用できる場合、shell環境snapshotが保持
 ### 10.2 project
 
 - 対象 `.gdtvm.toml` を決め、コメントと未知でない順序を可能な限り保持するTOML editorを用いる。
-- `[tools].<id>` を完全版へ設定し、disabledから除く。
+- `[tools].<id>` を完全版へ設定し、top-level `disabled`配列から同じ正規tool IDを除く。
 - fileがなければ `schema=1` と `[tools]` だけの最小fileを作る。
 - global selection/current linkは変更しない。
 - 同時編集は元file digest比較で検出し、上書きしない。
+
+### 10.3 disable
+
+user scopeの単体disableは対象toolのuser selectionだけを削除し、他toolのselection、install receipt、payloadを変更しない。user scopeの`--all`はPlan生成時の`selections.toml`に存在する全tool IDを対象として固定し、実行前にselection revisionが変われば`E_PLAN_STALE`とする。
+
+project scopeの単体disableは対象toolを`[tools]`から除き、正規tool IDを`disabled`へ追加する。project scopeの`--all`はPlan生成時に同梱標準registryと承認済みlocal definitionから解決できる正規tool ID集合をUTF-8 byte順で固定し、`[tools]`を空にして、その集合を`disabled`へ保存する。schema 1はwildcardを持たないため、後から追加・承認されたtoolは自動的に無効にならない。いずれも元project file digestをPlan fingerprintへ含め、実行時に変化していれば上書きせず`E_PLAN_STALE`とする。
 
 ## 11. shim構成
 
@@ -200,7 +206,7 @@ shimは旧 `symexe` の次の能力を一般化する。
 
 ### 11.2 配置
 
-`gdtvm[.exe]` はmulti-call binaryとし、起動basenameが`gdtvm`のときだけCLI、shim indexの公開command名なら最小runtime resolverへ直接分岐する。CLI frameworkやnetwork初期化より前に分岐する。配布物はgdtvm一つだが、hardlinkを使えないWindows向けの同release最小fallback shim bytesをgdtvm内へ署名対象resourceとして内蔵できる。
+`gdtvm[.exe]` はmulti-call binaryとし、起動basenameが`gdtvm`のときだけCLI、shim indexの公開command名なら最小runtime resolverへ直接分岐する。CLI frameworkやnetwork初期化より前に分岐する。配布物はgdtvm一つだが、hardlinkを使えないWindows向けの同release最小fallback shim bytesをgdtvm内へbuild resourceとして内蔵できる。
 
 - portableかつ同一volumeではrootのgdtvm本体へのhardlink（Linuxではsymlinkも可）。
 - Windows user modeの別volume等では、内蔵した最小fallback shimを `shims/gdtvm-shim.exe` へ1回だけ展開し、埋込みSHA-256とclient versionを検証する。このshimは同じread-only resolverを使用し、registryやnetworkから取得しない。
@@ -219,7 +225,7 @@ shim基底はgdtvm client binaryのhardlink/symlinkまたはclient内蔵fallback
 
 ### 11.3 metadata
 
-`state/shim-index.toml` はcommandから1件以上の候補tool/runtime commandへのindexだけを持つ。version targetを固定しない。起動時に各候補の有効selectionとreceiptから所有tool/targetを得る。indexはregistry snapshot hash、local definition hash、schema revisionを持ち、不一致時はactive definitionと導入receiptから安全に再生成する。
+`state/shim-index.toml` はcommandから1件以上の候補tool/runtime commandへのindexだけを持つ。version targetを固定しない。起動時に各候補の有効selectionとreceiptから所有tool/targetを得る。indexはclient version、同梱registry tree revision、local definition hash、schema revisionを持ち、不一致時は同梱definitionと導入receiptから安全に再生成する。
 
 ### 11.4 起動アルゴリズム
 
@@ -234,7 +240,7 @@ shim基底はgdtvm client binaryのhardlink/symlinkまたはclient内蔵fallback
 9. 子をstdio継承で起動し、signal/console controlを転送する。
 10. 子の終了コードを返す。
 
-shimはregistry更新、download、対話を行わない。未導入、定義不整合時は短いerrorと `gdtvm use/install/repair` の案内をstderrへ出す。
+shimはself-update、registry変更、download、対話を行わない。未導入、定義不整合時は短いerrorと `gdtvm use/install/repair` の案内をstderrへ出す。
 
 ### 11.5 再帰防止
 
@@ -284,7 +290,7 @@ backend方式では、手順5を「backend inventoryを再確認して完全sele
 
 - digest不一致payloadの黙認
 - unapproved local hook
-- registry signature不正の無視
+- release checksum不一致または同梱registry破損の黙認
 - 管理root外へ出たlinkの追跡
 - system package自動導入
 - tool payloadの無断再download
@@ -292,3 +298,40 @@ backend方式では、手順5を「backend inventoryを再確認して完全sele
 ## 15. VS Codeと長寿命process
 
 選択変更は既に動いているprocessの環境を変更できない。shimを後から起動するprocessは新選択を解決するが、language serverが実体pathを保持している場合は再起動が必要である。`use` 成功時、対象toolが開発サーバー用途なら「terminal再起動またはVS Code Reload Windowが必要な場合がある」と一度だけ表示する。
+
+## 16. self-update transaction
+
+### 16.1 Resolve・Plan
+
+1. 05章で固定された公式repositoryのGitHub Releases APIをpagination上限内で取得し、publishedで`draft=false`、`prerelease=false`、tagが`vYYYY.mm.DD.XX`の正式releaseだけを列挙する。
+2. 現在OS/architectureのasset名を13章の規則で一意に選ぶ。
+3. 同じreleaseの`checksums.txt`を取得する。
+4. checksum fileのcanonical形式、4 archiveの完全なentry集合、対象assetのexact filename entryが1件であることを検査する。
+5. checksum fileから対象assetのSHA-256を固定する。
+6. current/new version、official repository、release/tag/asset ID、asset、size、digest、書換えpath、config保持をPlanへ固定する。
+
+version省略時は現在版より大きい候補を13章のcalendar version比較でsortし、最大の1件を選ぶ。同じtagのpublished releaseが複数、release tagとnameから得るversionが不一致、必要asset名が0件または複数、assetが更新途中状態の場合は`E_UPDATE_FAILED`とする。明示versionは完全一致する1件だけを選び、現在版以下は04章どおり拒否する。
+
+API responseと`checksums.txt`は`limits.release_metadata_bytes`をそれぞれのbody上限とし、paginationは最大10 page・1,000 release、redirectは05章上限に従う。API responseやassetを可変`latest` URLのままExecuteへ渡さず、repository owner/name、release tag、release ID、asset ID、asset名、asset size、作成・更新時刻、最終URL、digestをfingerprintへ含める。ETag cacheは利用できるが、Execute前にrelease/asset IDとchecksum entryを再確認する。
+
+### 16.2 Download・展開
+
+release archiveをuser data側の`cache/updates/<version>/<asset>.part`へ取得し、`checksums.txt`のexpected SHA-256とGitHub asset metadataのsizeを照合する。通常archiveと同じpath traversal、entry、size、compression ratio検査を行う。検査後、distribution root直下の`.gdtvm-update/<operation-id>/staging/`へ安全に展開する。この領域はdistributionと同一volumeでなければならず、既存の同名operation directoryを再利用しない。
+
+staging root直下に`gdtvm[.exe]`, `gdtvm.toml`, `registry/`, `README.md`, `USER_GUIDE.md`, `LICENSE`がちょうど存在し、余分な親directoryがなく、client version、registry互換、実行permissionが一致することを必須とする。この許可集合にないtop-level entry、symlink、reparse pointを拒否する。`registry/`内部の許可構造は07章に従う。
+
+既存`gdtvm.toml`をstaging既定fileで置換しない。新fileは差分案内用`cache/updates/<version>/gdtvm.toml.new`として保持できるが、active configにしない。
+
+### 16.3 Commit
+
+distribution rootにoperation lockを取り、現在のclient、registry、README、USER_GUIDE、LICENSEを`.gdtvm-update/<operation-id>/rollback/`へ同じrelative名でmoveする。tools、shims、state、catalog、logs、local definition、利用者configは対象外とする。rollback directory、staging、targetはすべてdistributionと同一volumeに置く。
+
+Linuxはstagingの対象を同一volumeからrenameし、全file検査後にupdate stateをcommitする。Windowsはstagingの新`gdtvm.exe`をinternal apply modeで起動し、親PID、operation ID、owner-only journalに保存したone-time tokenを渡す。子は親process終了を待ち、journalの所有者・token・target root・staged digest・lockを再検査し、staged executableをtarget用一時名へcopyしてflushした後、解放済み旧clientを置換する。apply child自身をtargetへrenameしない。一般PATHのhelperやPowerShell/cmd scriptに置換を委譲しない。
+
+registryだけ、またはclientだけが新しくなる混在状態を成功として公開しない。途中失敗時はrollback directoryから全対象を戻す。rollbackにも失敗した場合はjournalとbackup pathを残し、起動時に`repair`案内だけを行う。
+
+更新完了後に新clientを自動起動しない。成功時はone-time tokenを破棄し、`updates.retain_previous=true`ならrollback内容を`.gdtvm-update/previous/<old-version>/`へ移して直前1世代だけ保持する。falseなら成功確認後に削除する。stagingと空operation directoryを清掃する。次回実行時にversion、registry tree revision、shim基底を確認し、必要ならshimを`repair`対象にする。
+
+### 16.4 権限・multi-user
+
+distribution rootへ書込み・rename権限がなければdownload前に失敗する。multi-user共有配置で一般userが昇格、sudo、UACを自動起動してはならない。配置管理者が`self-update`を実行し、各userの次回起動でshim/runtime cacheだけをuser領域内更新する。

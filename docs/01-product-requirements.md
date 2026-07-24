@@ -8,14 +8,14 @@
 
 ## 2. 達成目標
 
-1. 一般ユーザーが任意の書込み可能フォルダーへ実行ファイルを置くだけで開始できる。
-2. 標準ツール定義がない初回起動では、署名済み定義を自動取得する。
+1. 一般ユーザーがrelease archiveを任意の書込み可能フォルダーへ展開して開始できる。
+2. 標準ツール定義はrelease archiveへ同梱し、初回起動時にnetworkから別取得しない。
 3. ツール追加や取得URL・展開処理の変更を、原則としてGoコード変更なしのTOML更新で行える。
 4. すべての導入物を製品管理ルート内へ隔離し、巨大なツールディレクトリをコピーせず切り替える。
 5. Windowsのcmd、Windows PowerShell 5.1、PowerShell 7以降、およびLinuxのbash、zsh、fishで利用できる。
 6. `code.exe .` で端末から起動したVS Codeと、その統合端末・拡張プロセスが選択環境を利用できる。
 7. CLIと将来のWails v3 GUIが同じアプリケーションサービスを利用できる。
-8. ダウンロード、署名、ハッシュ、ローカル定義、外部コマンドの信頼判断を利用者に明示する。
+8. ダウンロード、checksum、任意の上流artifact署名、ローカル定義、外部コマンドの信頼判断を利用者に明示する。
 
 ## 3. 非目標
 
@@ -45,9 +45,9 @@ artifact選択のarchはclient buildの`GOARCH`を使い、native hardwareを検
 |---|---|
 | 管理ルート | `tools`、`registry`、`state` などを格納するgdtvmのデータルート |
 | ポータブルモード | 実行ファイルのあるフォルダーを管理ルートとする既定モード |
-| ユーザーモード | XDGまたはWindowsユーザーデータ領域を使うモード |
-| 標準定義 | 署名済みオンラインレジストリから取得したツール定義 |
-| ローカル定義 | 利用者が追加した未署名または独自署名のツール定義 |
+| ユーザーモード | OS APIで得たuser home配下またはWindowsユーザーデータ領域を使うモード |
+| 標準定義 | clientと同じrelease archiveへ同梱した`registry/`のツール定義 |
+| ローカル定義 | 利用者が追加し、内容hashによる承認対象となるツール定義 |
 | ツールID | CLIとTOMLで共通の小文字kebab-case識別子 |
 | 完全バージョン | レジストリの1件に曖昧さなく一致する文字列 |
 | ユーザー選択 | ユーザー全体の既定バージョン |
@@ -55,7 +55,7 @@ artifact選択のarchはclient buildの`GOARCH`を使い、native hardwareを検
 | 有効選択 | CLI明示、プロジェクト、ユーザーの優先順位で解決した最終選択 |
 | currentリンク | `selection_strategy="link"` のツールで、ユーザー選択の導入先を指すWindowsジャンクションまたはLinux symlink |
 | shim | 呼び出されたファイル名から管理ツールを判定し、有効バージョンと環境を解決して実体を起動する小型ネイティブ実行物 |
-| 定義レジストリ | ツール定義、スキーマ、索引、署名を配布するGit履歴 |
+| 定義レジストリ | ツール定義、スキーマ、message、license、上流検証情報をclientとともに管理・配布する`registry/` tree |
 | バージョンカタログ | 各公式配布元を照会して得た、導入可能な完全バージョンとアーティファクトのキャッシュ |
 
 ## 6. ツールID
@@ -70,10 +70,10 @@ artifact選択のarchはclient buildの`GOARCH`を使い、native hardwareを検
 
 ### 7.1 初期化と自己診断
 
-- 実行ファイルだけの配布を許容する。
-- 初回に管理ルートを作成し、標準定義がなければ署名済み最新版を取得する。
+- client、`gdtvm.toml`、registry、README、USER_GUIDE、LICENSEを含むrelease archiveを配布する。
+- 初回に管理ルートを作成し、release archiveへ同梱された標準定義を検証して読み込む。
 - シェル統合を対話的に設定、確認、修復、除去できる。
-- 現在の権限、ファイルシステム、リンク作成、PATH、定義署名、状態整合性、ツール実体を診断できる。
+- 現在の権限、ファイルシステム、リンク作成、PATH、registry tree hash、状態整合性、ツール実体を診断できる。
 - 修復は導入済みツールを再ダウンロードせず、状態・リンク・shim・一時物を可能な限り再構築する。
 
 ### 7.2 カタログ
@@ -146,7 +146,7 @@ artifact選択のarchはclient buildの`GOARCH`を使い、native hardwareを検
 | `unset` | `disable <tool>` | `--project`対応、`--all`で旧全解除 |
 | `uninstall -v` | `uninstall <tool>@<version>` | 安全検査を追加 |
 | `rehash` | 通常不要、`repair` | shim/index/linkの整合性を回復。Windows link置換には短い非原子的区間を許す |
-| バージョンJSONキャッシュ | バージョンカタログ | 署名定義と取得結果を分離 |
+| バージョンJSONキャッシュ | バージョンカタログ | release同梱definitionと上流取得結果を分離 |
 | ツール別activate/deactivate | shim＋shell初期化 | 旧環境変数は標準定義へ移植 |
 | Windows junction | link方式のWindows `current` junction | 一般ユーザー、ローカルNTFSを前提 |
 | Ninjaのsymexe | 内蔵Go shim | `OPTS`、`CODEPAGE`、`PATH`、`EXE`相当を汎用化 |
@@ -156,6 +156,7 @@ artifact選択のarchはclient buildの`GOARCH`を使い、native hardwareを検
 | NuGet同梱と分離キャッシュ | dotnet定義 | NuGet環境変数とnuget実行物を維持 |
 | setup_jp.bat | `setup` | PS 5.1/7とcmdをバックアップ付きで設定 |
 | エラーログ | `logs`＋構造化イベント | 秘密情報をマスクしローテーション |
+| client/定義更新 | `gdtvm self-update` | 公式GitHub Releaseのchecksumとarchive SHA-256を照合し、clientと標準定義を一括更新 |
 
 旧Ninja shimの参照実装は `https://github.com/kznagamori/symexe` である。新実装はこの設定概念と実行透過性を機能要件として再実装するが、そのC++実行ファイルやリポジトリをruntime dependencyにはしない。
 

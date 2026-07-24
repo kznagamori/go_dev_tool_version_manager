@@ -81,7 +81,7 @@ profileへ次のmarker blockだけを追加する。
 
 block本体はASCII互換path quotingを正しく行い、生成fileはUTF-8。既存encodingを検出し、profile全体を書き換える場合は同encodingを保持する。markerが1件なら更新、複数ならrepair対象。
 
-execution policyを変更しなくても実行できる手段（署名、直接profile内関数、process単位の許可）を優先する。`CurrentUser` policy変更は別警告・別確認で、元値を保存する。企業Group Policyが優先している場合は変更を試みない。
+execution policyを変更しなくても実行できる手段（直接profile内関数やnative executable）だけを使用する。gdtvmは`Process`, `CurrentUser`, `LocalMachine`のpolicyを変更せず、企業Group Policyを回避しない。現在policyでprofile integrationを利用できなければ変更なしでwarningとし、cmd integrationまたは利用者管理の手動手順を案内する。
 
 ## 3. Linux
 
@@ -94,7 +94,7 @@ execution policyを変更しなくても実行できる手段（署名、直接p
 
 ### 3.2 shell setup
 
-bashは `.bashrc`、zshは `.zshrc`、fishは `$XDG_CONFIG_HOME/fish/conf.d/gdtvm.fish` を既定候補とする。login shell差異があるため、実際のshellとstartup fileを表示して選択させる。
+bashは `.bashrc`、zshは `.zshrc`、fishはOS user home配下の`.config/fish/conf.d/gdtvm.fish`を既定候補とする。login shell差異があるため、実際のshellとstartup fileを表示して選択させる。
 
 bash/zshのmarker:
 
@@ -106,7 +106,7 @@ source "<generated-init>"
 
 fishはfish構文のsourceを生成する。POSIX shell構文を混在させない。
 
-generated initの責務はgdtvm binary/shimsをPATHへ追加し、`state/shell` のbash/zsh用またはfish用環境snapshotをsourceしてuser currentの`shell_export`対象と、`shell_export_path=true` のPATHを設定することだけ。snapshotは選択変更時に原子的再生成される。link方式でsymlinkが有効なら安定した`current`、fallback/backendではabsolute shared/selectorを使う。network、registry update、catalog refreshをshell起動時に行わない。
+generated initの責務はgdtvm binary/shimsをPATHへ追加し、`state/shell` のbash/zsh用またはfish用環境snapshotをsourceしてuser currentの`shell_export`対象と、`shell_export_path=true` のPATHを設定することだけ。snapshotは選択変更時に原子的再生成される。link方式でsymlinkが有効なら安定した`current`、fallback/backendではabsolute shared/selectorを使う。network、self-update、catalog refreshをshell起動時に行わない。
 
 bash/zshの値はPOSIX single-quote規則でquoteし、値中のsingle quoteを安全な連結表現へ変換する。fishはfish固有のescapeを用いる。文字列を未quoteでshell sourceへ出さない。
 
