@@ -28,7 +28,8 @@ multi-userかつconfigが明示許可した場合だけ`GDTVM_USER_HOME`をuser 
 ├─ shims/
 ├─ logs/
 ├─ tmp/
-└─ locks/
+├─ locks/
+└─ .gdtvm-update/              # self-update作業・直前版rollbackの一時領域（08章16節、存在時のみ）
 ```
 
 フォルダー全体を移動した後は `gdtvm repair` を実行する。receiptと状態には管理ルート相対パスを優先して保存し、移動後に絶対パスを一括修復できるようにする。ツール自身が絶対パスを内部ファイルへ埋める場合は、定義に `relocation = "repair-required"` と修復stepを記載する。
@@ -83,6 +84,8 @@ state/
 ├─ setup.toml
 ├─ shim-index.toml
 ├─ shell/                         # shell別の安全な環境snapshot/init
+├─ setup-backups/<timestamp>/     # shell統合変更前のbackup（09章6節）
+├─ migration-backups/<timestamp>/ # state schema migration前のbackup（14章17節）
 └─ operations/<operation-id>.jsonl
 shims/
 ├─ gdtvm-shim[.exe]              # gdtvm本体へのhardlink/symlink、または内蔵fallback shimの検証済み展開

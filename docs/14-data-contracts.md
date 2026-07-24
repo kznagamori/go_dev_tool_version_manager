@@ -241,7 +241,7 @@ command `target` はlink方式では`payload_root`、backend方式では`backend
 
 `omitted_commands`は`name`, `reason`を持つarray of tableで、definitionの`required=false` commandがtarget欠落のため公開されなかった場合だけ記録する。targetが存在するrequired/optional commandは`commands`へ入り、同じnameを両方へ持たせない。
 
-environment profileは次の正規契約を持つ。
+environment profile（定義側の`[[platforms.runtime.environment]]`とcommandの`env_profile`に対応し、receiptでは`[[environment_profiles]]`および`environment_profile`として確定する）は次の正規契約を持つ。
 
 - `path_prepend`/`path_append`要素: `root`（`payload`または`shared`）とroot内相対`path`。
 - `variables`要素: `name`, `operation`（`set`/`unset`）, `value_kind`（set時の`literal`/`path`）。literalは`value`、pathは`root`と相対`path`を持つ。
@@ -385,20 +385,20 @@ kind = "literal"
 value = "0000000000000000000000000000000000000000000000000000000000000000"
 required = true
 
-[[platforms.install_steps]]
+[[platforms.install.steps]]
 id = "download"
 kind = "download"
 artifact = "primary"
 output = "helper-archive"
 
-[[platforms.install_steps]]
+[[platforms.install.steps]]
 id = "verify"
 kind = "verify-digest"
 depends_on = ["download"]
 input = "{{outputs.helper-archive}}"
 artifact = "primary"
 
-[[platforms.install_steps]]
+[[platforms.install.steps]]
 id = "extract"
 kind = "extract"
 depends_on = ["verify"]
@@ -421,8 +421,8 @@ required = true
 許可key:
 
 - helper: id, name, homepage, license, version, source_repository, notes
-- platform: id, os, arch, libc, entrypoint, artifacts, dependencies, install_steps, validation
-- artifacts/checksum/signature、dependencies、install_steps、validationはtool definitionの同名schema subset
+- platform: id, os, arch, libc, entrypoint, artifacts, dependencies, install, validation
+- artifacts/checksum/signature、dependencies、install、validationはtool definitionの同名schema subset
 
 helperはversion sourceを持たずclient releaseごとに完全版固定する。platformは現在OS/arch/libcにexact matchする1件だけを選ぶ。同一条件の複数variantやpriority選択はhelper schema 1では許さない。artifactは`source="template"`だけを許し、primary roleを必須とする。補助roleも定義できるため、7-Zipのbootstrap実体と完全版installerを別々に検証できる。すべてのartifactでSHA-256必須、checksum `none`は禁止する。
 

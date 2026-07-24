@@ -44,8 +44,11 @@ artifact選択のarchはclient buildの`GOARCH`を使い、native hardwareを検
 | 用語 | 定義 |
 |---|---|
 | 管理ルート | `tools`、`registry`、`state` などを格納するgdtvmのデータルート |
+| 配布ルート | 実行file、`gdtvm.toml`、`registry/`、文書を含む配布物のルート。ポータブルモードでは管理ルートと一致する |
+| データルート | `tools`、`state`、`cache` 等の可変dataを置くルート。ポータブルでは配布ルートと一致し、user/multi-userではユーザー別に分離する |
 | ポータブルモード | 実行ファイルのあるフォルダーを管理ルートとする既定モード |
 | ユーザーモード | OS APIで得たuser home配下またはWindowsユーザーデータ領域を使うモード |
+| マルチユーザーモード | 管理者が配置するread-only共有distributionと、ユーザーごとに分離したdata rootを併用するモード |
 | 標準定義 | clientと同じrelease archiveへ同梱した`registry/`のツール定義 |
 | ローカル定義 | 利用者が追加し、内容hashによる承認対象となるツール定義 |
 | ツールID | CLIとTOMLで共通の小文字kebab-case識別子 |

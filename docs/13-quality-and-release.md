@@ -96,7 +96,7 @@ gdtvm本体は起動basenameでCLI/shimを分岐するmulti-call binaryとする
 
 - tool ID/alias正規化、衝突
 - exact version拒否例（部分、range、latest、空白、Unicode記号）
-- semver/numeric/JEP223/date/regex比較
+- semver/numeric/JEP223/date/lexical/regex比較
 - 隣接`gdtvm.toml`、許可環境変数、CLIの優先順位
 - project探索（Git directory/file、境界越え設定、root、symlink loop）
 - TOML unknown key、型、line/column error

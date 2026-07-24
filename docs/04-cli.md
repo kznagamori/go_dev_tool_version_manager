@@ -147,7 +147,7 @@ gdtvm use <tool>@<version> --project
 node@22.18.0 は未導入です。導入して選択しますか? [y/N]
 ```
 
-対話でyes、または `--yes` の場合だけinstallを連続実行する。`--non-interactive` か非TTYで `--yes` がなければ `E_VERSION_NOT_INSTALLED`。`latest`、channel、部分指定は禁止。
+`runtime.auto_install_on_use=true`のとき、対話でyes、または `--yes` の場合だけinstallを連続実行する。`--non-interactive` か非TTYで `--yes` がなければ `E_VERSION_NOT_INSTALLED`。`auto_install_on_use=false` では対話・`--yes`を問わず導入せず `E_VERSION_NOT_INSTALLED` とし `gdtvm install` を案内する。`latest`、channel、部分指定は禁止。
 
 user選択では解決したreceiptのversion、variant、install IDをstateへ固定してcommitし、link方式ならcurrent link、backend方式ならselector snapshotを更新し、続いてshim indexを更新する。後のdefinition更新で別variantへ自動読み替えない。project選択では最寄り `.gdtvm.toml` を最小差分で更新し、tool本体やglobal user選択を変更しない。
 
@@ -278,6 +278,24 @@ third-party警告には、非公式であること、source/repository URL、lic
 | 10 | 操作cancel |
 | 11 | 部分成功 |
 | 12 | doctorでerror検出 |
+
+`E_*` code（[10-internal-api.md](10-internal-api.md)9節）と終了コードの対応は次のとおりとする。code 0はerrorがない成功・変更不要、code 12はdoctorが診断結果にerror項目を検出した場合であり、いずれも`E_*`を持たない。
+
+| 終了コード | 対応する `E_*` |
+|---:|---|
+| 1 | `E_STATE_CORRUPT`, `E_PLAN_STALE`, `E_COMMAND_AMBIGUOUS`, `E_UPDATE_FAILED`, `E_DEPENDENCY_CONFLICT`、および上記以外の一般的操作失敗 |
+| 2 | `E_USAGE` |
+| 3 | `E_CONFIG_PARSE`, `E_CONFIG_SCHEMA`, `E_REGISTRY_INVALID`, `E_DEPENDENCY_CYCLE` |
+| 4 | `E_TOOL_UNKNOWN`, `E_VERSION_INVALID`, `E_VERSION_NOT_FOUND`, `E_VERSION_NOT_INSTALLED`, `E_PLATFORM_UNSUPPORTED` |
+| 5 | `E_CATALOG_MISSING`, `E_OFFLINE`, `E_NETWORK` |
+| 6 | `E_DIGEST_MISMATCH`, `E_SIGNATURE_INVALID`, `E_POLICY_DENIED`, `E_ARCHIVE_UNSAFE`, `E_DEFINITION_UNAPPROVED` |
+| 7 | `E_HOME_NOT_WRITABLE`, `E_LINK_FAILED` |
+| 8 | `E_PROCESS_FAILED` |
+| 9 | `E_LOCKED`（lock競合とlock待機timeoutを含む） |
+| 10 | `E_CANCELLED` |
+| 11 | `E_PARTIAL` |
+
+`E_TIMEOUT` は原因の文脈で決め、network起因は5、外部process/hook起因は8とする。code 9の「timeout」はlock待機のtimeoutを指す。上表にないcodeを追加する場合は同じ変更で本表へ登録する。
 
 `exec` はgdtvmが子を正常起動した場合、子プロセスの終了コードをそのまま返す。0～12と衝突しても子の値を優先し、`--json`は禁止のため再mappingしない。起動前失敗だけ上表を使い、verbose logではchild開始済みかを構造化fieldで判別できるようにする。
 

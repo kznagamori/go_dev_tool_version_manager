@@ -497,7 +497,7 @@ working_directory = "inherit"
 | env_profile | 下記profile ID。省略はdefault |
 | passthrough_signals | 既定true |
 
-`native` はtargetを直接起動する。`cmd-script` はWindows system directory APIで得た正規`cmd.exe`を `/d /v:off /s /c` で起動し、親環境の`ComSpec`を実行先として信用しない。利用者引数はcmdのquote/meta/percent展開規則に従って1要素ずつencodeし、script本文へ連結しない。`powershell-script` は`interpreter="windows-powershell"`または`"pwsh"`を必須とし、system dependency probeで固定した絶対hostへ`-NoProfile`とscript file引数を分離して渡す。`sh-script` は`interpreter="sh"`または`"bash"`を必須とし、system dependency probeで固定した絶対pathへscript pathを第1引数として渡す。receiptにinterpreter IDと検証済み絶対pathを記録し、起動時に同じ実体を再検査する。OSとlauncherの不整合、必要なinterpreter dependency欠落はdefinition errorとする。
+`native` はtargetを直接起動する。`cmd-script` はWindows system directory APIで得た正規`cmd.exe`を `/d /v:off /s /c` で起動し、親環境の`ComSpec`を実行先として信用しない。利用者引数はcmdのquote/meta/percent展開規則に従って1要素ずつencodeし、script本文へ連結しない。`powershell-script` は`interpreter="powershell"`または`"pwsh"`を必須とし、system dependency probeで固定した絶対hostへ`-NoProfile`とscript file引数を分離して渡す。`sh-script` は`interpreter="sh"`または`"bash"`を必須とし、system dependency probeで固定した絶対pathへscript pathを第1引数として渡す。receiptにinterpreter IDと検証済み絶対pathを記録し、起動時に同じ実体を再検査する。OSとlauncherの不整合、必要なinterpreter dependency欠落はdefinition errorとする。
 
 `when`はinstall plan時に評価しfalseならcommand候補自体を作らない。trueで`required=true`のtarget欠落・非実行可能はinstall失敗。`required=false`のtarget欠落はwarningとreceiptの`omitted_commands`へname/reasonを残してshimを作らない。targetが存在する場合はoptionalでも通常commandとして公開する。実体の有無以外のprobe失敗をoptionalとして黙認しない。
 

@@ -14,7 +14,7 @@ Service生成時に次を明示注入する。
 - FileSystem、LinkManager、LockManager
 - HTTPClient、ProcessRunner、ArchiveExtractor
 - Config/State/Registry/Update stores
-- SignatureVerifier、HashCalculator
+- ReleaseIntegrityVerifier、SignatureVerifier、HashCalculator
 - Clock、ID generator
 - EventSink、Prompt/Approval provider
 - Logger、Locale-neutral message catalog IDs
@@ -32,6 +32,7 @@ Service生成時に次を明示注入する。
 | working_directory | project探索基点。絶対pathへ正規化 |
 | project_file | 任意の明示file |
 | ignore_project | bool |
+| project_search_beyond_vcs_root | 任意override。存在時はconfigの`project.search_beyond_vcs_root`をこの実行だけ上書きし、省略時はconfig値を使う |
 | offline | bool |
 | non_interactive | bool |
 | assume_yes | bool |
