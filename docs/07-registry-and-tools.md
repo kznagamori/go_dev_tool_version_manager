@@ -369,9 +369,9 @@ runtime環境は`DOTNET_ROOT={{payload}}`を設定し、`DOTNET_CLI_TELEMETRY_OP
 
 ## 12. live metadata smoke
 
-PR testはfake upstream fixtureを正とし、networkなしで決定的に実行する。live smokeは上流layout変更を検出する補助であり、PR unit testの正本にしない。
+PR CIのtest（unit、contract、e2e）はfake upstream fixtureと合成archiveを正とし、networkなしで決定的に実行する。live smokeは上流layout変更を検出する補助であり、release workflowだけが実行する。PR CIのgateにしない。
 
-Go/Node.js/.NETはstable最新1件と過去stable 1件、Pythonはregistryへ固定した新旧各1件をrelease前に取得し、metadata、digest、archive layout、probeを検査する。live失敗をfixture更新だけで隠さず、原因を調査して仕様/definition/schemaを先に同期する。test fixtureをlive最新versionへ自動書換えせず、Python固定artifactのdigest/build tagを自動更新しない。
+Go/Node.js/.NETはstable最新1件と過去stable 1件、Pythonはregistryへ固定した新旧各1件をrelease前に取得し、metadata、digest、archive layout、probeを検査する。さらに両OSのrelease runnerで、標準4 toolの実artifactによる`install`/`use`/`current`/`uninstall`の一巡を実行する。live失敗をfixture更新だけで隠さず、原因を調査して仕様/definition/schemaを先に同期する。test fixtureをlive最新versionへ自動書換えせず、Python固定artifactのdigest/build tagを自動更新しない。
 
 .NETのlive smokeは追加で次を検査する。index文書のchannel件数が`max_documents`以下であること、`support-phase`の全出現値が`lifecycle_map`に存在すること、`files[].name`の固定名と`files[].hash`のhex長（128）が変わっていないこと。
 

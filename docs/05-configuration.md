@@ -44,9 +44,7 @@ connect_timeout = "30s"
 request_timeout = "5m"
 
 [download]
-concurrency = 3
 cache_max_bytes = 10737418240
-resume = true
 
 [runtime]
 auto_install_on_use = true
@@ -83,9 +81,9 @@ max_bytes_per_file = 5242880
 
 ### 3.5 download
 
-- `concurrency`は1～8。1 artifactはstreamで処理し全量memoryへ載せない。
+- 1 artifactはstreamで処理し全量memoryへ載せない。downloadは逐次実行で、並行download設定はv0.1に存在しない（[15-deferred.md](15-deferred.md) D-26）。
 - `cache_max_bytes`は1 GiB～1 TiB。
-- `resume=false`は既存partialを再利用しない。trueでもURL/size/validatorが一致しないpartialは破棄して最初から取得する。
+- 中断したdownloadは再開せず、次回実行時に最初から取得し直す（[15-deferred.md](15-deferred.md) D-24）。
 - retry count、redirect count、artifact/extract hard maximumは[04-storage-and-data.md](04-storage-and-data.md)§21で固定。
 
 ### 3.6 runtime/logs

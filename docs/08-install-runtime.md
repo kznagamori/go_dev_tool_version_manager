@@ -22,7 +22,7 @@ created → resolved → planned → approved → downloading → verifying
 
 この状態はprogress表示とlogのためのものであり、専用のoperation journal fileへ永続化しない。中断復旧は§6のstaging構造とatomic renameで担保する。
 
-公開timeoutと同時download数は開始時にconfig snapshotへ固定する。network retryは組込み3回、TTY progress emit間隔は組込み100 ms（phase変更と完了は即時）として開始時snapshotへ固定する。schema・archive・metadata・path等の安全上限も[04-storage-and-data.md](04-storage-and-data.md)§21の組込み値でありconfigから拡大できない。
+公開timeoutは開始時にconfig snapshotへ固定し、downloadは逐次実行とする（[15-deferred.md](15-deferred.md) D-26）。network retryは組込み3回、TTY progress emit間隔は組込み100 ms（phase変更と完了は即時）として開始時snapshotへ固定する。schema・archive・metadata・path等の安全上限も[04-storage-and-data.md](04-storage-and-data.md)§21の組込み値でありconfigから拡大できない。
 
 ## 3. version解決
 
@@ -51,7 +51,7 @@ Plan冒頭に次の重要要約を目立つ形で表示し、詳細表示後の�
 - definitionが`license_notice`を宣言している場合はそのlicense識別子
 - EOL/prerelease、その他warning数と、明示承認が必要なwarning code
 
-詳細部にはartifact URL/host/file/size、provider repository/homepage/license、third-party採用理由、checksum source/value、definition hash、展開parameter、probeの実行file/完全版/取得元/digest/license/reason/argv/cwd/書込み先、payload/storage/cache/selectionの全読書きpath、rollbackをすべて表示する。setup/setup-removeでは`SetupPlan`のmode、旧/新root、filesystem能力/link方式、shim、integration対象、backup、再起動要否を表示する。provider metadataにsizeがなく`size=0`なら「不明」と表示し、0 byteと誤表示しない。長いURL等は折りたためる表示にしても省略しない。
+詳細部にはartifact URL/host/file/size、provider repository/homepage/license、third-party採用理由、checksum source/value、definition hash、展開parameter、probeの実行file/完全版/取得元/digest/license/reason/argv/cwd/書込み先、storage割当てと、integration対象・project file・current linkへ及ぶ変更（Plan `writes[]`）をすべて表示する。setup/setup-removeでは`SetupPlan`のmode、旧/新root、filesystem能力/link方式、shim、integration対象、backup、再起動要否を表示する。provider metadataにsizeがなく`size=0`なら「不明」と表示し、0 byteと誤表示しない。長いURL等は折りたためる表示にしても省略しない。
 
 利用者状態を変える`setup|setup --remove|install|use|uninstall`はPlan後に1回確認する。完全なno-opはPlan/確認を省略して変更なしを返せる。catalog cacheをatomic置換する`available --refresh`、log rotation、所有と期限を検証した失敗tmp/cacheのcleanupはpayload、selection、storage、config、setup/integrationを変更しない運用データ更新であり、Plan/確認を要求しない。
 
@@ -66,7 +66,7 @@ Plan冒頭に次の重要要約を目立つ形で表示し、詳細表示後の�
 - redirectごとにscheme、host allowlist、credential混入を再検査する。
 - status、Content-Length、実受信量、Content-Type、metadata/body上限を検査する。
 - `.part`へstreamしながら、cache identity用の内部SHA-256とprovider指定algorithm（`sha256|sha512`）のdigestを同じ1 passで計算し、progressを送る。同じalgorithmなら計算器を共有する。
-- Range再開は同一URL、ETag/Last-Modified、expected sizeが一致するときだけ。serverが無視したら0 byteから再開する。
+- 中断したdownloadは再開せず、次回実行時に最初から取得し直す。partial fileは所有を検査して破棄する（[15-deferred.md](15-deferred.md) D-24）。
 - network timeout/5xx/429だけ初回後に最大3回retryする。`Retry-After`なしは1秒、2秒、4秒、delta-seconds/dateが0～30秒なら各backoffとの大きい方を待つ。30秒超または不正値は長時間sleep/capをせずretryable `E_NETWORK`で停止する。404、schema違反、checksum mismatchはretryしない。
 - `Content-Disposition`のfilenameを保存pathに使わない。
 
