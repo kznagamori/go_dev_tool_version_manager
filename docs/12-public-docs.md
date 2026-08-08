@@ -154,7 +154,7 @@ build前提、minimum Go、主要test command、CI matrix、進捗台帳を示�
 Contributingには[11-quality-and-ci.md](11-quality-and-ci.md)§5.2～§5.6を要約し、次を明記する。
 
 - `claude|codex/feature-<task-id>-<slug> → claude|codex/work → develop/work → main`の統合方向と、異なるagent workをbaseにしないこと。
-- featureはsquash merge後に削除し、agent work→develop→mainはmerge commitを使うこと。
+- featureはsquash merge後に指定maintainerが削除し、agent work→develop→mainはmerge commitを使うこと。
 - feature PRは両OSの`lint/unit/policy`、develop以降は両OSの全6 jobを必須とすること。
 - protected branchへの通常のdirect/force pushと削除は禁止し、同期・release後再作成は指定maintainerの手順で行うこと。
 - release中はagent work→developを凍結するが、feature→agent workは継続できること。
