@@ -46,7 +46,8 @@ setup  available  install  installed  use  current  uninstall  doctor  version
 branch lifecycle、merge方式、protection、CI gate、release freezeの正本は`docs/11-quality-and-ci.md`§5.2～§5.6、§13とする。
 
 - Codexの通常taskは`codex/work`から`codex/feature-<task-id>-<slug>`を作って行う。`<task-id>`は`docs/13-progress.md`のIDを小文字化したexact値、`<slug>`は小文字英数字のkebab-case 1～48文字とする。例は`codex/feature-p6-02-install-plan`。
-- 実装・文書・ローカル検証後、featureから`codex/work`へPRし、両OSの`lint`、`unit`、`policy`成功後にsquash mergeしてfeatureを削除する。Codex task群の統合後、`codex/work`から`develop/work`へPRし、両OSの全6 job成功後にmerge commitで統合する。
+- 実装・文書・ローカル検証後、featureから`codex/work`へPRする。両OSの`lint`、`unit`、`policy`成功後のsquash mergeとfeature branch削除は指定maintainerが行う。Codex task群の統合後、`codex/work`から`develop/work`へPRし、両OSの全6 job成功後にmerge commitで統合する。
+- **Codexはremote branchを削除しない。** 削除はfeature branchを含めすべて指定maintainerのbranch lifecycle作業とし、Codexは削除対象のbranch名と削除してよい根拠（mergeまたはPR close済み、固有commitなし）を報告するまでを担当する。
 - `develop/work→main`もmerge commitだけを使う。agent work、develop、mainの間でsquash/rebase mergeを使わない。required approving reviewは0件だが、最新base、必須CI、未解決conversationなし、指定maintainerによるmergeを必須とする。
 - `main`、`develop/work`、`claude/work`、`codex/work`へ通常のdirect push、force-push、削除を行わない。同期のrebase、`--force-with-lease`、削除・再作成は、利用者が指定したmaintainerのbranch lifecycle作業だけで行う。
 - release PR作成から公開完了まで`codex/work→develop/work`をmergeしない。feature→`codex/work`は継続できる。
