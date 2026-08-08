@@ -50,7 +50,7 @@
 | R25 | registryはclient同梱、client release時だけ更新。単体branch/download/updateなし | 07,08,13 |
 | R26 | exact not-foundはstrict error＋`available`案内。近似version提案なし | 04,08,17 |
 | R27 | EOL/prerelease exactは重要警告/確認後に許可。latestはstableかつlifecycle非EOLだけ | 04,08,12 |
-| R28 | Windows setupは`user-path|shell-profile|none`、推奨user-path。Win32 Registry APIでHKCU Path 1 entry、`setx`なし、型/raw/長さ/backup/re-read/rollback | 04,09,11,14,17 |
+| R28 | Windows setupは`user-path\|shell-profile\|none`、推奨user-path。Win32 Registry APIでHKCU Path 1 entry、`setx`なし、型/raw/長さ/backup/re-read/rollback | 04,09,11,14,17 |
 | R29 | `use <tool> --system`でdefinition駆動のexternal path/version/link identity/siblingを固定。初期版は公式性未検証の`system/external`表示、変化時fail、managed exactで復帰 | 03,04,06,08,12,14 |
 | R30 | tool設定は`go env -w`, `npm config`, `pip config`/venv等の上流標準interface。gdtvmは保存先だけredirect | 05,08,12,17 |
 | R31 | storage共有/削除はdefinitionで型付き宣言。config/cache/Go global binaryはtool共有・既定保持、Node global package/Python site-packageはversion別・version削除時に同時削除 | 03,06,08,12,14 |
