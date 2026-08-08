@@ -13,15 +13,15 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 | 全体状態 | `停止中` |
 | 現在フェーズ | `P0` |
 | 実行中タスクID | `なし` |
-| 最後に完了したタスクID | `S00-06（モチベーション・簡素化レビュー）` |
-| 次に開始するタスクID | `P0-00` |
+| 最後に完了したタスクID | `P0-00（repository初期登録）` |
+| 次に開始するタスクID | `P0-01` |
 | CI状態 | `未構成` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-08-09T02:33:50+09:00` |
+| 最終更新日時 | `2026-08-09T03:11:40+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch | `claude/go-dev-tool-version-manager-7zyakj` |
+| 作業branch | `claude/feature-p0-00-branch-topology` |
 | 使用環境 | `Linux container` |
-| 最新の証跡 | `docs/reviews/S00-06-motivation-simplification-review.md`、link/anchor/fence/stale用語検査、`git diff --check` |
+| 最新の証跡 | `docs/reviews/P0-00-repository-bootstrap-verification.md`、`git ls-remote`、`git ls-tree`、`git diff`、`git rev-list --max-parents=0 --all` |
 
 全体状態は`未着手|進行中|停止中|blocked|完了`。実行中taskは同時に1件だけ。値なしは`なし`と記す。
 
@@ -56,6 +56,7 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 | 日時 | 状態 | 完了済み部分 | 残作業・次の具体操作 | blocker/解除条件 | branch | 環境 | 証跡 |
 |---|---|---|---|---|---|---|---|
+| 2026-08-09T03:11:40+09:00 | P0-00 完了 | 指定maintainerが実施した[11-quality-and-ci.md](11-quality-and-ci.md)§5.6の初期登録を検証した。`main`初期commit`2cb8bc5`が生成3 file（`README.md`/`LICENSE`/`.gitignore`）だけを持つこと、LICENSEがMIT・`Copyright (c) 2026 kznagamori`でmain版とdevelop版が同一であること、`.gitignore`がGo templateへ`.cache/`・`artifacts/`を追加した現在版であること、`README.md`が現在版であること、`develop/work`が現在の作業tree内容だけを持つこと、`claude/work`と`codex/work`が`develop/work`と同一commit`9e69261`であること、remoteのroot commitが`2cb8bc5`のみで旧root`fb754ed`系列が到達不能であること、remote tagが0件であることを機械検証した。branch protectionと`v*` immutable tag rulesetはREST APIがproxyに遮断され機械検証できず、利用者へ1問確認して「設定済み」の回答を証跡とした。作業branchへのpush権限も確認した | P0-01でCI matrix workflow（`lint`/`unit`/`e2e`/`policy`/`package`/`bootstrap`）を最小構成で作り、両OSでgreenにしてから最初の成功check名を4 protected branchのrequired status checkへ登録する（§5.6手順5）。同時にPRのsource/target/branch名policy検査を追加する | なし。branch protection値と§5.3のrepository merge設定（squash/merge commit許可、rebase merge無効）はこのsessionからREST APIで読めず未照合。P0-01の最初のPRで実効性を観測して[P0-00 verification report](reviews/P0-00-repository-bootstrap-verification.md)§4へ反映する | `claude/feature-p0-00-branch-topology` | Linux container / Go 1.24.7（§1のminimum Go 1.26系未満のためlocal build・testは未実施） | [P0-00 verification report](reviews/P0-00-repository-bootstrap-verification.md)、`git ls-remote --heads/--tags`、`git ls-tree origin/main`、`git diff origin/main:<file> origin/develop/work:<file>`、`git rev-list --max-parents=0 --all` |
 | 2026-08-09T02:33:50+09:00 | S00-06 完了 | 利用者のモチベーション・実装量・複雑度・CI E2E制約・ドッグフーディング観点で全16文書を再レビューし、利用者判断7件を確定・反映した。(1)e2e jobを全面fixture化しlive検証をrelease時live smoke（実artifactの4 tool一巡を追加）と§9利用者チェックへ移動、(2)G-TOOLS後にDF-01でdevel buildのドッグフーディングを開始、(3)Plan契約を縮約（`reads[]`廃止・`inputs`へ`registry_sha256`追加、`writes[]`を利用者可視変更へ限定、`rollback[]`廃止、CI §7.2を封じ込め検査へ）、(4)読取り5 commandの`--json`は維持、(5)message catalog `ja.toml`は維持、(6)user mode/bootstrapは維持、(7)download再開・`available` filter・`download.concurrency`を延期しD-23〜D-26へ記録した。root README.mdへ仕様策定中statusを追加した | P0-00でrepositoryのbranch topology（`develop/work`、`codex/work`、protection、tag ruleset）を整備する | なし。remote branch操作は指定maintainerが行う | `claude/go-dev-tool-version-manager-7zyakj` | Linux container | [S00-06 review report](reviews/S00-06-motivation-simplification-review.md)、link/anchor/fence/stale用語検査、`git diff --check` |
 | 2026-08-08T18:56:21+09:00 | S00-05 完了 | 利用者判断16件をbranch topology、命名、同期・再作成、merge、protection、CI、release freeze、CalVer、annotated tag起動releaseへ同期した。`v0.1`と実versionを分離し、Go module非互換、同日`00`～`99`、失敗tag非再利用、repository再作成手順を明記した。link 181件/anchor 22件、section参照58件、fence 156 marker、Git ref 5件、feature正負6件、CalVer正負7件、CI job 6件、PR経路5件、stale表記0件、`git diff --check`が全て成功した | P0-00でGitHub repositoryを再作成し、main初期commit→develop/work→両agent workを作成して初期protection/tag rulesetを設定する | なし。remote操作、workflow、VERSION、Go sourceは未実施 | `main` | Windows 10.0.26200 x64 / PowerShell 7.6.4 / Go 1.26.5 | [S00-05 review report](reviews/S00-05-branch-version-strategy-review.md)、inline PowerShell validators、`git diff --check` |
 | 2026-08-08T18:43:11+09:00 | S00-05 再開 | release中並行開発は選択Aに確定した。release PR作成からtag起動release CIの公開完了までagent work→develop/workのmergeを凍結し、feature→agent workは継続できる | S00-05を`[-]`へ戻し、[11-quality-and-ci.md](11-quality-and-ci.md)から関連文書へ確定仕様を同期する | なし | `main` | Windows 10.0.26200 x64 / PowerShell 7.6.4 / Go 1.26.5 | 利用者回答A |
@@ -112,7 +113,7 @@ G-TOOLS達成後は、G-E2E/G-DONEの完了を待たずにDF-01（§17）のド�
 
 ## 6. P0 開発準備
 
-- [ ] **P0-00** [11-quality-and-ci.md](11-quality-and-ci.md)§5.6の一回限りの手順でrepositoryを再作成する。GitHub生成のREADME/MIT LICENSE/Go `.gitignore`を持つmain初期commitから`develop/work`を作り、現在の作業tree内容だけを登録し、そこから`claude/work`と`codex/work`を作る。旧`.git`/ref/historyを移行せず、同名3 fileの差分確認、初期branch protection、immutable tag ruleset、branch/commit/worktreeの証跡を記録する。依存: S00-05。証跡: 未記録
+- [x] **P0-00** [11-quality-and-ci.md](11-quality-and-ci.md)§5.6の一回限りの手順でrepositoryを再作成する。GitHub生成のREADME/MIT LICENSE/Go `.gitignore`を持つmain初期commitから`develop/work`を作り、現在の作業tree内容だけを登録し、そこから`claude/work`と`codex/work`を作る。旧`.git`/ref/historyを移行せず、同名3 fileの差分確認、初期branch protection、immutable tag ruleset、branch/commit/worktreeの証跡を記録する。依存: S00-05。実施は指定maintainer、検証と証跡記録はClaude Codeが担当した。branch protectionと`v*` tag rulesetはREST APIがこのsessionから読めないため利用者確認を証跡とし、値の照合はP0-01へ送った。証跡: [P0-00 verification report](reviews/P0-00-repository-bootstrap-verification.md)と本書§3.3の2026-08-09T03:11:40+09:00 record
 - [ ] **P0-01** CI matrix workflow（`lint`/`unit`/`e2e`/`policy`/`package`/`bootstrap`）を最小構成で作り、全jobを`ubuntu-latest`と`windows-latest`の両方でgreenにする。PRのsource/target/branch名policy検査も追加し、最初の成功check名を`main`、`develop/work`、両agent workのrequired status checkへ設定して[11-quality-and-ci.md](11-quality-and-ci.md)§5.3～§5.4のrulesetを完成する。依存: P0-00。証跡: 未記録
 - [ ] **P0-02** Go module/toolchain、format/vet/lint/test/coverage command、証跡directory・命名・secret除去規則を固定する。依存: P0-01。証跡: 未記録
 - [ ] **P0-03** fake port（clock/HTTP/process/filesystem/link/user lookup）とfailure injection基盤を作る。依存: P0-02。証跡: 未記録
