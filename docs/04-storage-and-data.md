@@ -116,7 +116,7 @@ Windowsでreplace APIの制約がある場合も、旧fileを失った状態で�
 lock順序の正本は[02-architecture.md](02-architecture.md)§12とする。本章は保存先とmetadata形式（§19）だけを規定し、順序をここで再掲しない。
 
 - catalog cacheはdefinition hash、platform ID、取得時刻、期限を持つ。
-- partial downloadはURL identity、expected size、validatorが一致する場合だけRange再開する。
+- 中断したdownloadのpartial fileは再利用せず、所有と作成時刻を検査して破棄する。download再開は[15-deferred.md](15-deferred.md) D-24へ延期する。
 - install成功後も共有content cacheは上限内で保持できる。
 - failed/cancelled operationのtmpはroot ID、owner、作成時刻を検査してcleanする。
 - cleanup失敗は完成installをrollbackせず`W_CLEANUP_INCOMPLETE`にし、`doctor`へ残す。
@@ -146,7 +146,7 @@ digestは2種類あり、混同しない。
 | 種別 | 表現 | 該当field |
 |---|---|---|
 | **upstream由来**（providerが公開した値） | `<algorithm>:<hex>` | definitionのchecksum/asset digest、catalogの`artifact_digest`、receiptの`[artifact].digest`、Planの`downloads[].expected_digest` |
-| **gdtvm自身が計算** | 64 lowercase hex（SHA-256固定） | receiptの`command_targets[].sha256`、`receipt-index.toml`の`receipt_sha256`、setup backupの`sha256`と`integration_identity`、`registry.toml`のtool entry `sha256`、Planの`reads[].expected_sha256`と`writes[].before/after_sha256`、release `checksums.txt` |
+| **gdtvm自身が計算** | 64 lowercase hex（SHA-256固定） | receiptの`command_targets[].sha256`、`receipt-index.toml`の`receipt_sha256`、setup backupの`sha256`と`integration_identity`、`registry.toml`のtool entry `sha256`、Planの`inputs`各digest、release `checksums.txt` |
 
 gdtvm自身が計算するdigestにalgorithmを選ぶ理由がないため、SHA-256固定とし`<algorithm>:`を付けない。upstream digestのalgorithmは`<algorithm>:`部分だけを正本とし、別fieldへ複製しない。algorithmとhex長が一致しない値を拒否する。
 
@@ -441,6 +441,7 @@ Planは永続fileではないがhuman表示とapprovalの正本となるtyped da
     "project_sha256": "",
     "definition_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "catalog_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "registry_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
     "selections_revision": 8,
     "setup_revision": 3,
     "receipt_index_revision": 5
@@ -448,72 +449,6 @@ Planは永続fileではないがhuman表示とapprovalの正本となるtyped da
   "downloads": [],
   "extracts": [],
   "probes": [],
-  "reads": [
-    {
-      "id": "catalog",
-      "path": {
-        "role": "catalog",
-        "path": "C:\\gdtvm-data\\cache\\catalogs\\python\\windows-amd64.json"
-      },
-      "expected_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-    },
-    {
-      "id": "config",
-      "path": {
-        "role": "config",
-        "path": "C:\\gdtvm-data\\distribution\\current\\gdtvm.toml"
-      },
-      "expected_sha256": ""
-    },
-    {
-      "id": "definition",
-      "path": {
-        "role": "tool-definition",
-        "path": "C:\\gdtvm-data\\distribution\\current\\registry\\tools\\python.toml"
-      },
-      "expected_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    },
-    {
-      "id": "project",
-      "path": {
-        "role": "project-file",
-        "path": "C:\\work\\example\\.gdtvm.toml"
-      },
-      "expected_sha256": ""
-    },
-    {
-      "id": "receipt-index",
-      "path": {
-        "role": "receipt-index",
-        "path": "C:\\gdtvm-data\\state\\receipt-index.toml"
-      },
-      "expected_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
-    },
-    {
-      "id": "registry",
-      "path": {
-        "role": "registry",
-        "path": "C:\\gdtvm-data\\distribution\\current\\registry\\registry.toml"
-      },
-      "expected_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-    },
-    {
-      "id": "selections",
-      "path": {
-        "role": "state",
-        "path": "C:\\gdtvm-data\\state\\selections.toml"
-      },
-      "expected_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-    },
-    {
-      "id": "setup",
-      "path": {
-        "role": "state",
-        "path": "C:\\gdtvm-data\\state\\setup.toml"
-      },
-      "expected_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
-    }
-  ],
   "writes": [],
   "storage": [],
   "warnings": [
@@ -523,12 +458,11 @@ Planは永続fileではないがhuman表示とapprovalの正本となるtyped da
       "parameters": {},
       "requires_explicit_approval": true
     }
-  ],
-  "rollback": []
+  ]
 }
 ```
 
-上のJSONはtop-level、summary、setup、inputs、配列のkey形状を示す**構造例**であり、記載量を抑えるためoperation entryを空にしている。そのままでは`operation=install`に必要なdownload/extract/probe/write/rollbackがないため、semantic validatorは実行可能なPlanとして拒否しなければならない。実行可能なpositive fixtureは各definitionの全probeと全作用を展開し、[11-quality-and-ci.md](11-quality-and-ci.md)§6および[13-progress.md](13-progress.md) P6-02で検査する。
+上のJSONはtop-level、summary、setup、inputs、配列のkey形状を示す**構造例**であり、記載量を抑えるためoperation entryを空にしている。そのままでは`operation=install`に必要なdownload/extract/probeがないため、semantic validatorは実行可能なPlanとして拒否しなければならない。実行可能なpositive fixtureは各definitionの全probeと全作用を展開し、[11-quality-and-ci.md](11-quality-and-ci.md)§6および[13-progress.md](13-progress.md) P6-02で検査する。
 
 top-level keyは例の集合だけで全件必須。`client_version`はPlanを作ったclientの完全versionまたは`devel`、`invocation_id`はrequest、`operation_id`は変更transactionの128 bit lowercase hex IDとする。`operation`は`setup|setup-remove|install|use|uninstall`。`summary`と`inputs`のkeyも例の集合だけで全件必須とし、対象外のstringは空、数値は0とする。`provider_kind=official|third-party|none`、対象toolがないoperationのprovider/channel/lifecycle/checksum/license fieldは空または`none`とする。`warning_count`は`warnings`の件数と一致させる。catalog refresh、log rotation、検証済みtmp/cache cleanupはPlan operationに含めない。
 
@@ -556,7 +490,7 @@ Windowsはcapabilityに`atomic-replace|directory-rename|file-identity|owner-enfo
 
 `previous_mode`、`previous_data_root`、`previous_distribution_root`は同時に空または同時に非空とする。非空と`W_MODE_CHANGE` exactly 1件を同値にし、旧rootを読書き対象へ暗黙追加しない。`setup-remove`も現在のsetup stateから同じobjectを作り、除去するintegration targetと変更前backup先を明示する。
 
-`inputs`はroot identity、config/project/definition/catalogのSHA-256、selection/setup/receipt-index revisionを固定する。digest対象fileは対応する`reads[].expected_sha256`と同じ値でなければならない。ExecuteはPlanのschema/client/invocation、全input、全readを承認前とlock取得後に再検査する。
+`inputs`はroot identity、config/project/definition/catalog/registryのSHA-256、selection/setup/receipt-index revisionを固定する。ExecuteはPlanのschema/client/invocationと全inputを、対応する実体から再取得して承認前とlock取得後に再検査する。
 
 各配列entryのexact keyは次のとおり。全key必須で、対象外のstring/digestは空、配列は空、sizeは0とする。IDはPlan内で種類をまたいで一意なASCII lowercase kebab、各配列はIDのASCII byte順とする。pathは§17.2の`PathValue`を使い、entryを作る場合は空pathを許さない。
 
@@ -565,19 +499,17 @@ Windowsはcapabilityに`atomic-replace|directory-rename|file-identity|owner-enfo
 | `downloads` | `id`, `provider_kind`, `provider_name`, `provider_repository`, `provider_homepage`, `provider_release`, `url`, `file_name`, `size`, `expected_digest`, `checksum_source`, `license`, `adoption_reason_message_id`, `destination` | HTTPS完全URL。`expected_digest`は§7のupstream digest形式。`size=0`はprovider上でunknownとして表示する。`destination.role=download-cache\|staging`。officialのadoption reasonだけ空 |
 | `extracts` | `id`, `source_download_id`, `format`, `strip_components`, `destination` | `source_download_id`は同じPlanのdownload ID。`format=zip\|tar.gz`、stripは`0\|1`、`destination.role=staging` |
 | `probes` | `id`, `runtime_command`, `executable`, `version`, `source`, `artifact_digest`, `license`, `reason_message_id`, `args`, `working_directory`, `write_paths`, `stream`, `expect`, `regex`, `expected_version`, `expected_root`, `required_paths`, `timeout_ms`, `required` | definition probeを完全展開した値。executable/cwd/write pathは`PathValue`。完全version、artifact URL/digest、provider license、理由を空にしない。`args`は下記`PlanArg[]`、`expected_root`は`PathValue|null`、`required_paths` entryは`kind`, `path`（`PathValue`）。stream/expect/kindは§17.1。Plan外probeを実行しない |
-| `reads` | `id`, `path`, `expected_sha256` | `path`は`PathValue`。regular fileの期待digestはgdtvm計算SHA-256、非fileまたは不存在を入力とする場合だけ空 |
-| `writes` | `id`, `action`, `target`, `before_sha256`, `after_sha256` | `target`は`PathValue`。`action=create\|replace\|remove\|junction\|symlink\|hardlink\|registry-value`。file digestが非該当のときだけ空 |
+| `writes` | `id`, `action`, `target` | `target`は`PathValue`。`action=create\|replace\|remove\|junction\|symlink\|registry-value` |
 | `storage` | `id`, `kind`, `scope`, `target`, `purge`, `action` | `target`は`PathValue`。kind/scope/purgeは[06-tool-definition.md](06-tool-definition.md)。`action=create\|retain\|purge` |
 | `warnings` | `code`, `message_id`, `parameters`, `requires_explicit_approval` | parametersはstring/bool/integer/nullだけのmap。codeは§16.1の閉じた集合 |
-| `rollback` | `id`, `action`, `target` | `target`は`PathValue`。`action=remove\|restore\|replace-link\|restore-registry-value` |
 
 `PlanArg`のexact keyは`kind`, `value`, `path`。`kind=literal`では`value`をそのままargv 1要素とし`path=null`、`kind=path`では`value`を空、`path`を非空の`PathValue`とし、そのnative pathをargv 1要素とする。definitionの1個のargs entryを複数argvへ分割せず、pathをliteralやwarning parameterへ埋め込まない。
 
-`writes[]`はwrite/mkdir/move/delete/link/registry変更の網羅集合である。download destination、extract destination、probe `write_paths`、`action=create|purge`のstorage target、receipt/state/index/linkの各変更先は、同じabsolute pathとroleを持つ`writes[]` entryへexactly 1件対応させる。`storage.action=retain`は変更しないためwrites entryを持たない。stagingやcacheだからという理由で変更先を省略しない。
+`writes[]`は利用者可視の変更だけを列挙する。対象は、setup/setup-removeのintegration対象（Windows user PATHの`action=registry-value`、shell profileの`create|replace|remove`）、project fileの作成・更新、current linkの`junction|symlink|remove`とする。staging、download cache、state、receipt、index、shim、storageなどdata root内部の書込みはPlanへ列挙せず、Executeの封じ込め検査（全書込みがdata root、distribution root、宣言済みintegration対象、project fileの中にあること）と[11-quality-and-ci.md](11-quality-and-ci.md)§7.2の書込み範囲検査で保証する（[15-deferred.md](15-deferred.md) D-23）。rollbackはengine内部動作でありPlan dataとして公開しない。失敗時回復は[11-quality-and-ci.md](11-quality-and-ci.md)§6のfailure injection testで検証する。
 
 Approvalは`requires_explicit_approval=true`のwarning `code`集合そのものであり、Executeは同じPlan objectのcode集合をApprovalが満たすことを検査する。Plan全体のcanonical digestは持たない。
 
-Executeは`inputs`と`reads`の各値を実体から再取得して一致を確認する。lock取得後にも同じ確認を行い、不一致なら`E_PLAN_STALE`とする。v0.1の変更operation中に起動できる子processは列挙済みprobeだけで、任意helper/backendを起動しない。Plan外のdownload、extract、probe、read、write、storage、rollbackをExecuteで追加しない。human簡略表示の都合でtyped fieldを削らない。
+Executeは`inputs`の各値を実体から再取得して一致を確認する。lock取得後にも同じ確認を行い、不一致なら`E_PLAN_STALE`とする。v0.1の変更operation中に起動できる子processは列挙済みprobeだけで、任意helper/backendを起動しない。Plan外のdownload、extract、probeを実行せず、書込みを封じ込め範囲の外へ出さない。human簡略表示の都合でtyped fieldを削らない。
 
 ### 16.1 `PlanWarningCode`
 
@@ -704,9 +636,8 @@ named objectのexact keyは次のとおり。全key必須。対象外のstring�
 | Plan arg `kind` | Plan `PlanArg` | `literal\|path` |
 | `PlanWarningCode` | Plan `warnings` | §16.1の8値 |
 | `ResultWarningCode` | ResultMeta、CLI JSON `warnings` | §16.2の5値 |
-| `writes[].action` | Plan | `create\|replace\|remove\|junction\|symlink\|hardlink\|registry-value` |
+| `writes[].action` | Plan | `create\|replace\|remove\|junction\|symlink\|registry-value` |
 | `storage[].action` | Plan | `create\|retain\|purge` |
-| `rollback[].action` | Plan | `remove\|restore\|replace-link\|restore-registry-value` |
 | **`path_role`** | `PathValue`、typed error、`doctor --report` | §17.2の22値 |
 | **`severity`** | `Diagnostic` | `error\|warn\|info` |
 | **`source`** | `SelectionSummary` | `project\|user\|none` |
@@ -760,9 +691,9 @@ roleと対象の対応は次に固定する。同じabsolute pathへ複数role�
 
 PlanとCLI JSONの`path`はOS nativeの正規absolute pathとする。`SetupPlan`のprevious root/integration target/backup pathと§17のCLI resultで明示したoptional fieldだけ空を許す。doctor reportでは[10-security.md](10-security.md)§9の規則で`<HOME>`等へmaskした表示pathを同じroleと組にする。typed errorは秘密値や個人pathを露出させず、exact keyを保ったまま`path`を空にしてroleだけを伝えられる。
 
-Windows user PATHのregistry valueはfilesystem pathではないが変更対象の識別が必要なため、`SetupPlan.integration_target`と`writes`/`rollback`ではrole=`config`、`action=registry-value`とし、`path`はexact locator `HKCU\Environment\Path`とする。これはPlan `PathValue.path`をabsolute filesystem pathとしない唯一の例外である。Linux shell profileはrole=`config`の正規absolute filesystem pathを使う。
+Windows user PATHのregistry valueはfilesystem pathではないが変更対象の識別が必要なため、`SetupPlan.integration_target`と`writes[]`ではrole=`config`、`action=registry-value`とし、`path`はexact locator `HKCU\Environment\Path`とする。これはPlan `PathValue.path`をabsolute filesystem pathとしない唯一の例外である。Linux shell profileはrole=`config`の正規absolute filesystem pathを使う。
 
-roleを付ける目的は2つある。`doctor --report`（[10-security.md](10-security.md)§9.1）がhome配下のpathをrole単位で確実に置換できること、CI の書込み範囲検査（[11-quality-and-ci.md](11-quality-and-ci.md)§7.2）がPlanの`writes[]`と実際の書込み先をroleで突き合わせられることである。role未定義のpathを公開境界へ出さない。
+roleを付ける目的は2つある。`doctor --report`（[10-security.md](10-security.md)§9.1）がhome配下のpathをrole単位で確実に置換できること、CIの書込み範囲検査（[11-quality-and-ci.md](11-quality-and-ci.md)§7.2）が実際の書込み先の封じ込めをroleで判定できることである。role未定義のpathを公開境界へ出さない。
 
 ## 18. structured log JSON Lines
 

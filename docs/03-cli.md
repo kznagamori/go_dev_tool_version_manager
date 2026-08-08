@@ -75,11 +75,10 @@ data root、state、registry、shim、PATH/shell integrationを冪等に初期�
 ### 3.2 `available`
 
 ```text
-gdtvm available <tool> [--channel stable|prerelease]
-                       [--lifecycle supported|eol|unknown] [--refresh]
+gdtvm available <tool> [--refresh]
 ```
 
-完全versionをversion降順で表示する。filter省略時は全channel/lifecycleを表示する。cacheなしでonlineならrefresh、offlineなら`E_CATALOG_MISSING`。近似版候補は生成しない。
+完全versionをversion降順で、channelとlifecycleの列とともに常に全件表示する。channel/lifecycleで絞り込むoptionはv0.1に存在しない（[15-deferred.md](15-deferred.md) D-25）。cacheなしでonlineならrefresh、offlineなら`E_CATALOG_MISSING`。近似版候補は生成しない。
 
 `--refresh`はcatalog cacheをatomic置換する運用data更新であり、Plan/確認を要求しない。tool payload、selection、storage、config、setup stateを変更しない。
 

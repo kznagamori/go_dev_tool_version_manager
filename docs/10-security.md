@@ -125,7 +125,7 @@ report生成はread-onlyとする。payload、storage、selection、config、set
 - redirectごとにscheme/host/credentialを検査し、wildcard hostを使わない。
 - connect/header/overall timeout、redirect/page/body/download上限を適用する。
 - 429/5xx/一時networkだけ有限retry。checksum/schema/404/security errorをretryしない。
-- ETag/Range cacheはURL、identity、size、validatorが一致するときだけ再利用する。
+- download cacheはURL identityとdigestが一致するcomplete fileだけを再利用し、partial fileのRange再開は行わない（[15-deferred.md](15-deferred.md) D-24）。
 
 proxy環境変数にcredentialが含まれてもPlan/log/error/reportへ出さない。独自proxy credential保存、interactive login、certificate installはv0.1対象外。
 
@@ -149,7 +149,7 @@ log masking失敗を防ぐnegative testを必須とし、debugでもcredential�
 
 - client/registry/checksum/receipt identity不一致
 - archive/path/owner/permission/link検査失敗
-- Plan外write/process/download、Planの`inputs`変化
+- 封じ込め範囲（管理root、宣言integration対象、project file）外への書込み、Plan外のprobe process/download、Planの`inputs`変化
 - rollback後の整合状態を証明できないtransaction
 
 network unavailable、cache期限切れ、unsupported platform、必要system prerequisite欠落は対象operationを失敗させ、安全な再実行方法を示す。security errorを初心者向けの利便性のためにwarningへ格下げしない。

@@ -18,6 +18,7 @@
 - v0.1の記述へ「将来用」のfield、enum値、予約keyを先行追加しない。
 - 延期機能を実装したくなった場合は、実装から始めず[15-deferred.md](15-deferred.md)の該当節と[14-maintenance.md](14-maintenance.md)の拡張手順を先に読む。
 - v0.1は**ドッグフーディング前提**である。利用者が実際に使って問題を報告し、修正する循環を最短で回すことを、機能の網羅性より優先する。
+- 標準4 toolのcontract合格（G-TOOLS）後は、E2E・release整備の完了を待たずdevel buildでドッグフーディングを開始する（[13-progress.md](13-progress.md) DF-01）。
 
 ## 3. 文書一覧
 
@@ -98,7 +99,7 @@
 
 - 通常CLIはdownload量、速度、残り時間、現在段階をprogress表示する。停止しているように見せない。
 - `--json`は読取り専用5 commandだけが持ち、完了時に単一JSONをstdoutへ出す。progress/logはstderrへ出す。状態変更commandの機械判定は終了codeで行う。
-- Planは完全版・platform・provider・checksum・channel・lifecycle・警告を冒頭と確認直前へ目立つ要約として出し、その間にURL、license、argv、書込み先等の全詳細を表示する。
+- Planは完全版・platform・provider・checksum・channel・lifecycle・警告を冒頭と確認直前へ目立つ要約として出し、その間にURL、license、argv、storage割当て、integration対象・project file・current linkへ及ぶ変更等の詳細を表示する。
 - global `gdtvm.toml`は任意で、組込み安全既定値だけでも動作する。利用者が調整する少数keyだけを公開し、内部上限は組込み固定にする。
 - 表示言語は日本語だけとする。message ID機構は保持し、後から言語を追加できる形を維持する。
 
@@ -118,7 +119,7 @@
 v0.1は次をすべて満たした場合だけ完成とする。
 
 1. 全CLIがlocale-neutralなApplication Serviceを経由し、CLIにdomain、filesystem、network、process判断がない。
-2. CI matrix（`ubuntu-latest`＋`windows-latest`）で、Go・Node.js・Python・.NET SDKのcatalog、完全版install/use/current/installed/uninstall、shim実行がgreenになる。
+2. CI matrix（`ubuntu-latest`＋`windows-latest`）のfixture E2Eでcatalog、完全版install/use/current/installed/uninstall、shim実行の全scenarioがgreenになり、release workflowのlive smokeで標準4 toolの実artifactによる一巡が成功する。
 3. strict definition/config/state parser、receipt、catalog、Plan、上限、negative security testが成功する。
 4. `doctor`と`doctor --report`が、導入状態と失敗状況をsecret除去済みで報告できる。
 5. `install.ps1`と`install.sh`のchecksum付きbootstrapがCIで検証できる。

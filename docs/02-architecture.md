@@ -87,7 +87,7 @@ constructorは依存の存在とbuild metadata形式だけを検査し、filesys
 | FileSystem | stat、read、atomic write、mkdir、rename、remove、walk、permission、realpath |
 | LinkManager | junction/symlink/hardlink作成、リンク種別取得、安全な除去、能力検査 |
 | Registry | Windows HKCU valueのraw/type読書き、再読、通知 |
-| HTTPClient | GET、HEAD、range再開、redirect、proxy、TLS、response limit |
+| HTTPClient | GET、HEAD、redirect、proxy、TLS、response limit |
 | ProcessRunner | argv実行、環境、cwd、stdio、signal、exit code、timeout |
 | ArchiveExtractor | list、安全検査、選択展開、進捗、形式判定 |
 | HashCalculator | streaming digest計算 |
@@ -139,7 +139,7 @@ Initialize(ctx RequestContext, req InitializeRequest) (InitializeResult, error)
 
 | method | request主要field | result主要field | CLI |
 |---|---|---|---|
-| `ListAvailable` | tool, channel, lifecycle, refresh | catalog item[] | `available` |
+| `ListAvailable` | tool, refresh | catalog item[] | `available` |
 | `ListInstalled` | optional tool | install summary[] | `installed` |
 | `ResolveCurrent` | tool, project policy | effective selection/health/source | `current` |
 | `Diagnose` | report flag | diagnostic[]/overall health | `doctor` |
@@ -162,9 +162,9 @@ ExecuteSetup(ctx, Plan, Approval) (SetupResult, error)
 
 1. Plan schema/client/invocationの一致。
 2. Approvalが必要な`PlanWarningCode`を含む。
-3. `inputs`と`reads[]`に固定したroot/config/registry/definition/catalog/receipt/selection/project fileのrevision/digest/path identity。
+3. `inputs`に固定したroot/config/registry/definition/catalog/receipt index/selection/setupのrevision/digest identity。
 4. lock取得後に同じ検査を繰り返す。
-5. Execute中にPlan外のdownload/extract/probe/read/write/storage/rollbackがなく、任意helper/backend processを起動しないこと。
+5. Execute中のdownload/extract/probeがPlanの列挙と一致し、全書込みがdata root、distribution root、宣言済みintegration対象、project fileの中にあり、任意helper/backend processを起動しないこと。
 
 Approvalは`InteractiveYes|AssumeYes`と承認categoryの集合を持つ一時値で、永続approval databaseを作らない。security failureを承認categoryにしない。
 
@@ -243,7 +243,7 @@ CLIはPlanの重要要約を冒頭と確認直前に表示し、その間に全�
 5. setup lock
 6. shim lock
 
-同一InstallKeyの同時導入は後発が待機し、先発成功後に整合性検査だけを行う。同じtool/storageを変更する公式commandとgdtvm操作はstorage lockで直列化できる範囲だけ保護し、管理外processを強制停止しない。異なるInstallKeyのdownloadは`download.concurrency`まで並行可能だが、commitとshim更新は短い排他区間にする。
+同一InstallKeyの同時導入は後発が待機し、先発成功後に整合性検査だけを行う。同じtool/storageを変更する公式commandとgdtvm操作はstorage lockで直列化できる範囲だけ保護し、管理外processを強制停止しない。異なるInstallKeyの操作は別invocationとして並行実行できるが、1つのoperation内のdownloadは逐次とし（[15-deferred.md](15-deferred.md) D-26）、commitとshim更新は短い排他区間にする。
 
 lock fileにはlock ID、role、PID、取得時刻、operation IDを[04-storage-and-data.md](04-storage-and-data.md)の形式で記録する。排他性の正本はOS lock/handleであり、PID不在やfile ageだけで即時破棄しない。active OS lockを強制解除しない。cancel/timeoutでも取得済みlockを必ず解放する。
 

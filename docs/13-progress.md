@@ -13,15 +13,15 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 | 全体状態 | `停止中` |
 | 現在フェーズ | `P0` |
 | 実行中タスクID | `なし` |
-| 最後に完了したタスクID | `S00-05（branch・version戦略レビュー）` |
+| 最後に完了したタスクID | `S00-06（モチベーション・簡素化レビュー）` |
 | 次に開始するタスクID | `P0-00` |
 | CI状態 | `未構成` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-08-08T18:56:21+09:00` |
-| 更新者 | `Codex` |
-| 作業branch | `main` |
-| 使用環境 | `Windows 10.0.26200 x64 / PowerShell 7.6.4 / Go 1.26.5` |
-| 最新の証跡 | `docs/reviews/S00-05-branch-version-strategy-review.md`、link/section/fence/branch/CalVer/同期validator、`git diff --check` |
+| 最終更新日時 | `2026-08-09T02:33:50+09:00` |
+| 更新者 | `Claude Code` |
+| 作業branch | `claude/go-dev-tool-version-manager-7zyakj` |
+| 使用環境 | `Linux container` |
+| 最新の証跡 | `docs/reviews/S00-06-motivation-simplification-review.md`、link/anchor/fence/stale用語検査、`git diff --check` |
 
 全体状態は`未着手|進行中|停止中|blocked|完了`。実行中taskは同時に1件だけ。値なしは`なし`と記す。
 
@@ -56,6 +56,7 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 | 日時 | 状態 | 完了済み部分 | 残作業・次の具体操作 | blocker/解除条件 | branch | 環境 | 証跡 |
 |---|---|---|---|---|---|---|---|
+| 2026-08-09T02:33:50+09:00 | S00-06 完了 | 利用者のモチベーション・実装量・複雑度・CI E2E制約・ドッグフーディング観点で全16文書を再レビューし、利用者判断7件を確定・反映した。(1)e2e jobを全面fixture化しlive検証をrelease時live smoke（実artifactの4 tool一巡を追加）と§9利用者チェックへ移動、(2)G-TOOLS後にDF-01でdevel buildのドッグフーディングを開始、(3)Plan契約を縮約（`reads[]`廃止・`inputs`へ`registry_sha256`追加、`writes[]`を利用者可視変更へ限定、`rollback[]`廃止、CI §7.2を封じ込め検査へ）、(4)読取り5 commandの`--json`は維持、(5)message catalog `ja.toml`は維持、(6)user mode/bootstrapは維持、(7)download再開・`available` filter・`download.concurrency`を延期しD-23〜D-26へ記録した。root README.mdへ仕様策定中statusを追加した | P0-00でrepositoryのbranch topology（`develop/work`、`codex/work`、protection、tag ruleset）を整備する | なし。remote branch操作は指定maintainerが行う | `claude/go-dev-tool-version-manager-7zyakj` | Linux container | [S00-06 review report](reviews/S00-06-motivation-simplification-review.md)、link/anchor/fence/stale用語検査、`git diff --check` |
 | 2026-08-08T18:56:21+09:00 | S00-05 完了 | 利用者判断16件をbranch topology、命名、同期・再作成、merge、protection、CI、release freeze、CalVer、annotated tag起動releaseへ同期した。`v0.1`と実versionを分離し、Go module非互換、同日`00`～`99`、失敗tag非再利用、repository再作成手順を明記した。link 181件/anchor 22件、section参照58件、fence 156 marker、Git ref 5件、feature正負6件、CalVer正負7件、CI job 6件、PR経路5件、stale表記0件、`git diff --check`が全て成功した | P0-00でGitHub repositoryを再作成し、main初期commit→develop/work→両agent workを作成して初期protection/tag rulesetを設定する | なし。remote操作、workflow、VERSION、Go sourceは未実施 | `main` | Windows 10.0.26200 x64 / PowerShell 7.6.4 / Go 1.26.5 | [S00-05 review report](reviews/S00-05-branch-version-strategy-review.md)、inline PowerShell validators、`git diff --check` |
 | 2026-08-08T18:43:11+09:00 | S00-05 再開 | release中並行開発は選択Aに確定した。release PR作成からtag起動release CIの公開完了までagent work→develop/workのmergeを凍結し、feature→agent workは継続できる | S00-05を`[-]`へ戻し、[11-quality-and-ci.md](11-quality-and-ci.md)から関連文書へ確定仕様を同期する | なし | `main` | Windows 10.0.26200 x64 / PowerShell 7.6.4 / Go 1.26.5 | 利用者回答A |
 | 2026-08-08T18:42:01+09:00 | S00-05 release中並行開発判断待ち | 全判断を仕様へ展開する過程で、`develop/work→main`のrelease PR中にagent workをdevelopへmergeするとrelease対象commitが変動する未定義状態を検出した。既存文書の修正には未着手で、判断recordだけを更新した | release PR作成からrelease公開完了までのdevelop merge規則を確定後、S00-05を`[-]`へ戻し、最初に[11-quality-and-ci.md](11-quality-and-ci.md)を修正する | 利用者がrelease中並行開発のA～Cを選択する | `main` | Windows 10.0.26200 x64 / PowerShell 7.6.4 / Go 1.26.5 | branch topologyとrelease手順の状態遷移対照 |
@@ -98,6 +99,8 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 WindowsとLinuxの間に順序gateを設けない。platform差が出る箇所は同じtaskの中で両OS分を実装し、CI matrixで同時に検証する。
 
+G-TOOLS達成後は、G-E2E/G-DONEの完了を待たずにDF-01（§17）のドッグフーディングを開始し、P11以降と並行して不具合報告へ対応する。
+
 ## 5. S00 仕様再構成
 
 - [x] **S00-01** 19規範文書をv0.1スコープへ再構成し16文書へ統合する。依存: なし。完了: 全相互linkが解決し、延期機能が[15-deferred.md](15-deferred.md)へ再導入gateと実装prompt付きで記録され、台帳が機能単位へ再編されている。証跡: 本書§3.3の該当record
@@ -105,6 +108,7 @@ WindowsとLinuxの間に順序gateを設けない。platform差が出る箇所�
 - [x] **S00-03** 全16文書を横断監査し、.NET SDKの記載が他3 toolと同等であること、および文書間の矛盾・未定義enumが無いことを確認する。依存: S00-02。完了: tool列挙の反映漏れ、`--yes`承認件数、延期文書への章番号参照、廃止済み上限、`SelectionSummary`のenum衝突、未定義enum 3件を解消し、link/anchor・TOML/JSON例・件数の機械検査が全件成功している。証跡: 本書§3.3の最新record
 - [x] **S00-04** W00-01/S00-03後の現行16文書を再レビューし、.NET SDKが他3 toolと同等に扱われていること、および構成変更後の文書内・文書間の矛盾や不整合がないことを確認・是正する。依存: S00-03。完了: 全文書の目視監査とlink/anchor・TOML/JSON例・用語/件数の機械検査を行い、発見事項、修正内容、検証結果をreview reportと本書§3.3へ記録している。証跡: `docs/reviews/S00-04-document-consistency-review.md`と本書§3.3の2026-08-08T17:41:10+09:00 record
 - [x] **S00-05** branch/PR/version/tag/release workflowを仕様化し、既存のclient version/release契約と矛盾しないように修正する。依存: S00-04。完了: branch topology・同期・merge・protection・CI、CalVer rationale/上限/Go module非互換、main/tag/release手順が一意で、指示文書・品質仕様・公開文書仕様・進捗が同期し、link/用語/例の機械検査が成功している。証跡: [S00-05 review report](reviews/S00-05-branch-version-strategy-review.md)と本書§3.3の2026-08-08T18:56:21+09:00 record
+- [x] **S00-06** 利用者のモチベーション（導入の容易さ、初心者の正確な再現、上流標準設定、最小security）と実装量・複雑度・CI E2E制約・ドッグフーディングの観点で全16文書を再レビューし、確定した簡素化を同期反映する。依存: S00-05。完了: e2eのfixture化とrelease時live smokeの実tool一巡、DF-01の新設、Plan契約の縮約、D-23〜D-26の延期記録、root README.mdのstatus表示が全対象文書へ同期され、利用者判断7件がreview reportへ記録されている。証跡: [S00-06 review report](reviews/S00-06-motivation-simplification-review.md)と本書§3.3の2026-08-09T02:33:50+09:00 record
 
 ## 6. P0 開発準備
 
@@ -143,14 +147,14 @@ WindowsとLinuxの間に順序gateを設けない。platform差が出る箇所�
 ## 11. P5 HTTP・archive・process
 
 - [ ] **P5-01** Go標準proxy/OS trust、HTTPS、timeout/retry/redirect/body上限/secret maskを実装・testする。依存: P1-03,P2-02。証跡: 未記録
-- [ ] **P5-02** `.part` streamで内部/cache SHA-256とprovider指定SHA-256/SHA-512を1 pass計算し、progress、Range/validator、cache identity、offline判定を実装・testする。依存: P5-01。証跡: 未記録
+- [ ] **P5-02** `.part` streamで内部/cache SHA-256とprovider指定SHA-256/SHA-512を1 pass計算し、progress、partial破棄、cache identity、offline判定を実装・testする。依存: P5-01。証跡: 未記録
 - [ ] **P5-03** zip/tar.gzのentry事前検査（両OSのcollision/traversal/link/bomb規則）、same-volume staging、permission正規化、atomic rename、cleanupをfailure injection testする。依存: P1-03,P2-05。証跡: 未記録
 - [ ] **P5-04** ProcessRunner（両OS）のabsolute target/argv/env/cwd/stdio/timeout/cancel/tree終了/output上限と、Plan外probe/write/download拒否および書込み範囲記録wrapperを実装・testする。依存: P5-01,P2-04。証跡: 未記録
 
 ## 12. P6 catalog・install・selection・runtime
 
 - [ ] **P6-01** catalog refresh/cache/platform availability/exact/latest/not-found/EOLを実装・testする。依存: P3,P5-01。証跡: 未記録
-- [ ] **P6-02** typed Plan、重要要約と全詳細、`inputs`/`reads`/`PathValue`/`PlanArg`、operation排他の`SetupPlan`、download/extract/probe/write/storage/rollback、任意helper process拒否、`PlanWarningCode`/approval category、stale判定を実装・testする。依存: P2-04,P6-01。証跡: 未記録
+- [ ] **P6-02** typed Plan、重要要約と全詳細、`inputs`/`PathValue`/`PlanArg`、operation排他の`SetupPlan`、download/extract/probe/storageと利用者可視`writes`、書込み封じ込め、任意helper process拒否、`PlanWarningCode`/approval category、stale判定を実装・testする。依存: P2-04,P6-01。証跡: 未記録
 - [ ] **P6-03** Resolve→Plan→Approve→Execute→Commit、progress/cancel、中断後tmp cleanup、archive install/probe/receipt/index/idempotence、`install`非選択を実装・failure injection testする。依存: P5,P6-02。証跡: 未記録
 - [ ] **P6-04** user/project use/current、Windows junction・Linux symlink transaction、native shim resolver/index/project precedence/env/fixed args/recursion/exitを実装・testする。依存: P6-03,P7-01,P7-02。証跡: 未記録
 - [ ] **P6-05** uninstall/reference/trash/shared retain/purgeを実装・failure testする。依存: P6-04。証跡: 未記録
@@ -186,21 +190,25 @@ WindowsとLinuxの間に順序gateを設けない。platform差が出る箇所�
 - [ ] **P10-05** registry exact 4 tool/schema/message/licenseのcontract testと、tool固有Go分岐不存在をsynthetic definitionで検証する。依存: P10-01～P10-04。証跡: 未記録
 - [ ] **P10-06** `dotnet tool install -g`の実配置先を両OSで測定し、`DOTNET_CLI_HOME`で管理領域へ隔離できるかを確定する。隔離できる場合はstorage宣言とcontract testへ反映し、できない場合は管理外として[12-public-docs.md](12-public-docs.md)の必須記載項目へ確定する。推測でstorageを宣言しない。依存: P10-04。証跡: 未記録
 
-## 17. P11 E2E・package・bootstrap
+## 17. DF ドッグフーディング開始
 
-- [ ] **P11-01** E2E基盤を両OSで作る。書込み範囲記録wrapper、network fixture/live切替、clean rootの生成と破棄を含む。依存: G-TOOLS。証跡: 未記録
+- [ ] **DF-01** G-TOOLS達成後、CI `package` jobのdevel build成果物（両OS archive）を利用者へ提供し、ドッグフーディングを開始する。利用者は[11-quality-and-ci.md](11-quality-and-ci.md)§9のチェックリストと実作業で使用し、不具合は`gdtvm doctor --report`と[14-maintenance.md](14-maintenance.md)§5のテンプレートで報告する。報告は[14-maintenance.md](14-maintenance.md)§5.2の初動とB01で分類し、必要なtaskを本書へ追加する。devel buildはCI artifactとしてだけ提供し、GitHub Releaseを作らない。依存: G-TOOLS。証跡: 未記録
+
+## 18. P11 E2E・package・bootstrap
+
+- [ ] **P11-01** E2E基盤を両OSで作る。書込み範囲記録wrapper（封じ込め検査）、ローカルHTTPS疑似upstream・合成archive・擬似tool binaryのfixture基盤、clean rootの生成と破棄を含む。networkへ依存しない。依存: G-TOOLS。証跡: 未記録
 - [ ] **P11-02** [11-quality-and-ci.md](11-quality-and-ci.md)§8のscenario 1～8（setup冪等、4 toolの一巡、install非選択、not-found案内、latest/prerelease/EOL/third-party/制限的license Plan、storage分離、project優先）を自動化する。依存: P11-01。証跡: 未記録
-- [ ] **P11-03** scenario 9～15（offline/cache/resume/cancel/lock、failure injection、悪性fixture、PATH integration、`setup --remove`、doctor/report、書込み範囲検査）を自動化する。依存: P11-02。証跡: 未記録
+- [ ] **P11-03** scenario 9～15（offline/cache/cancel/lock、failure injection、悪性fixture、PATH integration、`setup --remove`、doctor/report、書込み範囲検査）を自動化する。依存: P11-02。証跡: 未記録
 - [ ] **P11-04** `package` jobで2 archiveを生成し構造/permission/binary versionを検査し、`bootstrap` jobでfixture releaseに対する`install.ps1`/`install.sh`のpositive/negative、同版no-op、異版のbackupなし置換、任意`gdtvm.toml`のbyte完全引継ぎを検査する。依存: P11-01。証跡: 未記録
 
-## 18. P12 文書・release
+## 19. P12 文書・release
 
 - [ ] **P12-01** root README/USER_GUIDEを[12-public-docs.md](12-public-docs.md)どおり作り、実装済みstatus/9 command/4 tool/storage/security/更新方法を同期する。依存: G-E2E。証跡: 未記録
 - [ ] **P12-02** link/anchor/example/help一致/schema/公開文書、secret/個人pathを検査する。依存: P12-01。証跡: 未記録
 - [ ] **P12-03** 5 assetを公開して全件を再download/checksum/archive/script bytes検証し、[11-quality-and-ci.md](11-quality-and-ci.md)§9の利用者確認チェックリストと未確認項目をrelease noteへ記載する。公開assetを上書きしない。依存: P12-02。証跡: 未記録
 - [ ] **P12-04** G-DONEと最終snapshotを判定する。依存: P12-01～P12-03。証跡: 未記録
 
-## 19. 章別coverage
+## 20. 章別coverage
 
 - [ ] **COV-01** `01-requirements`: P0,P8,P11,P12
 - [ ] **COV-02** `02-architecture`: P1,P8
@@ -218,7 +226,7 @@ WindowsとLinuxの間に順序gateを設けない。platform差が出る箇所�
 - [ ] **COV-14** `14-maintenance`: P0-02と将来追加/不具合作業
 - [ ] **COV-15** `15-deferred`: 延期機能を実装する場合の入口
 
-## 20. 最終未完了一覧
+## 21. 最終未完了一覧
 
 必須項目を時間不足で延期してG-DONEにしない。[11-quality-and-ci.md](11-quality-and-ci.md)§9の利用者確認は必須項目ではないが、実施状況を必ず記載する。
 

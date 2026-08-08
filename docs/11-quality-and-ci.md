@@ -72,18 +72,20 @@ v0.1の合格判定はCI matrixだけで行う。実機での手動E2Eをrelease
 |---|---|---|
 | `lint` | `ubuntu-latest`, `windows-latest` | `gofmt -l`, `go vet`, vulnerability scan, license scan, 文書link/example検査 |
 | `unit` | `ubuntu-latest`, `windows-latest` | unit/contract/security fixture test、`-race`（対応host） |
-| `e2e` | `ubuntu-latest`, `windows-latest` | §8のscenarioをnetwork有効で実行 |
+| `e2e` | `ubuntu-latest`, `windows-latest` | §8のscenarioをfixture基盤でnetworkなしで実行 |
 | `policy` | `ubuntu-latest`, `windows-latest` | §7の禁止API/書込み範囲検査 |
 | `package` | `ubuntu-latest`, `windows-latest` | 2 archive生成、構造/permission/binary version検査 |
 | `bootstrap` | `ubuntu-latest`, `windows-latest` | fixture releaseに対する`install.ps1`/`install.sh`の静的・実行検査 |
 
 - Windows固有codeを変更したPRもLinux jobを、Linux固有codeを変更したPRもWindows jobを必ず実行する。片方のOSだけを回すworkflow分岐を作らない。
 - 両OSのjobは同じtest sourceを共有し、platform差はbuild tagまたはruntime分岐で表現する。「Linuxで再実行する」ためだけのtestを別に書かない。
-- `e2e`は上流metadataへ実際にaccessするためflakeし得る。network起因の失敗はretryしてよいが、checksum/schema/security失敗はretryしない。
+- PR CIの全jobはnetworkへ依存せず決定的に実行する。実upstreamへのlive接続は§13手順7のlive smoke（[07-registry-and-tools.md](07-registry-and-tools.md)§12）だけが行い、network起因のlive smoke失敗はretryできるがchecksum/schema/security失敗はretryしない。
 
 ### 5.1 段階的な開発順序
 
 WindowsとLinuxを同時に開発する。実装は機能単位で進め、OSごとの段階gateを設けない。platform差が出る箇所（link、PATH integration、user lookup、path規則、signal）は同じ機能のtaskの中で両OS分を実装し、CI matrixで同時に検証する。
+
+G-TOOLS（[13-progress.md](13-progress.md)）達成後は、`package` jobが生成するdevel build成果物を利用者へ提供し、P11以降と並行してドッグフーディング（§9のチェックリストと実作業での使用）を開始する（[13-progress.md](13-progress.md) DF-01）。devel buildはCI artifactとしてだけ提供し、GitHub Releaseを作らず、release候補にもしない。
 
 ### 5.2 branch topologyと命名
 
@@ -170,7 +172,7 @@ release成功後は次の順で更新する。
 - channel/lifecycle/evidence、artifact 0/1/2 selection、checksum 2 kind、digest algorithm（`sha256`/`sha512`）とhex長一致、mismatch
 - archive traversal、case/予約名/ADS/link/bomb、containment race、`strip_components` 0と1
 - typed storage scope、environment merge、command target/fixed args
-- Plan `inputs`/`reads`、`SetupPlan`のoperation排他・旧新root・filesystem/link/integration/backup、download/extract/probe/write/storage/rollbackの完全列挙、任意helper processの拒否、`PlanWarningCode` 8件（うち明示承認7件）と`ResultWarningCode` 5件、approval category、`license_notice`未承認の拒否、cancel、lock順、concurrent install/use
+- Plan `inputs`のstale検査、`SetupPlan`のoperation排他・旧新root・filesystem/link/integration/backup、download/extract/probe/storageの列挙、利用者可視`writes`（integration対象・project file・current link）、書込み封じ込め、任意helper processの拒否、`PlanWarningCode` 8件（うち明示承認7件）と`ResultWarningCode` 5件、approval category、`license_notice`未承認の拒否、cancel、lock順、concurrent install/use
 - 機械契約enumの網羅（`04`§17.1）、`Diagnostic.code` 10件とstatus集約、`PathValue`/`path_role` 22値、Plan argvの`PlanArg` literal/path排他、未定義値の拒否
 - staging/commit、failure injection、中断後のtmp cleanup
 - project precedence、user selection
@@ -200,7 +202,7 @@ Registry portはHKCUのみを受け付ける型とし、hive引数を取らな�
 
 E2E実行時はFileSystem、Registry、Process portを記録用wrapperで包み、次を検査する。
 
-- 全write/move/delete先が、data root、distribution root、setup stateが宣言したintegration target（HKCU Path値または対象shell profile 1 file）、project fileのいずれかに含まれる。判定は[04-storage-and-data.md](04-storage-and-data.md)§17.2の`path_role`で行い、Planの`writes[]`が宣言したroleと実際の書込み先が一致することを確認する
+- 全write/move/delete先が、data root、distribution root、setup stateが宣言したintegration target（HKCU Path値または対象shell profile 1 file）、project fileのいずれかに含まれる（封じ込め検査）。判定は[04-storage-and-data.md](04-storage-and-data.md)§17.2の`path_role`で行う。管理root外への書込みは、Planの`writes[]`が宣言したintegration対象とproject fileだけであることを確認する
 - 変更operationで起動した全probe processがPlan `probes[]`のexecutable/argv/cwd/write pathと一致し、任意helper/backend processがない
 - 記録に昇格・system変更・package manager起動が現れない
 
@@ -208,7 +210,7 @@ port経由でしか外部作用が起きない構造（[02-architecture.md](02-a
 
 ## 8. E2E scenario（CIで実行するもの）
 
-`e2e` jobは両OSで次を自動実行する。
+`e2e` jobは両OSで次を自動実行する。scenarioはP11-01のfixture基盤（ローカルHTTPS疑似upstream、合成archive、擬似tool binary）で実行し、networkへ依存しない。標準4 toolと同じ形のtest定義を使い、標準definition実体の正しさは§6のcontract test（記録済みfixture）と§13手順7のlive smokeで検証する。
 
 1. clean portable setupとclean user setup。setup後に**新しい子processを起動**してshimが解決されることを確認する。
 2. `setup`の冪等性。2回目の実行がno-opとして報告される。
@@ -218,7 +220,7 @@ port経由でしか外部作用が起きない構造（[02-architecture.md](02-a
 6. `--latest`、prerelease、EOL、third-party Python、.NET WindowsのrestrictiveなlicenseのPlan要約と詳細、progress出力。明示承認なしでは`E_APPROVAL_REQUIRED`になること。
 7. Go共有GOBIN、Node version別global prefix、Python venv/`--user`、.NET version別`DOTNET_CLI_HOME`とtool共有NuGet cacheの分離。
 8. project完全versionがuser selectionより優先されること。
-9. `--offline`、cache再利用、Range再開、cancel、lock競合。
+9. `--offline`、cache再利用、cancel、lock競合。
 10. download失敗、probe失敗、disk full、commit直前中断のfailure injectionと、`tmp/operations/`の後始末。
 11. 悪性archive/registry/receipt fixtureの拒否と、log/reportのmasking。
 12. PATH integration: Windows HKCU Pathの型/長さ/rollback/remove、Linux shell profileのmarker追加/no-op/remove。
@@ -333,7 +335,7 @@ READMEはscriptをdownloadして公開元/内容を確認後に実行する例�
 
 - `lint`/`unit`/`policy`/`package`/`bootstrap`の全jobがgreen。
 - `e2e` jobが両OSでgreen（§8の15 scenario）。
-- 4 tool×2 platformのexact install/use/command/uninstallがCIで成功。
+- 4 tool×2 platformのexact install/use/command/uninstallが、fixture E2Eとrelease workflowのlive smoke（[07-registry-and-tools.md](07-registry-and-tools.md)§12）で成功。
 - 公開後の5 asset再検査が成功。
 - repository README/USER_GUIDEが実装済み範囲と一致。
 - §9のチェックリストが提示され、実施済み/未実施が明記されている。

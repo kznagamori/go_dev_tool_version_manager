@@ -38,6 +38,10 @@
 | [D-20](#d-20-portable-root移動サポート) | setup後のroot移動と自動再生成 | `repair`（D-04）に依存する | `gdtvm setup` の再実行 |
 | [D-21](#d-21-追加archive形式) | `tar.xz` 等 | Go標準ライブラリ外の圧縮moduleが必要 | Node.js Linuxは`.tar.gz`を採用 |
 | [D-22](#d-22-archive-entry-filter) | definitionによるarchive entry include/exclude | 標準4 toolは全entryを展開でき、未使用fieldになる | 安全検査後に全entryを展開 |
+| [D-23](#d-23-plan完全列挙) | Planの読書き完全列挙（`reads[]`/網羅`writes[]`/`rollback[]`） | 個人利用の承認・診断には利用者可視変更の列挙と封じ込め検査で足りる | `inputs`再検査＋封じ込め検査＋利用者可視`writes[]` |
+| [D-24](#d-24-download再開) | download Range再開 | partial照合の実装量に対し、やり直しが簡潔 | 最初から再取得。完了済みcacheは再利用 |
+| [D-25](#d-25-availableのfilter-option) | `available`の`--channel`/`--lifecycle` filter | 全件表示で目的を満たす | 全件表示（channel/lifecycle列を常に表示） |
+| [D-26](#d-26-並行download) | 並行download設定（`download.concurrency`） | v0.1に並行downloadを使う操作がない | 逐次download固定 |
 
 ---
 
@@ -206,7 +210,7 @@
 
 **削除した内容**: RFC 8785 JSON Canonicalizationによる`plan_sha256`、domain separationつきdigest、`input_fingerprints`（最大64件のmap）、Plan TTL 15分、Approvalとdigestの結合。
 
-**v0.1での代替**: Planは`inputs`（root identity、config/project/definition/catalog digest、selections/setup/receipt-index revision）とtyped `reads[]`を持ち、Executeは実体から再取得して一致を確認する。Approvalは`requires_explicit_approval=true`の`PlanWarningCode`集合を満たすかで判定する。
+**v0.1での代替**: Planは`inputs`（root identity、config/project/definition/catalog/registry digest、selections/setup/receipt-index revision）を持ち、Executeは実体から再取得して一致を確認する。Approvalは`requires_explicit_approval=true`の`PlanWarningCode`集合を満たすかで判定する。
 
 **再導入gate**:
 1. `inputs`の再検査で防げない攻撃・事故を具体的に示す。
@@ -338,6 +342,65 @@ Go/Node.js/Python/.NET SDK以外のtoolは[14-maintenance.md](14-maintenance.md)
 3. filter対象外entryも展開前安全検査とarchive bomb count/sizeへ含めるかを明記し、bypass negative testを作る。
 
 **影響する文書**: `06`(install schema)、`08`(安全展開)、`11`(contract/security test)、`13`。
+
+---
+
+### D-23 Plan完全列挙
+
+**削除した内容**: Planの`reads[]`（全入力fileのpath＋expected SHA-256の列挙）、`writes[]`による全書込み先（staging、cache、state、receipt、index、shim、storage）の網羅列挙と`before/after_sha256`、`rollback[]`配列、CI E2EでのPlan `writes[]`と実書込みの1件ずつの突合せ。
+
+**v0.1での代替**: `inputs`（root identity、config/project/definition/catalog/registryのdigest、selection/setup/receipt-indexのrevision）を承認前とlock取得後に実体から再検査してstaleを防ぐ。`writes[]`は利用者可視の変更（integration対象、project file、current link）だけを列挙し、それ以外の書込みはExecuteの封じ込め検査と[11-quality-and-ci.md](11-quality-and-ci.md)§7.2の書込み範囲検査（許可root/role内であること）で保証する。rollbackはengine内部動作としてfailure injection testで検証する。
+
+**再導入gate**:
+1. 封じ込め検査で防げなかった事故・攻撃の具体例を示す。管理root内の意図しないfileを書き換えた不具合が実際に発生し、事前の全列挙があれば検出できた場合が該当する。
+2. 列挙の粒度（path単位かrole単位か）と、`before/after_sha256`の必要性を分けて決める。
+3. D-11（Plan fingerprint）と同時に導入するかを判断する。
+
+**影響する文書**: `02`(Execute検査)、`04`(Plan契約)、`08`(Plan表示)、`10`(§13)、`11`(§6/§7.2)、`13`。
+
+---
+
+### D-24 download再開
+
+**削除した内容**: partial download（`.part`）のURL/ETag/Last-Modified/expected size照合によるRange再開、`download.resume` config key、serverがRangeを無視した場合の0 byte再開規則。
+
+**v0.1での代替**: 中断したdownloadのpartial fileは所有と作成時刻を検査して破棄し、次回実行時に最初から取得し直す。digest/identityが一致する完了済みcache fileの再利用は維持する。
+
+**再導入gate**:
+1. 全量再取得で実害が出る利用者report（大型artifactと不安定回線の組合せ）を示す。
+2. URL identity、validator（ETag/Last-Modified）、expected sizeの全一致時だけ再開し、不一致partialを破棄することをfixtureで検証する。
+3. 再開後のdigest計算が全量取得と一致することをtestする。
+
+**影響する文書**: `04`(§5)、`05`(download key)、`08`(§5.1)、`10`(§10)、`11`(E2E scenario)、`13`。
+
+---
+
+### D-25 availableのfilter option
+
+**削除した内容**: `available`の`--channel stable|prerelease`と`--lifecycle supported|eol|unknown` option、`ListAvailable` requestのchannel/lifecycle field。
+
+**v0.1での代替**: `available <tool>`は全versionをchannel/lifecycle列付きのversion降順で表示する。機械処理は`--json`の全item出力を利用側でfilterする。
+
+**再導入gate**:
+1. 全件表示では不足する具体的な利用場面（表示量・目視性）を利用者reportで示す。
+2. filter組合せと0件時のexit挙動を決める。
+3. `03`のoption表、`02`のrequest field、testを同時更新する。
+
+**影響する文書**: `02`(§7)、`03`(§3.2)、`13`。
+
+---
+
+### D-26 並行download
+
+**削除した内容**: `download.concurrency` config key（1～8）と、複数downloadの並行実行制御。
+
+**v0.1での代替**: 1つのoperationのdownload（artifact 1件と必要なchecksum文書）は逐次実行する。異なるInstallKeyの操作は別invocationとして並行でき、lock順（[02-architecture.md](02-architecture.md)§12）で保護する。
+
+**再導入gate**:
+1. 並行downloadを必要とする操作（複数tool一括install等）が先に仕様化されている。
+2. progress表示、cancel、失敗時cleanupが並行数分で成立することをtestする。
+
+**影響する文書**: `02`(§12)、`05`(download key)、`08`(§2)、`13`。
 
 ---
 
