@@ -470,18 +470,18 @@ top-level keyは例の集合だけで全件必須。`client_version`はPlanを�
 
 | key | type/規則 |
 |---|---|
-| `mode` | `portable|user` |
-| `previous_mode` | 初回setupまたはmode/root不変なら空、それ以外は変更前の`portable|user` |
+| `mode` | `portable\|user` |
+| `previous_mode` | 初回setupまたはmode/root不変なら空、それ以外は変更前の`portable\|user` |
 | `data_root` | role=`data-root`の`PathValue` |
 | `distribution_root` | role=`distribution-root`の`PathValue` |
 | `previous_data_root` | role=`data-root`の`PathValue`。初回setupまたはmode/root不変ならpath空 |
 | `previous_distribution_root` | role=`distribution-root`の`PathValue`。初回setupまたはmode/root不変ならpath空 |
 | `filesystem_capabilities` | §17.1の値をASCII byte順・重複なしで1～7件 |
-| `current_link_strategy` | `junction|symlink` |
-| `shim_strategy` | `hardlink|symlink|fallback-resolver` |
+| `current_link_strategy` | `junction\|symlink` |
+| `shim_strategy` | `hardlink\|symlink\|fallback-resolver` |
 | `shim_directory` | role=`shim`の`PathValue` |
-| `path_integration` | `user-path|shell-profile|none` |
-| `shell` | `shell-profile`なら`bash|zsh|fish`、それ以外は空 |
+| `path_integration` | `user-path\|shell-profile\|none` |
+| `shell` | `shell-profile`なら`bash\|zsh\|fish`、それ以外は空 |
 | `integration_target` | role=`config`の`PathValue`。`none`ならpath空 |
 | `backup_path` | role=`state-backup`の`PathValue`。integrationを変更しない場合はpath空 |
 | `restart_required` | bool。trueと`W_RESTART_REQUIRED` exactly 1件を同値にする |
@@ -498,7 +498,7 @@ Windowsはcapabilityに`atomic-replace|directory-rename|file-identity|owner-enfo
 |---|---|---|
 | `downloads` | `id`, `provider_kind`, `provider_name`, `provider_repository`, `provider_homepage`, `provider_release`, `url`, `file_name`, `size`, `expected_digest`, `checksum_source`, `license`, `adoption_reason_message_id`, `destination` | HTTPS完全URL。`expected_digest`は§7のupstream digest形式。`size=0`はprovider上でunknownとして表示する。`destination.role=download-cache\|staging`。officialのadoption reasonだけ空 |
 | `extracts` | `id`, `source_download_id`, `format`, `strip_components`, `destination` | `source_download_id`は同じPlanのdownload ID。`format=zip\|tar.gz`、stripは`0\|1`、`destination.role=staging` |
-| `probes` | `id`, `runtime_command`, `executable`, `version`, `source`, `artifact_digest`, `license`, `reason_message_id`, `args`, `working_directory`, `write_paths`, `stream`, `expect`, `regex`, `expected_version`, `expected_root`, `required_paths`, `timeout_ms`, `required` | definition probeを完全展開した値。executable/cwd/write pathは`PathValue`。完全version、artifact URL/digest、provider license、理由を空にしない。`args`は下記`PlanArg[]`、`expected_root`は`PathValue|null`、`required_paths` entryは`kind`, `path`（`PathValue`）。stream/expect/kindは§17.1。Plan外probeを実行しない |
+| `probes` | `id`, `runtime_command`, `executable`, `version`, `source`, `artifact_digest`, `license`, `reason_message_id`, `args`, `working_directory`, `write_paths`, `stream`, `expect`, `regex`, `expected_version`, `expected_root`, `required_paths`, `timeout_ms`, `required` | definition probeを完全展開した値。executable/cwd/write pathは`PathValue`。完全version、artifact URL/digest、provider license、理由を空にしない。`args`は下記`PlanArg[]`、`expected_root`は`PathValue\|null`、`required_paths` entryは`kind`, `path`（`PathValue`）。stream/expect/kindは§17.1。Plan外probeを実行しない |
 | `writes` | `id`, `action`, `target` | `target`は`PathValue`。`action=create\|replace\|remove\|junction\|symlink\|registry-value` |
 | `storage` | `id`, `kind`, `scope`, `target`, `purge`, `action` | `target`は`PathValue`。kind/scope/purgeは[06-tool-definition.md](06-tool-definition.md)。`action=create\|retain\|purge` |
 | `warnings` | `code`, `message_id`, `parameters`, `requires_explicit_approval` | parametersはstring/bool/integer/nullだけのmap。codeは§16.1の閉じた集合 |

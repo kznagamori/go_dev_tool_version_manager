@@ -22,6 +22,10 @@ profile.cov
 .cache/
 artifacts/
 
+# CI補助scriptのPython bytecode
+__pycache__/
+*.py[cod]
+
 # Go workspace file
 go.work
 go.work.sum

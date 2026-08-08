@@ -1,0 +1,157 @@
+name: CI
+
+# docs/11-quality-and-ci.md §5のCI matrix。v0.1の合格判定はこのworkflowだけで行う。
+#
+# 6 jobをubuntu-latestとwindows-latestの両方で実行し、片方のOSだけを回す分岐を作らない
+# （§5.2）。paths filterも置かない。Windows固有codeを変更したPRでもLinux jobを、
+# その逆も必ず実行するためである。
+#
+# P0-01時点ではGo sourceもbootstrap scriptも存在しない。中身が入っていないjobは
+# 入力の有無を判定し、無ければ担当task IDを示して成功する。入力が入った時点で
+# 自動的に実検査へ切り替わるので、placeholderが残り続けない。
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop/work
+      - claude/work
+      - codex/work
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lint:
+    name: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 文書link/anchor/fence/table検査
+        run: python scripts/ci/check_docs.py
+      - name: gofmt / go vet
+        run: |
+          if [ -f go.mod ]; then
+            unformatted="$(gofmt -l .)"
+            if [ -n "$unformatted" ]; then
+              echo "$unformatted"
+              echo "::error title=gofmt::上のfileがgofmt済みでない"
+              exit 1
+            fi
+            go vet ./...
+          else
+            echo "::notice title=lint: Go検査は未実行::go.mod が無いため gofmt と go vet を実行していない。P0-02 で Go module/toolchain と actions/setup-go の固定版を決めた時点で有効になる (docs/13-progress.md P0-02)"
+          fi
+      - name: vulnerability / license検査
+        run: |
+          if [ -f go.mod ]; then
+            echo "::error title=lint::go.mod があるのに vulnerability/license 検査が未実装。P0-02 で追加する"
+            exit 1
+          fi
+          echo "::notice title=lint: 依存検査は未実行::go.mod が無いため vulnerability/license 検査を実行していない。P0-02 で command を固定する (docs/13-progress.md P0-02)"
+
+  unit:
+    name: unit
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: unit / contract test
+        run: |
+          if [ -f go.mod ]; then
+            echo "::error title=unit::go.mod があるのに test 実行が未実装。P0-02 で test/coverage command を固定して有効化する"
+            exit 1
+          fi
+          echo "::notice title=unit: 未実行::go.mod が無いため unit/contract test を実行していない。P0-02 で test command を固定し、P1-01 以降のpackageから実検査になる (docs/13-progress.md P0-02, P1-01)"
+
+  e2e:
+    name: e2e
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: E2E scenario
+        run: |
+          if [ -d test/e2e ]; then
+            echo "::error title=e2e::test/e2e があるのに scenario 実行が未実装。P11-02 と P11-03 で有効化する"
+            exit 1
+          fi
+          echo "::notice title=e2e: 未実行::E2E基盤が無いため §8 の scenario を実行していない。P11-01 の fixture 基盤の後に P11-02 と P11-03 で有効になる (docs/13-progress.md P11-01)"
+
+  policy:
+    name: policy
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 禁止APIの静的検査
+        run: python scripts/ci/check_policy.py
+      - name: PR head/base検査
+        run: python scripts/ci/check_pr_refs.py
+      - name: 書込み範囲の動的検査
+        run: |
+          if [ -d test/e2e ]; then
+            echo "::error title=policy::test/e2e があるのに §7.2 の封じ込め検査が未接続。P11-03 で有効化する"
+            exit 1
+          fi
+          echo "::notice title=policy: 未実行::§7.2 の書込み範囲検査は e2e 実行時の記録を前提とするため未実行。P11-03 で有効になる (docs/13-progress.md P11-03)"
+
+  package:
+    name: package
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: archive生成と構造検査
+        run: |
+          if [ -f go.mod ] && [ -f VERSION ]; then
+            echo "::error title=package::go.mod と VERSION があるのに archive 生成が未実装。P11-04 で有効化する"
+            exit 1
+          fi
+          echo "::notice title=package: 未実行::go.mod と VERSION が揃っていないため 2 archive の生成と構造/permission/binary version 検査を実行していない。P11-04 で有効になる (docs/13-progress.md P11-04)"
+
+  bootstrap:
+    name: bootstrap
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: bootstrap script検査
+        run: |
+          scripts="$(find . -path ./.git -prune -o \( -name install.ps1 -o -name install.sh \) -print)"
+          if [ -n "$scripts" ]; then
+            echo "$scripts"
+            echo "::error title=bootstrap::bootstrap script があるのに §12.4 の検査が未実装。P11-04 で有効化する"
+            exit 1
+          fi
+          echo "::notice title=bootstrap: 未実行::install.ps1 と install.sh が無いため §12.4 の syntax/実行/negative 検査を実行していない。P11-04 で有効になる (docs/13-progress.md P11-04)"
