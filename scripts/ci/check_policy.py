@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""禁止APIの静的検査（docs/11-quality-and-ci.md §7.1の`policy` job）。
+
+GitHub Actionsの`windows-latest` runnerはAdministratorsグループに属するため、
+「標準userでしか動かない」ことをOS権限で証明できない。代わりにproduction pathへ
+昇格・system変更・package manager起動・TLS無効化のsymbolが存在しないことを
+source走査で証明する（§7.1）。
+
+command名は文字列literal内でだけ検査する。`adapt`のような識別子が`apt`にmatchして
+偽陽性になるのを避けるためで、実際に外部programを起動するにはcommand名が
+literalとして現れる必要がある。`InsecureSkipVerify`のようなAPI識別子は
+literalに限らずsource全体で検査する。
+
+使い方:
+    check_policy.py [--root <dir>]
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from pathlib import Path
+
+# production pathから除外する。Goのtest fileとtestdataはtest資材である。
+EXCLUDED_SUFFIX = "_test.go"
+EXCLUDED_DIRS = {"testdata"}
+
+# Goの文字列literal（interpreted、raw）。
+STRING_LITERAL = re.compile(r'"(?:[^"\\\n]|\\.)*"' r"|`[^`]*`")
+
+# 文字列literal内で禁止するcommand名。§7.1の昇格・system変更・package manager。
+FORBIDDEN_COMMANDS = {
+    "sudo": "昇格",
+    "gsudo": "昇格",
+    "pkexec": "昇格",
+    "runas": "昇格（ShellExecuteのrunas verb）",
+    "setx": "system環境変数変更",
+    "reg.exe": "registry直接操作",
+    "winget": "package manager起動",
+    "choco": "package manager起動",
+    "chocolatey": "package manager起動",
+    "apt": "package manager起動",
+    "apt-get": "package manager起動",
+    "dnf": "package manager起動",
+    "yum": "package manager起動",
+    "pacman": "package manager起動",
+}
+
+# source全体で禁止する識別子。
+FORBIDDEN_SYMBOLS = {
+    "InsecureSkipVerify": "TLS検証の無効化",
+    "HKEY_LOCAL_MACHINE": "HKLM変更",
+    "HKLM": "HKLM変更",
+    "registry.LOCAL_MACHINE": "HKLM変更",
+    "x509.NewCertPool": "独自CA bundle読込み",
+    "SystemCertPool": "CA bundleの差し替え",
+    "RootCAs": "独自CA bundleの適用",
+}
+
+
+def production_go_files(root: Path) -> list[Path]:
+    files: list[Path] = []
+    for path in sorted(root.rglob("*.go")):
+        if path.name.endswith(EXCLUDED_SUFFIX):
+            continue
+        if EXCLUDED_DIRS & set(path.relative_to(root).parts):
+            continue
+        files.append(path)
+    return files
+
+
+def scan(path: Path, rel: Path) -> list[str]:
+    findings: list[str] = []
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        for symbol, reason in FORBIDDEN_SYMBOLS.items():
+            if symbol in line:
+                findings.append(f"{rel}:{number}: 禁止symbol `{symbol}` ({reason})")
+        for literal in STRING_LITERAL.findall(line):
+            body = literal[1:-1]
+            for command, reason in FORBIDDEN_COMMANDS.items():
+                if re.search(rf"(?<![\w.-]){re.escape(command)}(?![\w-])", body):
+                    findings.append(f"{rel}:{number}: 禁止command `{command}` ({reason})")
+    return findings
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root", default=str(Path(__file__).resolve().parents[2]))
+    args = parser.parse_args()
+    root = Path(args.root).resolve()
+
+    files = production_go_files(root)
+    findings: list[str] = []
+    for path in files:
+        findings.extend(scan(path, path.relative_to(root)))
+
+    print(f"走査したproduction Go file数: {len(files)}")
+    if not files:
+        print(
+            "Go sourceがまだ無いため検出対象は0件。"
+            "P1-01でpackage骨格が入った時点から実質的な検査になる（docs/13-progress.md P1-01）"
+        )
+    if findings:
+        for finding in findings:
+            print(f"ERROR {finding}")
+        print(f"禁止API検査に失敗した: {len(findings)}件")
+        return 1
+    print("禁止API検査に成功した: 昇格/system変更/package manager/TLS")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
