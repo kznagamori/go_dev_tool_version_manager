@@ -121,7 +121,22 @@ def check_file(path: Path, root: Path, anchors_cache: dict[Path, set[str]]) -> l
     return errors
 
 
+def force_utf8_stdio() -> None:
+    """stdout/stderrをUTF-8へ固定する。
+
+    Windowsのconsole既定encoding（cp1252等）では日本語のdiagnosticが
+    UnicodeEncodeErrorになり、検査そのものではなく出力で落ちる。CI matrixは
+    両OSで同じscriptを実行するため（docs/11-quality-and-ci.md §5.2）、
+    platform差はruntime側で吸収する。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
 def main() -> int:
+    force_utf8_stdio()
     root = Path(__file__).resolve().parents[2]
     paths: list[Path] = []
     for pattern in TARGET_GLOBS:
