@@ -12,6 +12,69 @@
 
 tool固有挙動はdefinition/fixture/仕様へ置き、Go commentで補完しない。挙動変更時はcomment、test、仕様を同じ変更で更新する。
 
+### 1.1 Go moduleとtoolchain
+
+| 項目 | 値 |
+|---|---|
+| module path | `github.com/kznagamori/go_dev_tool_version_manager` |
+| `go.mod`の`go` | `1.26.0`（minimum toolchain） |
+| `go.mod`の`toolchain` | 採用minorの最新security patch。現在は`go1.26.5` |
+
+**Go versionの正本は`go.mod`だけ**とし、workflowへ数値を書かない。CIは`actions/setup-go`の`go-version-file: go.mod`で読み、`lint` jobが`go.mod`の`toolchain`行と実行中のGo versionの一致を検査する。二箇所に数値を持つと片方だけ更新された状態が静かに成立するためである。
+
+security patchが出た場合は`toolchain`行だけを更新する。minorを上げる場合は`go`行と本節を同じ変更で更新する。
+
+### 1.2 固定command
+
+| job | command | 対象が無いときの扱い |
+|---|---|---|
+| `lint` | `gofmt -l .` | 常時実行。0 fileでも成功する |
+| `lint` | `go vet ./...` | package 0件では`go vet`自体がexit 1になるため、`go list ./...`が空なら未実行を報告して成功する |
+| `lint` | `go tool govulncheck ./...` | 同上 |
+| `lint` | `scripts/ci/check_licenses.py` | 常時実行。`go.mod`が無ければ未実行を報告して成功する |
+| `lint` | `scripts/ci/check_docs.py` | 常時実行 |
+| `unit` | `go test ./... -race -shuffle=on -covermode=atomic -coverprofile=coverage.out` | 同上。`go list ./...`が空なら未実行を報告して成功する |
+| `policy` | `scripts/ci/check_policy.py`, `scripts/ci/check_pr_refs.py` | 常時実行 |
+
+`-race`はC toolchainを要求するため、`go env CC`が実行可能な場合だけ付ける（§5の「対応host」）。OS名で分岐しない。付けない場合は`-covermode=count`とし、その旨を報告する。
+
+coverageは計測して総合値をjob summaryへ出すだけとし、閾値でCIを失敗させない。package実装前に根拠のない数値を固定しないためである。閾値の導入は実測値が揃ってから別taskで判断する。
+
+外部toolは`go.mod`の`tool` directiveで固定し、`go.sum`のchecksum検証を通す。`go run <module>@<version>`のように実行時解決へ委ねない。
+
+### 1.3 依存licenseの許可list
+
+依存moduleに許可するlicenseは次のpermissiveだけとする。
+
+```text
+MIT  Apache-2.0  BSD-2-Clause  BSD-3-Clause  ISC
+```
+
+`scripts/ci/check_licenses.py`が`go mod download -json all`の全moduleを走査し、license file不在、判定不能、許可list外をいずれも失敗として扱う。module graph全体を対象にするのは、build対象packageだけへ絞ると後からimportが増えたとき検査範囲が静かに広がるためである。
+
+copyleftを含むmoduleを追加する場合は、`go.mod`へ入れる前に本節の許可listと[10-security.md](10-security.md)のlicense表示契約を同じ変更で更新する。許可listを迂回するoptionや例外指定を実装しない。
+
+### 1.4 証跡directoryと命名
+
+監査、レビュー、検証のreportは`docs/reviews/<TASK-ID>-<slug>.md`へ置く。
+
+- `<TASK-ID>`は[13-progress.md](13-progress.md)に実在するIDのexact値（大文字のまま）とする。
+- `<slug>`は内容を表す小文字ASCII英数字のkebab-caseとする。
+- 台帳の証跡欄から相対linkで参照し、reportからは`../`で番号付き仕様を参照する。
+- reportは監査証跡であり規範仕様ではない。実装時は[README.md](README.md)が指定する番号付き仕様を正とする。
+
+CIが生成するcoverage profile、archive、log等はrepositoryへcommitしない。`.gitignore`で除外し、必要ならworkflow artifactとして残す。
+
+### 1.5 証跡のsecret除去
+
+証跡、commit message、PR本文、logへ次を書かない。
+
+- secret、token、credential、API key
+- 個人のhome path、user名を含むabsolute path
+- 内部限定URL、社内hostname
+
+expected/actual digest、公開URL、公開version文字列は秘密ではないため記録する（[10-security.md](10-security.md)§9.2と同じ扱い）。検証commandは環境変数の値を貼らず、変数名のまま再現できる形で書く。実行環境はOS、architecture、shell、Go/Python versionの粒度で記録し、host名を書かない。
+
 ## 2. client version
 
 正規client versionはCalVerの`YYYY.MM.DD.XX`。`v0.1`は初期完成範囲を表すrelease段階名であり、client version、tag、Go module versionではない。

@@ -10,16 +10,16 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 | 項目 | 現在値 |
 |---|---|
-| 全体状態 | `停止中` |
+| 全体状態 | `進行中` |
 | 現在フェーズ | `P0` |
-| 実行中タスクID | `なし` |
+| 実行中タスクID | `P0-02` |
 | 最後に完了したタスクID | `P0-01（CI matrix workflow）` |
 | 次に開始するタスクID | `P0-02` |
 | CI状態 | `両OS 12 checkがgreen。12 check名をrequired status checkへ登録済み` |
 | blocker | `なし` |
 | 最終更新日時 | `2026-08-09T03:47:50+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch | `claude/feature-p0-01-required-checks` |
+| 作業branch | `claude/feature-p0-02-toolchain` |
 | 使用環境 | `Linux container` |
 | 最新の証跡 | PR #5（commit `44fc277`）、CI run 12/12 success、`.github/workflows/ci.yml`、`scripts/ci/`の3 script |
 
@@ -117,7 +117,7 @@ G-TOOLS達成後は、G-E2E/G-DONEの完了を待たずにDF-01（§17）のド�
 
 - [x] **P0-00** [11-quality-and-ci.md](11-quality-and-ci.md)§5.6の一回限りの手順でrepositoryを再作成する。GitHub生成のREADME/MIT LICENSE/Go `.gitignore`を持つmain初期commitから`develop/work`を作り、現在の作業tree内容だけを登録し、そこから`claude/work`と`codex/work`を作る。旧`.git`/ref/historyを移行せず、同名3 fileの差分確認、初期branch protection、immutable tag ruleset、branch/commit/worktreeの証跡を記録する。依存: S00-05。実施は指定maintainer、検証と証跡記録はClaude Codeが担当した。branch protectionと`v*` tag rulesetはREST APIがこのsessionから読めないため利用者確認を証跡とし、値の照合はP0-01へ送った。証跡: [P0-00 verification report](reviews/P0-00-repository-bootstrap-verification.md)と本書§3.3の2026-08-09T03:11:40+09:00 record
 - [x] **P0-01** CI matrix workflow（`lint`/`unit`/`e2e`/`policy`/`package`/`bootstrap`）を最小構成で作り、全jobを`ubuntu-latest`と`windows-latest`の両方でgreenにする。PRのsource/target/branch名policy検査も追加し、最初の成功check名を`main`、`develop/work`、両agent workのrequired status checkへ設定して[11-quality-and-ci.md](11-quality-and-ci.md)§5.3～§5.4のrulesetを完成する。依存: P0-00。完了: 6 job×2 OSの12 checkがgreenで、`policy` jobが§5.2の命名grammarと§5.3のsource→targetを拒否し、`lint` jobが文書link/anchor/fence/table列数を検査する。中身が未実装のjobは入力が現れた時点で失敗するguardを持つ。12 check名のrequired status check登録は指定maintainerが実施し利用者確認を得た。証跡: PR #5（commit `44fc277`）、CI run 12/12 success、本書§3.3の2026-08-09T03:47:50+09:00 record
-- [ ] **P0-02** Go module/toolchain、format/vet/lint/test/coverage command、証跡directory・命名・secret除去規則を固定する。依存: P0-01。証跡: 未記録
+- [-] **P0-02** Go module/toolchain、format/vet/lint/test/coverage command、証跡directory・命名・secret除去規則を固定する。依存: P0-01。証跡: 未記録
 - [ ] **P0-03** fake port（clock/HTTP/process/filesystem/link/user lookup）とfailure injection基盤を作る。依存: P0-02。証跡: 未記録
 
 ## 7. P1 基盤
