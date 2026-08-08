@@ -100,20 +100,20 @@ codex/feature-<task-id>-<slug> ───> codex/work ──┘
 - `develop/work`は`main`から作る。`claude/work`と`codex/work`は`develop/work`から作る。
 - Claude Codeの機能変更は`claude/work`から`claude/feature-<task-id>-<slug>`を、Codexの機能変更は`codex/work`から`codex/feature-<task-id>-<slug>`を作って行う。異なるagentのwork branchをbaseにしない。
 - `<task-id>`は[13-progress.md](13-progress.md)にある対象task IDをASCII lowercaseへ変換したexact値とする。`<slug>`は1～48文字の`[a-z0-9]+(?:-[a-z0-9]+)*`で、内容を表すagent命名とする。例は`codex/feature-p6-02-install-plan`。
-- feature branchは1 taskだけを扱い、squash merge後に削除する。agent work、develop、mainは履歴を継続利用する期間にfeature変更を直接commitしない。
+- feature branchは1 taskだけを扱い、squash merge後に指定maintainerが削除する。agentはremote branchを作成・更新するだけで削除せず、不要になったbranch名を報告する。agent work、develop、mainは履歴を継続利用する期間にfeature変更を直接commitしない。
 - registry変更も同じbranchを使い、registry専用branchやregistry単体releaseを作らない。
 
 ### 5.3 PR、merge、CI gate
 
 | source | target | merge方式 | merge前の必須CI |
 |---|---|---|---|
-| `claude/feature-*` | `claude/work` | squash merge後にsource削除 | 両OSの`lint`, `unit`, `policy` |
-| `codex/feature-*` | `codex/work` | squash merge後にsource削除 | 両OSの`lint`, `unit`, `policy` |
+| `claude/feature-*` | `claude/work` | squash merge後に指定maintainerがsource削除 | 両OSの`lint`, `unit`, `policy` |
+| `codex/feature-*` | `codex/work` | squash merge後に指定maintainerがsource削除 | 両OSの`lint`, `unit`, `policy` |
 | `claude/work` | `develop/work` | merge commit | 両OSの全6 job |
 | `codex/work` | `develop/work` | merge commit | 両OSの全6 job |
 | `develop/work` | `main` | merge commit | 両OSの全6 job |
 
-全PRはtargetの最新commitを取り込み、required status checkが最新head commitで成功し、未解決conversationがない場合だけ指定maintainerがmergeする。required approving review数は0件とする。Claude Code/Codexがrepository ownerと同じGitHub identityを使う単独開発でも、自己approval不能によって停止させないためである。
+全PRはtargetの最新commitを取り込み、required status checkが最新head commitで成功し、未解決conversationがない場合だけ指定maintainerがmergeする。merge後のsource branch削除も同じ指定maintainerが行う。agentはPR作成と更新までを担当し、merge操作とremote branch削除を実行しない。required approving review数は0件とする。Claude Code/Codexがrepository ownerと同じGitHub identityを使う単独開発でも、自己approval不能によって停止させないためである。
 
 `policy` jobはPR eventのhead/baseを検査し、§5.2の命名grammarと上表にないsource→targetを拒否する。release workflowはPRを経由しないtag eventだけを別entry pointとして扱う。
 
@@ -140,7 +140,7 @@ agent workは、次のいずれか1件でも真なら「作業中」とする。
 2. agent workをheadまたはbaseとするopen PRが存在する。
 3. agent workに`develop/work`から到達不能なcommitが存在する。
 
-放置feature branchがある場合も作業中になる。不要であることを確認してPRをcloseしbranchを削除するまで、非作業中として扱わない。
+放置feature branchがある場合も作業中になる。不要であることを確認して指定maintainerがPRをcloseしbranchを削除するまで、非作業中として扱わない。
 
 `develop/work`更新後は、次のfeatureを開始する前に対象agent workを同期する。非作業中なら指定maintainerがagent workを削除し、最新`develop/work`から同名branchを再作成する。作業中ならagent workを最新`develop/work`へrebaseし、続いて未mergeの各feature branchを更新後agent workへrebaseする。書換えはremote headを再取得してから`--force-with-lease`で反映し、次のPR merge前に§5.3の該当CIを再実行する。
 

@@ -71,6 +71,20 @@ gh api repos/kznagamori/go_dev_tool_version_manager --jq '{allow_squash_merge,al
 
 §5.3の「squash mergeとmerge commitを許可し、rebase mergeを無効にする」repository設定も同じ理由で未確認である。P0-01でCI workflowを追加し最初のPRを作成する際に、merge方式の選択肢とrequired status checkの挙動から確認する。
 
+### 4.1 remote branch削除の不可
+
+agent sessionからのremote branch削除も遮断される。通常のpushは同じcredentialで成功するため、credentialの権限ではなくgit proxyがref削除だけを拒否している。
+
+```text
+git push origin --delete claude/go-dev-tool-version-manager-w9h1z1
+git push origin :refs/heads/claude/go-dev-tool-version-manager-w9h1z1
+-> error: RPC failed; HTTP 403
+```
+
+GitHub MCP serverにもbranch削除toolが無い（`create_branch`はあるが対になる削除が無い）。この制約は§5.2のfeature branch削除運用に直接影響するため、branch削除を指定maintainerの作業と明記する形で[11-quality-and-ci.md](../11-quality-and-ci.md)§5.2・§5.3・§5.5、`CLAUDE.md`§4.1、`AGENTS.md`§4.1を同期修正した。§5.4は元から「merge操作とbranch lifecycle操作は指定maintainerだけが行う」と定めており、修正は下位記述をこれに揃えるものである。
+
+push確認用に作成した`claude/go-dev-tool-version-manager-w9h1z1`は固有commitを持たず`claude/work`と同じ`9e69261`を指す。削除は指定maintainerへ依頼した。
+
 ## 5. 次タスクへの申し送り
 
 - P0-01でCI matrix workflowを作成し、最初の成功check名を4 protected branchのrequired status checkへ登録する（§5.6手順5）。その時点でprotectionの実効性が観測できるため、結果を本書§4の未確認項目へ反映する。
