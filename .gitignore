@@ -19,6 +19,12 @@ profile.cov
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+.cache/
+artifacts/
+
+# CI補助scriptのPython bytecode
+__pycache__/
+*.py[cod]
 
 # Go workspace file
 go.work
