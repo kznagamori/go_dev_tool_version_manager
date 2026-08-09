@@ -22,12 +22,12 @@ func TestSetSatisfiesPorts(t *testing.T) {
 // --- Clock ---
 
 func TestClockAdvanceMovesBothClocks(t *testing.T) {
-	c := NewClock(DefaultNow)
+	c := NewClock(DefaultNow())
 	start := c.Monotonic()
 
 	c.Advance(90 * time.Second)
 
-	if got := c.Now(); !got.Equal(DefaultNow.Add(90 * time.Second)) {
+	if got := c.Now(); !got.Equal(DefaultNow().Add(90 * time.Second)) {
 		t.Fatalf("Now = %v", got)
 	}
 	if got := c.Since(start); got != 90*time.Second {
@@ -38,16 +38,16 @@ func TestClockAdvanceMovesBothClocks(t *testing.T) {
 // wall clockが巻き戻っても単調時間は進み続けることを確認する。
 // timeout判定がwall clockに依存していると負の経過時間になる。
 func TestClockRewindDoesNotAffectMonotonic(t *testing.T) {
-	c := NewClock(DefaultNow)
+	c := NewClock(DefaultNow())
 	start := c.Monotonic()
 	c.AdvanceMonotonic(30 * time.Second)
 
-	c.SetNow(DefaultNow.Add(-time.Hour))
+	c.SetNow(DefaultNow().Add(-time.Hour))
 
 	if got := c.Since(start); got != 30*time.Second {
 		t.Fatalf("巻き戻し後のSince = %v, want 30s", got)
 	}
-	if got := c.Now(); !got.Before(DefaultNow) {
+	if got := c.Now(); !got.Before(DefaultNow()) {
 		t.Fatalf("Now = %v, want DefaultNowより前", got)
 	}
 }

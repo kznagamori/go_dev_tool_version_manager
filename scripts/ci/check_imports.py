@@ -31,7 +31,11 @@ MODULE = "github.com/kznagamori/go_dev_tool_version_manager"
 # 空集合は「現時点でinternal importを持たない」を意味する。
 ALLOWED: dict[str, set[str]] = {
     "cmd/gdtvm": set(),
-    "internal/app": set(),
+    # 02-architecture.md §4の`NewServices(build BuildInfo, ports Ports)`が
+    # port.Portsを受け取るため、appはportをimportする（P1-03）。
+    # fakeは`_test.go`からの注入だけに使う。production pathからのfake importは
+    # 11-quality-and-ci.md §7.1に従いcheck_policy.pyが別途禁止する。
+    "internal/app": {"internal/domain/port", "internal/domain/port/fake"},
     "internal/catalog": set(),
     "internal/config": set(),
     "internal/definition": set(),
