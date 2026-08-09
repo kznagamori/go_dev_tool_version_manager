@@ -6,11 +6,17 @@ import (
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain/port"
 )
 
-// DefaultNow はfake Clockの既定起点である。
+// DefaultNow はfake Clockの既定起点を返す。
 //
 // 固定値にするのは、時刻がtest結果へ現れる箇所（receiptのinstalled_at、
 // catalog cacheの有効期限）をgolden比較できるようにするためである。
-var DefaultNow = time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+//
+// package-level varではなくfunctionにしている。time.Timeはconstにできず、varに
+// するとtestが起点を書き換えて他のtestへ影響させられるpackage global mutable
+// stateになるためである（docs/02-architecture.md §4）。
+func DefaultNow() time.Time {
+	return time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+}
 
 // Set は6 portのfake一式と、それらが共有する失敗注入器である。
 type Set struct {
@@ -32,7 +38,7 @@ func NewSet() *Set {
 	fsys := NewFileSystem(injector)
 	return &Set{
 		Injector:      injector,
-		Clock:         NewClock(DefaultNow),
+		Clock:         NewClock(DefaultNow()),
 		FileSystem:    fsys,
 		HTTPClient:    NewHTTPClient(injector),
 		LinkManager:   NewLinkManager(fsys),

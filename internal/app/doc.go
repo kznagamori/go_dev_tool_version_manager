@@ -5,7 +5,8 @@
 // 依存範囲: domainとport、および各内部domain serviceを組み合わせる。CLI、具体的OS API、
 // 具体的HTTP client、CLI framework/TOML libraryの型を参照しない（§1、§2）。
 //
-// P1-01時点ではpackage骨格だけであり、実体は後続taskで実装する
-// （docs/13-progress.md）。許可するinternal importは
-// scripts/ci/check_imports.py の表を正本とし、`policy` jobが検査する。
+// P1-03時点で持つのは[NewServices]による依存注入と[BuildInfo]の形式検査だけで、
+// use case operationは後続taskで実装する（docs/13-progress.md）。許可する
+// internal importは scripts/ci/check_imports.py の表を正本とし、`policy` jobが
+// 検査する。
 package app
