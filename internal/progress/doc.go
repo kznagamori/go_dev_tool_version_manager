@@ -4,7 +4,8 @@
 //
 // 依存範囲: domainだけに依存する。
 //
-// P1-01時点ではpackage骨格だけであり、実体は後続taskで実装する
-// （docs/13-progress.md）。許可するinternal importは
-// scripts/ci/check_imports.py の表を正本とし、`policy` jobが検査する。
+// P1-04時点で持つのは[Progress]、[Sink]、[CancelToken]、[Reporter]と
+// [ResultWarning] である。TTY progress barや非TTY節目表示はCLI adapterの責務で
+// あり本packageには置かない（docs/13-progress.md P8-05）。許可するinternal
+// importは scripts/ci/check_imports.py の表を正本とし、`policy` jobが検査する。
 package progress

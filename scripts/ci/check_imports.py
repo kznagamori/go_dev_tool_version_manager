@@ -41,16 +41,21 @@ ALLOWED: dict[str, set[str]] = {
     "internal/definition": set(),
     "internal/doctor": set(),
     "internal/domain": set(),
-    "internal/domain/port": set(),
-    # fakeは対象interfaceを実装するため、portだけをimportできる。
-    "internal/domain/port/fake": {"internal/domain/port"},
+    # LoggerのLogRecordとRandomのID byte長がdomain値を使うため
+    # （02-architecture.md §4.1・§15、04-storage-and-data.md §7・§18、P1-04）。
+    "internal/domain/port": {"internal/domain"},
+    # fakeは対象interfaceを実装するため、portとそのsignatureが使うdomainをimportできる。
+    "internal/domain/port/fake": {"internal/domain/port", "internal/domain"},
     "internal/install": set(),
     "internal/message": set(),
     "internal/platform": set(),
-    "internal/progress": set(),
+    # 02-architecture.md §2「型付き進捗、warning、cancel境界」。Progressと
+    # ResultWarningがmessage ID、scalar、ID、tool/versionのdomain値を持つ（P1-04）。
+    "internal/progress": {"internal/domain"},
     "internal/registry": set(),
     "internal/runtime": set(),
-    "internal/security": set(),
+    # 10-security.md §9.2のmaskをscalar parameterへ適用するため（P1-04）。
+    "internal/security": {"internal/domain"},
     "internal/selection": set(),
     "internal/shell": set(),
     "internal/shim": set(),

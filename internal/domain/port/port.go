@@ -9,10 +9,12 @@
 // CLI、TOML libraryのいずれも参照しない。production adapterとfakeは同じ
 // interfaceを実装し、[Ports] 経由でApplication Serviceへ注入する。
 //
-// docs/02-architecture.md §4.1 は14 portを定義するが、本packageが持つのは
-// docs/11-quality-and-ci.md §6 が決定的検査の前提とする6件だけである。
-// 残る8件（Registry、Archive、Hash、Lock、Environment、Random、ProgressSink、
-// Logger）は最初に必要とするtaskで追加する（docs/13-progress.md P0-03）。
+// docs/02-architecture.md §4.1 は14 portを定義する。本packageが持つのは
+// docs/11-quality-and-ci.md §6 が決定的検査の前提とする6件（P0-03）と、
+// structured logと128 bit IDのためのLogger／Random（P1-04）の計8件である。
+// 残る6件（Registry、Archive、Hash、Lock、Environment、ProgressSink）のうち
+// ProgressSinkは§4が`Ports`へ入れずrequestごとに渡すと定めるため
+// internal/progressが持ち、他は最初に必要とするtaskで追加する。
 package port
 
 // Ports は外部作用の注入口である。
@@ -28,7 +30,9 @@ type Ports struct {
 	FileSystem    FileSystem
 	HTTPClient    HTTPClient
 	LinkManager   LinkManager
+	Logger        Logger
 	ProcessRunner ProcessRunner
+	Random        Random
 	UserLookup    UserLookup
 }
 
@@ -55,8 +59,14 @@ func (p Ports) Missing() []string {
 	if p.LinkManager == nil {
 		missing = append(missing, "LinkManager")
 	}
+	if p.Logger == nil {
+		missing = append(missing, "Logger")
+	}
 	if p.ProcessRunner == nil {
 		missing = append(missing, "ProcessRunner")
+	}
+	if p.Random == nil {
+		missing = append(missing, "Random")
 	}
 	if p.UserLookup == nil {
 		missing = append(missing, "UserLookup")
