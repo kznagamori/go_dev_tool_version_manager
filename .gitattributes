@@ -1,0 +1,4 @@
+# Windows runnerのcheckoutはcore.autocrlfでCRLFへ変換する。gofmtの出力はLF固定なので、
+# CRLFで取り出すと `gofmt -l .` が全Go fileを未formatと報告し、lint jobがWindowsだけ
+# 落ちる。text fileはplatformを問わずLFで取り出す（docs/11-quality-and-ci.md §1.2）。
+* text=auto eol=lf
