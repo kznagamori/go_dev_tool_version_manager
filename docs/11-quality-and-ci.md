@@ -34,7 +34,7 @@ security patchが出た場合は`toolchain`行だけを更新する。minorを�
 | `lint` | `scripts/ci/check_licenses.py` | 常時実行。`go.mod`が無ければ未実行を報告して成功する |
 | `lint` | `scripts/ci/check_docs.py` | 常時実行 |
 | `unit` | `go test ./... -race -shuffle=on -covermode=atomic -coverprofile=coverage.out` | 同上。`go list ./...`が空なら未実行を報告して成功する |
-| `policy` | `scripts/ci/check_policy.py`, `scripts/ci/check_pr_refs.py` | 常時実行 |
+| `policy` | `scripts/ci/check_policy.py`, `scripts/ci/check_imports.py`, `scripts/ci/check_pr_refs.py` | 常時実行 |
 
 `-race`はC toolchainを要求するため、`go env CC`が実行可能な場合だけ付ける（§5の「対応host」）。OS名で分岐しない。付けない場合は`-covermode=count`とし、その旨を報告する。`windows-latest`にはC toolchainがあり`-race`が付くことをCIで実測済みである。
 
@@ -262,9 +262,19 @@ GitHub Actionsの`windows-latest` runnerはAdministratorsグループに属す�
 - TLS: `InsecureSkipVerify`、独自CA bundle読込み
 - test資材のimport: fake portのpackageをproduction pathからimportすること
 
+検査対象はcommentを除いたcodeとする。禁止するのは実装がその機能を持つことであり、commentでの言及ではない。§9が「なぜ禁止なのか」をcommentへ書くことを求めるため、対象へcommentを含めると正しい説明を書くほど検査が落ちる。string literal内の`//`をcomment開始と誤認しないよう、literalの状態も追う。
+
 Registry portはHKCUのみを受け付ける型とし、hive引数を取らないことをcompile時に保証する。
 
 fake portのimport禁止は、決定的testのための細工がruntime経路へ載ることを防ぐ。fake package自身のfileと`_test.go`は対象外とする。
+
+`scripts/ci/check_imports.py`は[02-architecture.md](02-architecture.md)§1の依存方向を検査する。§1・§2・§16から一意に決まる次の不変条件を常に成立させ、それ以外のpackage間importは同scriptのALLOWED表へ明示登録したものだけを通す（fail closed）。
+
+- `internal/domain`配下は`internal/domain`配下しかimportしない。
+- どのpackageも`cmd`配下をimportしない。
+- `internal/app`は`internal/platform`をimportしない。
+
+18の論理領域すべての依存関係を先に決め切ることは仕様から一意にできないため、ALLOWED表は空から始める。importを増やすtaskが、その時点の仕様根拠とともに表へ追記する。表に無いpackageの出現も失敗として扱い、package追加時に依存範囲の宣言を強制する。
 
 ### 7.2 動的検査（`e2e` job）
 
