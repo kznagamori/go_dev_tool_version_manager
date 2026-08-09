@@ -10,16 +10,16 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 | 項目 | 現在値 |
 |---|---|
-| 全体状態 | `停止中` |
+| 全体状態 | `進行中` |
 | 現在フェーズ | `P1` |
-| 実行中タスクID | `なし` |
+| 実行中タスクID | `P1-02` |
 | 最後に完了したタスクID | `P1-01（package骨格と依存方向検査）` |
 | 次に開始するタスクID | `P1-02` |
 | CI状態 | `両OS 12 checkがgreen。required status check登録済み。Go検査はpackage投入で自動有効化` |
 | blocker | `なし` |
 | 最終更新日時 | `2026-08-10T02:47:03+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch | `claude/feature-p1-01-package-skeleton` |
+| 作業branch | `claude/feature-p1-02-domain-values` |
 | 使用環境 | `Linux container` |
 | 最新の証跡 | [P1-01 決定記録](reviews/P1-01-package-skeleton.md)、CI 12/12 success、`go test -race` coverage 84.3%、依存方向検査のnegative 5件 |
 
@@ -126,7 +126,7 @@ G-TOOLS達成後は、G-E2E/G-DONEの完了を待たずにDF-01（§17）のド�
 ## 7. P1 基盤
 
 - [x] **P1-01** `cmd/gdtvm`と[02-architecture.md](02-architecture.md)§2のpackage骨格、package comment、依存方向のstatic checkを作る。依存: G-CI。完了: 18論理領域と`cmd/gdtvm`が責務・依存範囲のpackage commentを持ち、`policy` jobの`check_imports.py`が§1の不変条件3件とALLOWED表をfail closedで検査し、両OSの12 checkがgreenである。証跡: [P1-01 決定記録](reviews/P1-01-package-skeleton.md)と本書§3.3の2026-08-10T02:47:03+09:00 record
-- [ ] **P1-02** ToolID/Version/Platform/Mode/Scope/Digest/Path/InstallKey/Selection等のdomain valueと3 version schemeを実装・testする。依存: P1-01。証跡: 未記録
+- [-] **P1-02** ToolID/Version/Platform/Mode/Scope/Digest/Path/InstallKey/Selection等のdomain valueと3 version schemeを実装・testする。依存: P1-01。証跡: 未記録
 - [ ] **P1-03** portの依存注入（`NewServices`とPorts組立て）と、package global mutable stateが存在しないことをtestする。interface定義とfakeはP0-03で6件を作成済みのため、ここでは行わない。依存: P1-01。証跡: 未記録
 - [ ] **P1-04** typed error/message ID/exit code/secret masking/invocation・operation ID/cancel/progress/structured loggerを実装・testする。依存: P1-02,P1-03。証跡: 未記録
 
