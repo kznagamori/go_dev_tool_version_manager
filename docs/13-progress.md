@@ -10,18 +10,18 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 | 項目 | 現在値 |
 |---|---|
-| 全体状態 | `進行中` |
+| 全体状態 | `停止中` |
 | 現在フェーズ | `P1` |
-| 実行中タスクID | `P1-01` |
-| 最後に完了したタスクID | `P0-03（port interfaceとfake）` |
-| 次に開始するタスクID | `P1-01`（G-CI達成後） |
+| 実行中タスクID | `なし` |
+| 最後に完了したタスクID | `P1-01（package骨格と依存方向検査）` |
+| 次に開始するタスクID | `P1-02` |
 | CI状態 | `両OS 12 checkがgreen。required status check登録済み。Go検査はpackage投入で自動有効化` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-08-10T01:40:31+09:00` |
+| 最終更新日時 | `2026-08-10T02:47:03+09:00` |
 | 更新者 | `Claude Code` |
 | 作業branch | `claude/feature-p1-01-package-skeleton` |
 | 使用環境 | `Linux container` |
-| 最新の証跡 | [P0-03 決定記録](reviews/P0-03-port-interfaces-and-fakes.md)、CI 12/12 success、`go test -race` coverage 84.5%、`govulncheck`の`No vulnerabilities found.` |
+| 最新の証跡 | [P1-01 決定記録](reviews/P1-01-package-skeleton.md)、CI 12/12 success、`go test -race` coverage 84.3%、依存方向検査のnegative 5件 |
 
 全体状態は`未着手|進行中|停止中|blocked|完了`。実行中taskは同時に1件だけ。値なしは`なし`と記す。
 
@@ -56,6 +56,7 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 | 日時 | 状態 | 完了済み部分 | 残作業・次の具体操作 | blocker/解除条件 | branch | 環境 | 証跡 |
 |---|---|---|---|---|---|---|---|
+| 2026-08-10T02:47:03+09:00 | P1-01 完了 | [02-architecture.md](02-architecture.md)§2の18論理領域をpackage化し、各packageへ責務と依存範囲のpackage documentation commentを置いた。`cmd/gdtvm`は§16の薄層契約をcommentで固定し、`main`から`run(io.Writer) int`へ委譲してexit codeをtestできるようにした。骨格段階のCLIが`exit 0`を返さないことをtestで固定している。`scripts/ci/check_imports.py`を`policy` jobへ追加し、§1から一意に決まる不変条件3件（domain配下はdomain配下のみ／cmd配下は誰もimportしない／appはplatformをimportしない）を常に検査し、それ以外のpackage間importはALLOWED表へ明示登録したものだけを通すfail closed構成にした。18領域の依存関係は仕様から一意に決められないため表は空から始め、importを増やすtaskが仕様根拠とともに追記する。表に無いpackageの出現も失敗にする。実行時に`policy`が`internal/shell/doc.go`の「HKLMを変更しない」という説明文を違反として検出したため、`check_policy.py`の禁止symbol検査からcommentを除外し§7.1へ規範化した。禁止するのは実装がその機能を持つことであってcommentでの言及ではなく、§9が理由の記述を求める以上、正しい説明を書くほど検査が落ちる状態だった。PR #17のCIで両OS 12 checkがgreenになった | P1-02でToolID/Version/Platform/Mode/Scope/Digest/Path/InstallKey/Selection等のdomain valueと3 version schemeを実装・testする。domain値が入ったらP0-03のport signatureをdomain型へ寄せられるか見直す | なし。importを増やすtaskは`check_imports.py`のALLOWED表へ追記が必要（追記なしでは`policy`が失敗する） | `claude/feature-p1-01-package-skeleton` | Linux container / Go 1.26.5・Python 3.11.15、CIはPython 3.12 | [P1-01 決定記録](reviews/P1-01-package-skeleton.md)、CI 12/12 success、`go test -race -shuffle=on` coverage 84.3%、依存方向検査negative 5件、禁止API検査のcomment除外positive/negative、`git diff --check` |
 | 2026-08-10T01:40:31+09:00 | P0-03 完了・G-CI達成 | 着手時に台帳の依存循環を検出した。P0-03「fake portを作る」の対象interfaceがP1-03「全portのinterface定義とfake」で定義される順序になっており、置き場所のpackage骨格もP1-01（依存: G-CI）だった。利用者判断で選択A（P0-03をinterface定義まで拡張し、P1-03を依存注入とglobal mutable state不存在のtestへ縮小）と6 port先行を確定し、台帳の2行を同期修正した。`internal/domain/port`へClock/FileSystem/LinkManager/HTTPClient/ProcessRunner/UserLookupの6 interfaceと`Ports`を、`internal/domain/port/fake`へ6 fakeと`Injector`（failure injection）と`Set`を実装した。配置は§1「抽象ポートはcore側が所有」とimport cycle回避の両立から決め、§2の表に行が無いことをPRで明示して確認を求めた。`policy` jobへproduction pathからのfake import禁止を追加し§7.1へ規範化した。PR #14のCIで両OS 12 checkがgreenになり、`govulncheck`が`No vulnerabilities found.`、依存license検査が13 module、`unit`が実packageに対する`go test -race`で成功した。これによりP0の全taskが完了しG-CIを満たした | P1-01で`cmd/gdtvm`と§2のpackage骨格、package comment、依存方向のstatic checkを作る。static checkには`internal/domain/port`がdomain値と標準libraryだけに依存する制約も含める | なし。`internal/domain/port`という配置が§2の表に無いため利用者確認待ち。P1-02でdomain値が入ったらport signatureをdomain型へ寄せられるか見直す | `claude/feature-p0-03-fake-ports` | Linux container / Go 1.26.5・Python 3.11.15、CIはPython 3.12 | [P0-03 決定記録](reviews/P0-03-port-interfaces-and-fakes.md)、CI 12/12 success、`go test -race -shuffle=on` coverage 84.5%、test 40件、禁止import検査のnegative、`git diff --check` |
 | 2026-08-10T00:05:17+09:00 | P0-02 完了 | 利用者判断2件（license検査は自作script、coverageは計測のみで閾値なし）を確定し、[11-quality-and-ci.md](11-quality-and-ci.md)へ§1.1〜§1.5を追加した（§2以降は番号を変えていない）。module path、`go 1.26.0`＋`toolchain go1.26.5`、job別の固定command、依存license許可list（MIT/Apache-2.0/BSD-2-Clause/BSD-3-Clause/ISC）、証跡directory`docs/reviews/<TASK-ID>-<slug>.md`、証跡のsecret除去規則を規範化した。実装は`go.mod`/`go.sum`（govulncheckを`tool` directiveで固定）、`scripts/ci/check_licenses.py`、`lint`/`unit` jobのGo検査、`.gitattributes`。Go versionの正本を`go.mod`だけにし、`lint`が実行中Go versionとの一致を検査する。package 0件では`go vet`/`go test`がexit 1になるため`go list ./...`の空判定で分岐した。一時package`internal/ciprobe`をPRへ入れてCIで実測し、確認後に削除した。実測でWindowsのcheckoutがCRLF化して`gofmt`が全Go fileを未format扱いにする両OS差を発見し、`.gitattributes`の`* text=auto eol=lf`で修正した。あわせてWindowsで`-race`が付くこと、`govulncheck`が両OSで実行できることを確認した | P0-03でfake port（clock/HTTP/process/filesystem/link/user lookup）とfailure injection基盤を作る。P1-01でpackage骨格が入った時点で`go vet`/`go test`/`govulncheck`が自動的に実検査へ切り替わるため、最初のPRで3つが両OSでgreenになることを確認する | なし。`govulncheck`はこのcontainerから`vuln.go.dev`が`Forbidden`で到達できず、検証手段はCIだけである。coverage閾値は実測値が揃ってから別taskで判断する | `claude/feature-p0-02-toolchain` | Linux container / Go 1.26.5（GOTOOLCHAIN取得）・Python 3.11.15、CIはPython 3.12 | [P0-02 決定記録](reviews/P0-02-toolchain-and-commands.md)、CI 12/12 success、全13 stepの`bash -eo pipefail`実行、license検査のpositive/negative、`git diff --check` |
 | 2026-08-09T03:47:50+09:00 | P0-01 完了 | PR #5が`claude/work`へmergeされ、6 job×2 OSの12 checkがgreenであることを確認した。指定maintainerが12 check名を`main`、`develop/work`、`claude/work`、`codex/work`のrequired status checkへ登録し、利用者確認を得たため§5.6手順5を満たした。あわせてpush確認用の`claude/go-dev-tool-version-manager-w9h1z1`とfeature branch 2本が削除され、remoteは`main`、`develop/work`、`claude/work`、`codex/work`の4本に戻った | P0-02でGo module/toolchain、format/vet/lint/test/coverage command、証跡directory・命名・secret除去規則を固定する。`lint` jobの`gofmt`/`go vet`と`unit` jobは`go.mod`が入った時点で実検査へ切り替わるguardになっているため、同じ変更で`actions/setup-go`のpinとvulnerability/license検査commandを追加する必要がある | なし。PR #3とPR #5がいずれもmerge commitで統合されており、§5.3が定めるfeature→agent workのsquash mergeと異なる。repository設定でsquash mergeが有効か未確認。`develop/work`はP0-00までで、`codex/work`は`9e69261`のまま。§5.5の同期は指定maintainerの作業 | `claude/feature-p0-01-required-checks` | Linux container / Go 1.24.7・Python 3.11.15 | PR #5（commit `44fc277`）、CI run 12/12 success、`git ls-remote --heads`、利用者によるrequired status check登録確認 |
@@ -124,7 +125,7 @@ G-TOOLS達成後は、G-E2E/G-DONEの完了を待たずにDF-01（§17）のド�
 
 ## 7. P1 基盤
 
-- [-] **P1-01** `cmd/gdtvm`と[02-architecture.md](02-architecture.md)§2のpackage骨格、package comment、依存方向のstatic checkを作る。依存: G-CI。証跡: 未記録
+- [x] **P1-01** `cmd/gdtvm`と[02-architecture.md](02-architecture.md)§2のpackage骨格、package comment、依存方向のstatic checkを作る。依存: G-CI。完了: 18論理領域と`cmd/gdtvm`が責務・依存範囲のpackage commentを持ち、`policy` jobの`check_imports.py`が§1の不変条件3件とALLOWED表をfail closedで検査し、両OSの12 checkがgreenである。証跡: [P1-01 決定記録](reviews/P1-01-package-skeleton.md)と本書§3.3の2026-08-10T02:47:03+09:00 record
 - [ ] **P1-02** ToolID/Version/Platform/Mode/Scope/Digest/Path/InstallKey/Selection等のdomain valueと3 version schemeを実装・testする。依存: P1-01。証跡: 未記録
 - [ ] **P1-03** portの依存注入（`NewServices`とPorts組立て）と、package global mutable stateが存在しないことをtestする。interface定義とfakeはP0-03で6件を作成済みのため、ここでは行わない。依存: P1-01。証跡: 未記録
 - [ ] **P1-04** typed error/message ID/exit code/secret masking/invocation・operation ID/cancel/progress/structured loggerを実装・testする。依存: P1-02,P1-03。証跡: 未記録
