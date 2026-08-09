@@ -73,6 +73,57 @@ FORBIDDEN_SYMBOLS = {
 }
 
 
+def strip_comments(source: str) -> str:
+    """Goのcommentを同じ長さの空白へ置換する。行構造は保つ。
+
+    禁止symbolはcodeに存在してはならないものであり、commentでの言及は禁止しない。
+    むしろ`CLAUDE.md`§9は「なぜ禁止なのか」をcommentへ書くことを求めるため、
+    comment内の言及を検出すると、正しい説明を書くほど検査が落ちることになる。
+    string literalとrune literalの中の`//`をcomment開始と誤認しないよう、
+    literalの状態も追う。
+    """
+    out: list[str] = []
+    index = 0
+    length = len(source)
+    while index < length:
+        char = source[index]
+        pair = source[index : index + 2]
+
+        if pair == "//":
+            while index < length and source[index] != "\n":
+                out.append(" ")
+                index += 1
+            continue
+        if pair == "/*":
+            while index < length and source[index : index + 2] != "*/":
+                out.append("\n" if source[index] == "\n" else " ")
+                index += 1
+            out.append("  ")
+            index += 2
+            continue
+        if char in ('"', "'", "`"):
+            quote = char
+            out.append(char)
+            index += 1
+            while index < length:
+                current = source[index]
+                if quote != "`" and current == "\\":
+                    out.append(source[index : index + 2])
+                    index += 2
+                    continue
+                out.append(current)
+                index += 1
+                if current == quote:
+                    break
+                if quote != "`" and current == "\n":
+                    break
+            continue
+
+        out.append(char)
+        index += 1
+    return "".join(out)
+
+
 def production_go_files(root: Path) -> list[Path]:
     files: list[Path] = []
     for path in sorted(root.rglob("*.go")):
@@ -88,8 +139,9 @@ def scan(path: Path, rel: Path) -> list[str]:
     findings: list[str] = []
     rel_posix = rel.as_posix()
     import_exempt = rel_posix.startswith(IMPORT_CHECK_EXEMPT_PREFIXES)
+    code = strip_comments(path.read_text(encoding="utf-8"))
 
-    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    for number, line in enumerate(code.splitlines(), start=1):
         for symbol, reason in FORBIDDEN_SYMBOLS.items():
             if symbol in line:
                 findings.append(f"{rel}:{number}: 禁止symbol `{symbol}` ({reason})")
