@@ -10,18 +10,18 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 | 項目 | 現在値 |
 |---|---|
-| 全体状態 | `進行中` |
+| 全体状態 | `停止中` |
 | 現在フェーズ | `P0` |
-| 実行中タスクID | `P0-03` |
-| 最後に完了したタスクID | `P0-02（Go module/toolchainとcommand固定）` |
-| 次に開始するタスクID | `P0-03` |
+| 実行中タスクID | `なし` |
+| 最後に完了したタスクID | `P0-03（port interfaceとfake）` |
+| 次に開始するタスクID | `P1-01`（G-CI達成後） |
 | CI状態 | `両OS 12 checkがgreen。required status check登録済み。Go検査はpackage投入で自動有効化` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-08-10T00:05:17+09:00` |
+| 最終更新日時 | `2026-08-10T01:40:31+09:00` |
 | 更新者 | `Claude Code` |
 | 作業branch | `claude/feature-p0-03-fake-ports` |
 | 使用環境 | `Linux container` |
-| 最新の証跡 | [P0-02 決定記録](reviews/P0-02-toolchain-and-commands.md)、CI 12/12 success、`go.mod`/`go.sum`、`scripts/ci/check_licenses.py`、`.gitattributes` |
+| 最新の証跡 | [P0-03 決定記録](reviews/P0-03-port-interfaces-and-fakes.md)、CI 12/12 success、`go test -race` coverage 84.5%、`govulncheck`の`No vulnerabilities found.` |
 
 全体状態は`未着手|進行中|停止中|blocked|完了`。実行中taskは同時に1件だけ。値なしは`なし`と記す。
 
@@ -56,6 +56,7 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 | 日時 | 状態 | 完了済み部分 | 残作業・次の具体操作 | blocker/解除条件 | branch | 環境 | 証跡 |
 |---|---|---|---|---|---|---|---|
+| 2026-08-10T01:40:31+09:00 | P0-03 完了・G-CI達成 | 着手時に台帳の依存循環を検出した。P0-03「fake portを作る」の対象interfaceがP1-03「全portのinterface定義とfake」で定義される順序になっており、置き場所のpackage骨格もP1-01（依存: G-CI）だった。利用者判断で選択A（P0-03をinterface定義まで拡張し、P1-03を依存注入とglobal mutable state不存在のtestへ縮小）と6 port先行を確定し、台帳の2行を同期修正した。`internal/domain/port`へClock/FileSystem/LinkManager/HTTPClient/ProcessRunner/UserLookupの6 interfaceと`Ports`を、`internal/domain/port/fake`へ6 fakeと`Injector`（failure injection）と`Set`を実装した。配置は§1「抽象ポートはcore側が所有」とimport cycle回避の両立から決め、§2の表に行が無いことをPRで明示して確認を求めた。`policy` jobへproduction pathからのfake import禁止を追加し§7.1へ規範化した。PR #14のCIで両OS 12 checkがgreenになり、`govulncheck`が`No vulnerabilities found.`、依存license検査が13 module、`unit`が実packageに対する`go test -race`で成功した。これによりP0の全taskが完了しG-CIを満たした | P1-01で`cmd/gdtvm`と§2のpackage骨格、package comment、依存方向のstatic checkを作る。static checkには`internal/domain/port`がdomain値と標準libraryだけに依存する制約も含める | なし。`internal/domain/port`という配置が§2の表に無いため利用者確認待ち。P1-02でdomain値が入ったらport signatureをdomain型へ寄せられるか見直す | `claude/feature-p0-03-fake-ports` | Linux container / Go 1.26.5・Python 3.11.15、CIはPython 3.12 | [P0-03 決定記録](reviews/P0-03-port-interfaces-and-fakes.md)、CI 12/12 success、`go test -race -shuffle=on` coverage 84.5%、test 40件、禁止import検査のnegative、`git diff --check` |
 | 2026-08-10T00:05:17+09:00 | P0-02 完了 | 利用者判断2件（license検査は自作script、coverageは計測のみで閾値なし）を確定し、[11-quality-and-ci.md](11-quality-and-ci.md)へ§1.1〜§1.5を追加した（§2以降は番号を変えていない）。module path、`go 1.26.0`＋`toolchain go1.26.5`、job別の固定command、依存license許可list（MIT/Apache-2.0/BSD-2-Clause/BSD-3-Clause/ISC）、証跡directory`docs/reviews/<TASK-ID>-<slug>.md`、証跡のsecret除去規則を規範化した。実装は`go.mod`/`go.sum`（govulncheckを`tool` directiveで固定）、`scripts/ci/check_licenses.py`、`lint`/`unit` jobのGo検査、`.gitattributes`。Go versionの正本を`go.mod`だけにし、`lint`が実行中Go versionとの一致を検査する。package 0件では`go vet`/`go test`がexit 1になるため`go list ./...`の空判定で分岐した。一時package`internal/ciprobe`をPRへ入れてCIで実測し、確認後に削除した。実測でWindowsのcheckoutがCRLF化して`gofmt`が全Go fileを未format扱いにする両OS差を発見し、`.gitattributes`の`* text=auto eol=lf`で修正した。あわせてWindowsで`-race`が付くこと、`govulncheck`が両OSで実行できることを確認した | P0-03でfake port（clock/HTTP/process/filesystem/link/user lookup）とfailure injection基盤を作る。P1-01でpackage骨格が入った時点で`go vet`/`go test`/`govulncheck`が自動的に実検査へ切り替わるため、最初のPRで3つが両OSでgreenになることを確認する | なし。`govulncheck`はこのcontainerから`vuln.go.dev`が`Forbidden`で到達できず、検証手段はCIだけである。coverage閾値は実測値が揃ってから別taskで判断する | `claude/feature-p0-02-toolchain` | Linux container / Go 1.26.5（GOTOOLCHAIN取得）・Python 3.11.15、CIはPython 3.12 | [P0-02 決定記録](reviews/P0-02-toolchain-and-commands.md)、CI 12/12 success、全13 stepの`bash -eo pipefail`実行、license検査のpositive/negative、`git diff --check` |
 | 2026-08-09T03:47:50+09:00 | P0-01 完了 | PR #5が`claude/work`へmergeされ、6 job×2 OSの12 checkがgreenであることを確認した。指定maintainerが12 check名を`main`、`develop/work`、`claude/work`、`codex/work`のrequired status checkへ登録し、利用者確認を得たため§5.6手順5を満たした。あわせてpush確認用の`claude/go-dev-tool-version-manager-w9h1z1`とfeature branch 2本が削除され、remoteは`main`、`develop/work`、`claude/work`、`codex/work`の4本に戻った | P0-02でGo module/toolchain、format/vet/lint/test/coverage command、証跡directory・命名・secret除去規則を固定する。`lint` jobの`gofmt`/`go vet`と`unit` jobは`go.mod`が入った時点で実検査へ切り替わるguardになっているため、同じ変更で`actions/setup-go`のpinとvulnerability/license検査commandを追加する必要がある | なし。PR #3とPR #5がいずれもmerge commitで統合されており、§5.3が定めるfeature→agent workのsquash mergeと異なる。repository設定でsquash mergeが有効か未確認。`develop/work`はP0-00までで、`codex/work`は`9e69261`のまま。§5.5の同期は指定maintainerの作業 | `claude/feature-p0-01-required-checks` | Linux container / Go 1.24.7・Python 3.11.15 | PR #5（commit `44fc277`）、CI run 12/12 success、`git ls-remote --heads`、利用者によるrequired status check登録確認 |
 | 2026-08-09T03:38:40+09:00 | P0-01 実装済み・check登録待ち | `.github/workflows/ci.yml`で6 job（`lint`/`unit`/`e2e`/`policy`/`package`/`bootstrap`）×`ubuntu-latest`/`windows-latest`のmatrixを作り、`paths` filterとOS分岐を置かず`fail-fast: false`とした。`scripts/ci/check_docs.py`（相対link、anchor、code fence、table列数）、`scripts/ci/check_pr_refs.py`（§5.2命名grammarと§5.3のsource→target）、`scripts/ci/check_policy.py`（§7.1の昇格/system変更/package manager/TLS）を実装した。中身が未実装のjobは入力の有無を判定し、入力が現れた時点で失敗するguardにしてplaceholderが残らないようにした。lint検査を通すため`docs/04-storage-and-data.md`の7 recordと`docs/reviews/W00-01-specification-audit.md`の1 recordでinline code内の`\|`未escapeを修正した。全10 stepを`bash -eo pipefail`で実行し、入力なしで全成功、入力ありで未実装7 stepが失敗することを確認した。PR ref検査はpositive 6件・negative 12件・skip 1件が期待どおり。PR #5でCI run #1を実行し12 check中10件がgreen、`lint (windows-latest)`と`policy (windows-latest)`がfailした。WindowsのPythonがstdoutを`cp1252`で開くため日本語出力が`UnicodeEncodeError`になる両OS差で、3 scriptへstdout/stderrのUTF-8固定を追加して修正した。修正後のcommit`6e1aa8a`に対するrunで**両OS 12 checkが全てsuccess**になり、§5の6 job×2 OSが最小構成でgreenになることを確認した。あわせて`py_compile`が生成した`__pycache__`を追跡から外し、`.gitignore`へPython bytecodeを追加した | 指定maintainerが12 check名を`main`、`develop/work`、`claude/work`、`codex/work`のrequired status checkへ登録して§5.3～§5.4のrulesetを完成させる（§5.6手順5）。登録が済んだ時点でP0-01を`[x]`にし、G-CIの残りをP0-02へ進める | なし。required status check登録はREST APIがこのsessionから使えないため指定maintainerの作業 | `claude/feature-p0-01-ci-matrix` | Linux container / Go 1.24.7・Python 3.11.15（CIはPython 3.12へ固定） | `.github/workflows/ci.yml`、`scripts/ci/check_docs.py`、`scripts/ci/check_pr_refs.py`、`scripts/ci/check_policy.py`、guard論理のpositive/negative実行、`PYTHONIOENCODING=cp1252`での再現・修正確認、CI run #1、`git diff --check` |
@@ -94,7 +95,7 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 ## 4. gate
 
-- [ ] **G-CI**: P0完了。CI matrixの全jobが最小構成でgreen
+- [x] **G-CI**: P0完了。CI matrixの全jobが最小構成でgreen
 - [ ] **G-CORE**: P1～P5完了。基盤、schema、registry、IO層のcontractが両OSで合格
 - [ ] **G-FLOW**: P6～P9完了。install/use/uninstall/doctorのCLI経路が両OSで合格
 - [ ] **G-TOOLS**: P10完了。標準4 toolのcontractが合格し、tool固有Go分岐がない
@@ -119,7 +120,7 @@ G-TOOLS達成後は、G-E2E/G-DONEの完了を待たずにDF-01（§17）のド�
 - [x] **P0-00** [11-quality-and-ci.md](11-quality-and-ci.md)§5.6の一回限りの手順でrepositoryを再作成する。GitHub生成のREADME/MIT LICENSE/Go `.gitignore`を持つmain初期commitから`develop/work`を作り、現在の作業tree内容だけを登録し、そこから`claude/work`と`codex/work`を作る。旧`.git`/ref/historyを移行せず、同名3 fileの差分確認、初期branch protection、immutable tag ruleset、branch/commit/worktreeの証跡を記録する。依存: S00-05。実施は指定maintainer、検証と証跡記録はClaude Codeが担当した。branch protectionと`v*` tag rulesetはREST APIがこのsessionから読めないため利用者確認を証跡とし、値の照合はP0-01へ送った。証跡: [P0-00 verification report](reviews/P0-00-repository-bootstrap-verification.md)と本書§3.3の2026-08-09T03:11:40+09:00 record
 - [x] **P0-01** CI matrix workflow（`lint`/`unit`/`e2e`/`policy`/`package`/`bootstrap`）を最小構成で作り、全jobを`ubuntu-latest`と`windows-latest`の両方でgreenにする。PRのsource/target/branch名policy検査も追加し、最初の成功check名を`main`、`develop/work`、両agent workのrequired status checkへ設定して[11-quality-and-ci.md](11-quality-and-ci.md)§5.3～§5.4のrulesetを完成する。依存: P0-00。完了: 6 job×2 OSの12 checkがgreenで、`policy` jobが§5.2の命名grammarと§5.3のsource→targetを拒否し、`lint` jobが文書link/anchor/fence/table列数を検査する。中身が未実装のjobは入力が現れた時点で失敗するguardを持つ。12 check名のrequired status check登録は指定maintainerが実施し利用者確認を得た。証跡: PR #5（commit `44fc277`）、CI run 12/12 success、本書§3.3の2026-08-09T03:47:50+09:00 record
 - [x] **P0-02** Go module/toolchain、format/vet/lint/test/coverage command、証跡directory・命名・secret除去規則を固定する。依存: P0-01。完了: [11-quality-and-ci.md](11-quality-and-ci.md)§1.1〜§1.5がmodule path、`go`/`toolchain`、job別command、依存license許可list、証跡directory・命名、secret除去規則を一意に定め、`go.mod`/`go.sum`と`scripts/ci/check_licenses.py`と`.gitattributes`が実装され、両OSの12 checkがgreenである。証跡: [P0-02 決定記録](reviews/P0-02-toolchain-and-commands.md)と本書§3.3の2026-08-10T00:05:17+09:00 record
-- [-] **P0-03** [02-architecture.md](02-architecture.md)§4.1の抽象portのうち、[11-quality-and-ci.md](11-quality-and-ci.md)§6が決定的検査の前提とするclock/HTTP/process/filesystem/link/user lookupの6件について、core側が所有するinterfaceを定義し、fakeとfailure injection基盤を作る。残る8 port（Registry/Archive/Hash/Lock/Environment/Random/ProgressSink/Logger）のinterfaceとfakeは、最初に必要とするtaskで追加する。依存: P0-02。証跡: 未記録
+- [x] **P0-03** [02-architecture.md](02-architecture.md)§4.1の抽象portのうち、[11-quality-and-ci.md](11-quality-and-ci.md)§6が決定的検査の前提とするclock/HTTP/process/filesystem/link/user lookupの6件について、core側が所有するinterfaceを定義し、fakeとfailure injection基盤を作る。残る8 port（Registry/Archive/Hash/Lock/Environment/Random/ProgressSink/Logger）のinterfaceとfakeは、最初に必要とするtaskで追加する。依存: P0-02。完了: 6 interfaceと`Ports`、6 fakeと`Injector`／`Set`が`internal/domain/port`配下にあり、production pathからのfake importを`policy` jobが拒否し、両OSの12 checkがgreenである。証跡: [P0-03 決定記録](reviews/P0-03-port-interfaces-and-fakes.md)と本書§3.3の2026-08-10T01:40:31+09:00 record
 
 ## 7. P1 基盤
 
