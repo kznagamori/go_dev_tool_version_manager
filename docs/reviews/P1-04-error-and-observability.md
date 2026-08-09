@@ -97,6 +97,12 @@ P1-03のglobal state検査が、本taskで増えた12件のpackage-level varを�
 
 ## 4. 検証
 
+### 4.0 CI
+
+PR #26（commit `9883e53`、workflow run 31332059134）で、6 job×2 OSの **12 checkすべてがsuccess** になった。
+
+`unit`のtotal coverageは`ubuntu-latest`・`windows-latest`ともに91.8%で、両OSとも`-race`付き（`covermode=atomic`）で実行された。
+
 ### 4.1 ローカル検証
 
 Linux container（Go 1.26.5、Python 3.11.15）で実行した。
