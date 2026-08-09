@@ -260,8 +260,11 @@ GitHub Actionsの`windows-latest` runnerはAdministratorsグループに属す�
 - system変更: `HKEY_LOCAL_MACHINE`、`setx`、`reg.exe`、system `PATH`の書込み
 - package manager: `winget`/`choco`/`apt`/`dnf`/`yum`/`pacman`の起動
 - TLS: `InsecureSkipVerify`、独自CA bundle読込み
+- test資材のimport: fake portのpackageをproduction pathからimportすること
 
 Registry portはHKCUのみを受け付ける型とし、hive引数を取らないことをcompile時に保証する。
+
+fake portのimport禁止は、決定的testのための細工がruntime経路へ載ることを防ぐ。fake package自身のfileと`_test.go`は対象外とする。
 
 ### 7.2 動的検査（`e2e` job）
 
