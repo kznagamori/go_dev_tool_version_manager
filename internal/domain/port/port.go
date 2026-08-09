@@ -31,3 +31,35 @@ type Ports struct {
 	ProcessRunner ProcessRunner
 	UserLookup    UserLookup
 }
+
+// Missing は未設定のport名をfield宣言順で返す。すべて揃っていればnilを返す。
+//
+// 完全性の判定を呼出し側ではなく[Ports]自身へ置くのは、port追加時に更新すべき
+// 箇所を同じfileへ閉じ込めるためである。判定をApplication Service側へ置くと、
+// fieldを増やしたときに検査の追随漏れが起きても、その場ではnilのまま組み立てが
+// 成功してしまう。
+//
+// 判定はinterface値のnil比較である。typed nil pointerを入れたinterfaceは非nilに
+// なるため検出できないが、それは注入側の誤りであり、ここで救う対象にしない。
+func (p Ports) Missing() []string {
+	var missing []string
+	if p.Clock == nil {
+		missing = append(missing, "Clock")
+	}
+	if p.FileSystem == nil {
+		missing = append(missing, "FileSystem")
+	}
+	if p.HTTPClient == nil {
+		missing = append(missing, "HTTPClient")
+	}
+	if p.LinkManager == nil {
+		missing = append(missing, "LinkManager")
+	}
+	if p.ProcessRunner == nil {
+		missing = append(missing, "ProcessRunner")
+	}
+	if p.UserLookup == nil {
+		missing = append(missing, "UserLookup")
+	}
+	return missing
+}
