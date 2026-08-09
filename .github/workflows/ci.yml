@@ -39,28 +39,54 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: 文書link/anchor/fence/table検査
-        run: python scripts/ci/check_docs.py
-      - name: gofmt / go vet
+      - uses: actions/setup-go@v5
+        with:
+          # versionの正本は go.mod の toolchain 行だけにする。workflowへ数値を二重に
+          # 書くと、片方だけ更新された状態が静かに成立するため。
+          go-version-file: go.mod
+      - name: toolchain一致検査
         run: |
-          if [ -f go.mod ]; then
-            unformatted="$(gofmt -l .)"
-            if [ -n "$unformatted" ]; then
-              echo "$unformatted"
-              echo "::error title=gofmt::上のfileがgofmt済みでない"
-              exit 1
-            fi
-            go vet ./...
-          else
-            echo "::notice title=lint: Go検査は未実行::go.mod が無いため gofmt と go vet を実行していない。P0-02 で Go module/toolchain と actions/setup-go の固定版を決めた時点で有効になる (docs/13-progress.md P0-02)"
-          fi
-      - name: vulnerability / license検査
-        run: |
-          if [ -f go.mod ]; then
-            echo "::error title=lint::go.mod があるのに vulnerability/license 検査が未実装。P0-02 で追加する"
+          pinned="$(sed -n 's/^toolchain go//p' go.mod)"
+          if [ -z "$pinned" ]; then
+            echo "::error title=toolchain::go.mod に toolchain 行が無い。§1が要求する採用patchの固定ができていない"
             exit 1
           fi
-          echo "::notice title=lint: 依存検査は未実行::go.mod が無いため vulnerability/license 検査を実行していない。P0-02 で command を固定する (docs/13-progress.md P0-02)"
+          actual="$(go version | awk '{print $3}' | sed 's/^go//')"
+          echo "go.mod toolchain=$pinned / 実行中=$actual"
+          if [ "$pinned" != "$actual" ]; then
+            echo "::error title=toolchain::go.mod の toolchain ($pinned) と実行中のGo ($actual) が一致しない"
+            exit 1
+          fi
+      - name: 文書link/anchor/fence/table検査
+        run: python scripts/ci/check_docs.py
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "$unformatted"
+            echo "::error title=gofmt::上のfileがgofmt済みでない"
+            exit 1
+          fi
+          echo "gofmt済み"
+      - name: go vet
+        run: |
+          # package 0件では go vet ./... が exit 1 になるため、対象の有無で分岐する。
+          packages="$(go list ./... 2>/dev/null)"
+          if [ -n "$packages" ]; then
+            go vet ./...
+          else
+            echo "::notice title=lint: go vet 未実行::Go packageがまだ無い。P1-01 でpackage骨格が入った時点から実検査になる (docs/13-progress.md P1-01)"
+          fi
+      - name: vulnerability検査
+        run: |
+          packages="$(go list ./... 2>/dev/null)"
+          if [ -n "$packages" ]; then
+            go tool govulncheck ./...
+          else
+            echo "::notice title=lint: govulncheck 未実行::Go packageがまだ無い。P1-01 でpackage骨格が入った時点から実検査になる (docs/13-progress.md P1-01)"
+          fi
+      - name: 依存license検査
+        run: python scripts/ci/check_licenses.py
 
   unit:
     name: unit
@@ -71,13 +97,32 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
       - name: unit / contract test
         run: |
-          if [ -f go.mod ]; then
-            echo "::error title=unit::go.mod があるのに test 実行が未実装。P0-02 で test/coverage command を固定して有効化する"
-            exit 1
+          # package 0件では go test ./... が exit 1 になるため、対象の有無で分岐する。
+          packages="$(go list ./... 2>/dev/null)"
+          if [ -z "$packages" ]; then
+            echo "::notice title=unit: 未実行::Go packageがまだ無い。P1-01 でpackage骨格が入った時点から実検査になる (docs/13-progress.md P1-01)"
+            exit 0
           fi
-          echo "::notice title=unit: 未実行::go.mod が無いため unit/contract test を実行していない。P0-02 で test command を固定し、P1-01 以降のpackageから実検査になる (docs/13-progress.md P0-02, P1-01)"
+          # §5の「-race（対応host）」。race detectorはC toolchainを要求するため、
+          # OS名ではなく実際にCCが使えるかで判定する。
+          cc="$(go env CC)"
+          if command -v "$cc" >/dev/null 2>&1; then
+            race="-race"
+            covermode="atomic"
+          else
+            race=""
+            covermode="count"
+            echo "::notice title=unit: race detector 未使用::C toolchain ($cc) が無いため -race を付けずに実行する"
+          fi
+          go test ./... $race -shuffle=on -covermode="$covermode" -coverprofile=coverage.out
+          total="$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}')"
+          echo "total coverage: $total"
+          echo "- unit coverage (${{ matrix.os }}): $total" >> "$GITHUB_STEP_SUMMARY"
 
   e2e:
     name: e2e
