@@ -36,7 +36,9 @@ security patchが出た場合は`toolchain`行だけを更新する。minorを�
 | `unit` | `go test ./... -race -shuffle=on -covermode=atomic -coverprofile=coverage.out` | 同上。`go list ./...`が空なら未実行を報告して成功する |
 | `policy` | `scripts/ci/check_policy.py`, `scripts/ci/check_pr_refs.py` | 常時実行 |
 
-`-race`はC toolchainを要求するため、`go env CC`が実行可能な場合だけ付ける（§5の「対応host」）。OS名で分岐しない。付けない場合は`-covermode=count`とし、その旨を報告する。
+`-race`はC toolchainを要求するため、`go env CC`が実行可能な場合だけ付ける（§5の「対応host」）。OS名で分岐しない。付けない場合は`-covermode=count`とし、その旨を報告する。`windows-latest`にはC toolchainがあり`-race`が付くことをCIで実測済みである。
+
+repository rootへ`.gitattributes`を置き、text fileを`* text=auto eol=lf`でLF固定にする。Windows runnerのcheckoutは`core.autocrlf`でCRLFへ変換するが、`gofmt`の出力はLF固定のため、CRLFで取り出すと`gofmt -l .`が全Go fileを未formatと報告してWindowsだけ落ちる。改行をplatform差として扱わず、repository側で1つに固定する。
 
 coverageは計測して総合値をjob summaryへ出すだけとし、閾値でCIを失敗させない。package実装前に根拠のない数値を固定しないためである。閾値の導入は実測値が揃ってから別taskで判断する。
 
