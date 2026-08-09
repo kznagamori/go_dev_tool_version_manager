@@ -155,6 +155,8 @@ jobs:
           python-version: '3.12'
       - name: 禁止APIの静的検査
         run: python scripts/ci/check_policy.py
+      - name: 依存方向の静的検査
+        run: python scripts/ci/check_imports.py
       - name: PR head/base検査
         run: python scripts/ci/check_pr_refs.py
       - name: 書込み範囲の動的検査

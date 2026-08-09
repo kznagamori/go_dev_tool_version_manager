@@ -10,16 +10,16 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 | 項目 | 現在値 |
 |---|---|
-| 全体状態 | `停止中` |
-| 現在フェーズ | `P0` |
-| 実行中タスクID | `なし` |
+| 全体状態 | `進行中` |
+| 現在フェーズ | `P1` |
+| 実行中タスクID | `P1-01` |
 | 最後に完了したタスクID | `P0-03（port interfaceとfake）` |
 | 次に開始するタスクID | `P1-01`（G-CI達成後） |
 | CI状態 | `両OS 12 checkがgreen。required status check登録済み。Go検査はpackage投入で自動有効化` |
 | blocker | `なし` |
 | 最終更新日時 | `2026-08-10T01:40:31+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch | `claude/feature-p0-03-fake-ports` |
+| 作業branch | `claude/feature-p1-01-package-skeleton` |
 | 使用環境 | `Linux container` |
 | 最新の証跡 | [P0-03 決定記録](reviews/P0-03-port-interfaces-and-fakes.md)、CI 12/12 success、`go test -race` coverage 84.5%、`govulncheck`の`No vulnerabilities found.` |
 
@@ -124,7 +124,7 @@ G-TOOLS達成後は、G-E2E/G-DONEの完了を待たずにDF-01（§17）のド�
 
 ## 7. P1 基盤
 
-- [ ] **P1-01** `cmd/gdtvm`と[02-architecture.md](02-architecture.md)§2のpackage骨格、package comment、依存方向のstatic checkを作る。依存: G-CI。証跡: 未記録
+- [-] **P1-01** `cmd/gdtvm`と[02-architecture.md](02-architecture.md)§2のpackage骨格、package comment、依存方向のstatic checkを作る。依存: G-CI。証跡: 未記録
 - [ ] **P1-02** ToolID/Version/Platform/Mode/Scope/Digest/Path/InstallKey/Selection等のdomain valueと3 version schemeを実装・testする。依存: P1-01。証跡: 未記録
 - [ ] **P1-03** portの依存注入（`NewServices`とPorts組立て）と、package global mutable stateが存在しないことをtestする。interface定義とfakeはP0-03で6件を作成済みのため、ここでは行わない。依存: P1-01。証跡: 未記録
 - [ ] **P1-04** typed error/message ID/exit code/secret masking/invocation・operation ID/cancel/progress/structured loggerを実装・testする。依存: P1-02,P1-03。証跡: 未記録
