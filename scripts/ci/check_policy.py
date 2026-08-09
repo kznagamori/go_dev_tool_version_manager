@@ -47,6 +47,20 @@ FORBIDDEN_COMMANDS = {
     "pacman": "package manager起動",
 }
 
+# production pathからのimportを禁止するpackage。
+#
+# fakeはtest資材であり、productionへ混ざると決定的testのための細工が
+# 実行時経路へ載る。import自体を静的に拒否する。
+FORBIDDEN_IMPORTS = {
+    "github.com/kznagamori/go_dev_tool_version_manager/internal/domain/port/fake": (
+        "fake portはtest専用（docs/11-quality-and-ci.md §6）"
+    ),
+}
+
+# FORBIDDEN_IMPORTSの検査から除外するpath接頭辞。
+# fake package自身のfileは当然fakeに属するため対象外にする。
+IMPORT_CHECK_EXEMPT_PREFIXES = ("internal/domain/port/fake/",)
+
 # source全体で禁止する識別子。
 FORBIDDEN_SYMBOLS = {
     "InsecureSkipVerify": "TLS検証の無効化",
@@ -72,12 +86,19 @@ def production_go_files(root: Path) -> list[Path]:
 
 def scan(path: Path, rel: Path) -> list[str]:
     findings: list[str] = []
+    rel_posix = rel.as_posix()
+    import_exempt = rel_posix.startswith(IMPORT_CHECK_EXEMPT_PREFIXES)
+
     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         for symbol, reason in FORBIDDEN_SYMBOLS.items():
             if symbol in line:
                 findings.append(f"{rel}:{number}: 禁止symbol `{symbol}` ({reason})")
         for literal in STRING_LITERAL.findall(line):
             body = literal[1:-1]
+            if not import_exempt:
+                for module, reason in FORBIDDEN_IMPORTS.items():
+                    if body == module:
+                        findings.append(f"{rel}:{number}: 禁止import `{module}` ({reason})")
             for command, reason in FORBIDDEN_COMMANDS.items():
                 if re.search(rf"(?<![\w.-]){re.escape(command)}(?![\w-])", body):
                     findings.append(f"{rel}:{number}: 禁止command `{command}` ({reason})")
