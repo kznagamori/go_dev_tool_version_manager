@@ -96,6 +96,14 @@ scope解決は持ち込まず、package-level varと同名のlocal変数への�
 
 ## 4. 検証
 
+### 4.0 CI
+
+PR #23（commit `bfe7e0a`、workflow run 31329861563）で、6 job×2 OSの **12 checkすべてがsuccess** になった。
+
+`unit`のtotal coverageは`ubuntu-latest`・`windows-latest`ともに86.8%で、両OSとも`-race`付き（`covermode=atomic`）で実行された。package別は`internal/app` 94.9%、`internal/domain` 94.8%、`internal/domain/port/fake` 85.2%、`cmd/gdtvm` 66.7%、`internal/domain/port` 0.0%（理由は§5）。
+
+### 4.1 ローカル検証
+
 すべてLinux container（Go 1.26.5、Python 3.11.15）で実行した。
 
 | command | 結果 |
@@ -114,7 +122,7 @@ package別coverage: `internal/app` 94.9%、`internal/domain` 94.8%、`internal/d
 
 test件数は`internal/app`が42件（うち`NewServices`のnegative 23件、欠落port 7件）。
 
-### 4.1 検査が効くことの確認（negative）
+### 4.2 検査が効くことの確認（negative）
 
 検査自体が空振りしていないことを、一時fileを置いて確認し、確認後に削除した。
 
