@@ -140,6 +140,12 @@ schema revisionはすべて`1`。TOMLはUTF-8 BOMなしTOML 1.0、JSONはUTF-8 B
 | path | TOML/JSONではlogical role＋POSIX relativeを基本。absoluteは契約が明記したfieldだけ |
 | URL | HTTPS、userinfoなし、最大8 KiB |
 | enum/ID | ASCII lowercase、各章のgrammar |
+| scalar parameter key | `^[a-z][a-z0-9_]*$`、1～64文字 |
+| message ID | `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`、segment 2件以上、全体1～128文字 |
+
+scalar parameter keyは、typed errorの`parameters`（[02-architecture.md](02-architecture.md)§14）、progressの`parameters`（同§10）、Plan warningとresult warningの`parameters`（§16.1・§16.2）、structured logの`fields`（§18）で共通とする。同じ値を指すkeyが箇所ごとに`tool_id`と`toolId`へ分かれると、message templateのplaceholder（§20）とCLI JSONの突き合わせができなくなるためである。permissiveな受理はせず、grammar外のkeyを持つ値は公開境界へ出す前に拒否する。
+
+message IDのsegmentを2件以上とするのは、先頭segmentを`error`、`warning`、`install`のような分類として使い、catalogの網羅性をtoolで検査できるようにするためである。
 
 digestは2種類あり、混同しない。
 
@@ -701,7 +707,7 @@ roleを付ける目的は2つある。`doctor --report`（[10-security.md](10-se
 {"schema":1,"time":"2026-08-07T09:00:00Z","level":"info","invocation_id":"33333333333333333333333333333333","operation_id":"22222222222222222222222222222222","component":"installer","message_id":"install.started","fields":{"tool_id":"node","version":"22.18.0"}}
 ```
 
-keyは例の集合だけ。level=`error|warn|info|debug|trace`。fields scalar map、key ASCII grammar、最大64件。mask後だけserializeし、credential/file content/registry rawを入れない。専用audit logは存在しない。
+keyは例の集合だけ。level=`error|warn|info|debug|trace`。fields scalar map、keyは§7のscalar parameter key grammar、最大64件。mask後だけserializeし、credential/file content/registry rawを入れない。専用audit logは存在しない。
 
 ## 19. lock metadata
 
@@ -715,7 +721,7 @@ PID/file ageだけでactive lockを破棄しない。role grammarとlock順は§
 
 ## 20. message catalog
 
-`registry/messages/ja.toml`はASCII dotted key集合を持ち、値はUTF-8 template string。placeholderは`{name}`、literal braceは`{{`/`}}`。template内ANSI、terminal control、秘密値展開を禁止する。1 message 8 KiB、全体2 MiB。
+`registry/messages/ja.toml`は§7のmessage ID grammarに従うASCII dotted key集合を持ち、値はUTF-8 template string。placeholderは`{name}`、literal braceは`{{`/`}}`。template内ANSI、terminal control、秘密値展開を禁止する。1 message 8 KiB、全体2 MiB。
 
 v0.1の言語は日本語だけだが、message ID機構はそのまま保持する。言語追加時はcatalog fileを増やし、key/parameter集合の一致をtestで担保する。
 
