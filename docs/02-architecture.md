@@ -213,7 +213,7 @@ type ProgressSink interface { Report(Progress) }
 type CancelToken interface { Done() <-chan struct{} }
 ```
 
-phaseは`resolve|plan|download|verify|extract|probe|commit|cleanup|rollback|complete`。unitは`none|bytes|items|steps`。Currentは単調非減少、TotalがあるときCurrent<=Total。message parameterはscalarだけでsecret/path raw contentを含めない。
+phaseは`resolve|plan|download|verify|extract|probe|commit|cleanup|rollback|complete`。unitは`none|bytes|items|steps`。Currentは単調非減少、TotalがあるときCurrent<=Total。message parameterはscalarだけでsecret/path raw contentを含めない。`MessageID`と`Parameters`のkeyは§14と同じく[04-storage-and-data.md](04-storage-and-data.md)§7のgrammarに従う。
 
 ProgressSinkは遅いconsumerでoperationを無期限blockさせない。最新値coalesceまたは有界bufferをadapterで行う。progressをJSON Linesとしてstdoutへ公開しない。
 
@@ -276,7 +276,14 @@ type Error struct {
 
 `PathRole`は[04-storage-and-data.md](04-storage-and-data.md)§17.2の閉じた集合から取り、絶対pathを公開境界へ出さずに対象を特定できるようにする。`Cause`はdebug log用でJSON/public messageへ直接serializeしない。`Code`は`E_`で始まるstable codeとし、[03-cli.md](03-cli.md)の終了code表および[09-platform.md](09-platform.md)のplatform error表の和集合をv0.1の閉じた集合とする。各stable codeは終了code exactly 1件へmapし、未分類codeを公開境界へ返さない。想定外の内部失敗だけは公開code `E_INTERNAL`、終了code 1へ変換する。
 
-同じ失敗条件はCLI human/JSON/shimで同じcode/message IDにする。retryableは自動retry対象を意味せず、利用者が状態変更後に再実行可能かを示す。checksum/path/identity/registry corruptionをretryable=trueにしない。
+同じ失敗条件はCLI human/JSON/shimで同じcode/message IDにする。retryableは自動retry対象を意味せず、利用者が状態変更後に再実行可能かを示す。checksum/path/identity/registry corruptionをretryable=trueにしない。該当codeは次のexactly 8件とし、実装は`Retryable=true`との組合せを拒否する。
+
+```text
+E_CHECKSUM_MISMATCH  E_ARCHIVE_UNSAFE   E_PATH_UNSAFE     E_PATH_CONFLICT
+E_REGISTRY_INVALID   E_DEFINITION_INVALID  E_STATE_CORRUPT  E_RECEIPT_INVALID
+```
+
+`MessageID`は[04-storage-and-data.md](04-storage-and-data.md)§7のmessage ID grammar、`Parameters`のkeyは同§7のscalar parameter key grammarに従う。`Parameters`の値はstring、boolean、integer、nullだけとする。
 
 ## 15. Logger
 

@@ -70,12 +70,17 @@ func TestNewServicesRejectsMissingPort(t *testing.T) {
 		{"filesystem", func(p *port.Ports) { p.FileSystem = nil }, []string{"FileSystem"}},
 		{"http", func(p *port.Ports) { p.HTTPClient = nil }, []string{"HTTPClient"}},
 		{"link", func(p *port.Ports) { p.LinkManager = nil }, []string{"LinkManager"}},
+		{"logger", func(p *port.Ports) { p.Logger = nil }, []string{"Logger"}},
 		{"process", func(p *port.Ports) { p.ProcessRunner = nil }, []string{"ProcessRunner"}},
+		{"random", func(p *port.Ports) { p.Random = nil }, []string{"Random"}},
 		{"userlookup", func(p *port.Ports) { p.UserLookup = nil }, []string{"UserLookup"}},
 		{
 			"すべて未設定",
 			func(p *port.Ports) { *p = port.Ports{} },
-			[]string{"Clock", "FileSystem", "HTTPClient", "LinkManager", "ProcessRunner", "UserLookup"},
+			[]string{
+				"Clock", "FileSystem", "HTTPClient", "LinkManager",
+				"Logger", "ProcessRunner", "Random", "UserLookup",
+			},
 		},
 	}
 
@@ -106,7 +111,7 @@ func TestNewServicesReportsMissingPortsInDeclarationOrder(t *testing.T) {
 	if err == nil {
 		t.Fatal("NewServices = nil, want error")
 	}
-	const want = "Clock, FileSystem, HTTPClient, LinkManager, ProcessRunner, UserLookup"
+	const want = "Clock, FileSystem, HTTPClient, LinkManager, Logger, ProcessRunner, Random, UserLookup"
 	if !strings.Contains(err.Error(), want) {
 		t.Errorf("error %q に %q が含まれない", err, want)
 	}
