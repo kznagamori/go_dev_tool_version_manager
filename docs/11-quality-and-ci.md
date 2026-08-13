@@ -77,6 +77,18 @@ CIが生成するcoverage profile、archive、log等はrepositoryへcommitしな
 
 expected/actual digest、公開URL、公開version文字列は秘密ではないため記録する（[10-security.md](10-security.md)§9.2と同じ扱い）。検証commandは環境変数の値を貼らず、変数名のまま再現できる形で書く。実行環境はOS、architecture、shell、Go/Python versionの粒度で記録し、host名を書かない。
 
+### 1.6 採用済み外部module
+
+[02-architecture.md](02-architecture.md)§17は外部module採用時にSPDX license、最終更新、既知脆弱性、maintainer状況、transitive dependency、port置換可能性、`go.sum`固定を記録すると定める。記録はこの節を正本とし、moduleを増減させるtaskが同じ変更で更新する。
+
+`tool` directiveで固定する開発用tool（`govulncheck`）はclient binaryへ入らないため対象外とする。
+
+| module | version | SPDX | transitive dependency | 採用理由 | 置換可能性 |
+|---|---|---|---|---|---|
+| `github.com/pelletier/go-toml/v2` | v2.4.3 | MIT | なし（module依存0件、Go 1.21以上のみ要求） | [05-configuration.md](05-configuration.md)§1が求める「unknown key、重複key/table、型違い、enum外、上限外を**位置付き**`E_CONFIG_INVALID`として拒否」を、`Decoder.DisallowUnknownFields()`と行・列を持つ`DecodeError`/`StrictMissingError`で満たせる。TOML 1.0のdatetime、多行文字列、inline table、array of tablesを自前parserでstrictに実装するより誤りが少ない | 利用箇所は`internal/config`のTOML decodeに閉じ、公開境界へこのmoduleの型を出さない（[02-architecture.md](02-architecture.md)§17末尾）。差替え時の影響は同packageに留まる |
+
+既知脆弱性は`lint` jobの`go tool govulncheck ./...`が毎PRで検査する。versionの更新は`go.sum`を同じ変更で更新し、両OSの12 checkがgreenであることを確認してからmergeする。copyleftを含むmoduleを追加する場合は§1.3の許可listを先に更新する。
+
 ## 2. client version
 
 正規client versionはCalVerの`YYYY.MM.DD.XX`。`v0.1`は初期完成範囲を表すrelease段階名であり、client version、tag、Go module versionではない。

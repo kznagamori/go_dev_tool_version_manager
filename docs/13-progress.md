@@ -10,16 +10,16 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 | 項目 | 現在値 |
 |---|---|
-| 全体状態 | `停止中` |
+| 全体状態 | `進行中` |
 | 現在フェーズ | `P2` |
-| 実行中タスクID | `なし` |
+| 実行中タスクID | `P2-02` |
 | 最後に完了したタスクID | `P2-01（root決定とconfig locator）` |
-| 次に開始するタスクID | `P2-02` |
+| 次に開始するタスクID | `P2-03` |
 | CI状態 | `両OS 12 checkがgreen（PR #31、run 31672152652）。required status check登録済み` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-08-13T16:05:59+09:00` |
+| 最終更新日時 | `2026-08-13T18:30:25+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch | `claude/feature-p2-01-root-and-config-locator` |
+| 作業branch | `claude/feature-p2-02-config-schema` |
 | 使用環境 | `Linux container` |
 | 最新の証跡 | [P2-01 決定記録](reviews/P2-01-root-and-config-locator.md)、CI 12/12 success、全体 coverage 91.9%（`config` 92.8%）、`--home`と環境変数不使用のnegative test |
 
@@ -137,7 +137,7 @@ G-TOOLS達成後は、G-E2E/G-DONEの完了を待たずにDF-01（§17）のド�
 ## 8. P2 config・path・state
 
 - [x] **P2-01** portable/user root決定（Windows Known Folder、Linux OS user lookup）、`--home`、config locatorを両OSで実装・testする。`--home`の拒否条件のうちowner・network share・symlink/reparse loopはfilesystem操作を要するためP2-03の範囲とする。依存: P1。完了: modeが[04-storage-and-data.md](04-storage-and-data.md)§1の優先順位で由来付きに決まり、rootが§1.1・§1.2どおり両OS分で決まり、環境変数を読まないことがtestで固定され、両OSの12 checkがgreenである。証跡: [P2-01 決定記録](reviews/P2-01-root-and-config-locator.md)と本書§3.3の2026-08-13T16:05:59+09:00 record
-- [ ] **P2-02** global/project TOML schema、default、unknown/type/limit、Git境界探索をstrict実装・testする。依存: P2-01。証跡: 未記録
+- [-] **P2-02** global/project TOML schema、default、unknown/type/limit、Git境界探索をstrict実装・testする。依存: P2-01。証跡: 未記録
 - [ ] **P2-03** root layout/containment/owner/reparse/unsafe filesystemを実装・negative testする。依存: P2-01。証跡: 未記録
 - [ ] **P2-04** state/setup/backup/selection/receipt/index/catalog/Plan/CLI JSONのcodecと、structured logのJSON Lines serialization（[04-storage-and-data.md](04-storage-and-data.md)§18）を[04-storage-and-data.md](04-storage-and-data.md)どおり実装・testする。log出力は[02-architecture.md](02-architecture.md)§2で`internal/store`の責務とした（P1-04の判断）。依存: P1-02,P2-03。証跡: 未記録
 - [ ] **P2-05** atomic write/flush/backup/revision/conflict/破損復旧とlock順、timeout/cancel、process間競合と、structured logのrotation・保持上限（[10-security.md](10-security.md)§12、[04-storage-and-data.md](04-storage-and-data.md)§21）をfailure injection・parallel testする。依存: P2-04。証跡: 未記録
