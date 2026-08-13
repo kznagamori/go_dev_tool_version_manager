@@ -37,7 +37,9 @@ ALLOWED: dict[str, set[str]] = {
     # 11-quality-and-ci.md §7.1に従いcheck_policy.pyが別途禁止する。
     "internal/app": {"internal/domain/port", "internal/domain/port/fake"},
     "internal/catalog": set(),
-    "internal/config": set(),
+    # 04-storage-and-data.md §1のroot決定がmode/platform/path roleのdomain値と、
+    # OS user lookupの結果（port.UserIdentity）を使うため（P2-01）。
+    "internal/config": {"internal/domain", "internal/domain/port"},
     "internal/definition": set(),
     "internal/doctor": set(),
     "internal/domain": set(),

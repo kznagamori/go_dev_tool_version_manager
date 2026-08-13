@@ -12,6 +12,17 @@ type UserIdentity struct {
 	// 環境変数HOMEやXDG_*をroot決定に使わない。環境変数は利用者が上書きでき、
 	// user modeのdata rootが意図しない位置になるためである（docs/09-platform.md）。
 	Home string
+
+	// AppDataLocal はWindowsのKnown Folder `FOLDERID_LocalAppData` である。
+	//
+	// docs/04-storage-and-data.md §1.2 はuser modeのdata rootを、Windowsでは
+	// LocalAppData直下`gdtvm`、Linuxでは[UserIdentity.Home]直下
+	// `.local/share/gdtvm`と定める。WindowsのLocalAppDataはaccount homeとは
+	// 別のdirectoryのため、[UserIdentity.Home]では代用できない。
+	//
+	// Linuxには対応する概念が無いため空にする。docs/02-architecture.md §4.1 が
+	// Known Folderの取得をこのportの責務としているため、OS差はここで吸収する。
+	AppDataLocal string
 }
 
 // UserLookup は実user、home、owner識別を抽象化する
