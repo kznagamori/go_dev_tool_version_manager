@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"io/fs"
 	"strings"
 
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain"
@@ -344,6 +345,15 @@ func configError(messageID string, params map[string]string) *domain.Error {
 	return newTypedError(domain.CodeConfigInvalid, messageID, params)
 }
 
+// projectError はproject fileに起因する失敗のtyped errorを作る。
+//
+// docs/03-cli.md §7はglobal設定の`E_CONFIG_INVALID`とproject設定の
+// `E_PROJECT_CONFIG_INVALID`を別codeにしている。どちらのfileが悪いかを利用者が
+// 区別できるようにするためであり、まとめない。
+func projectError(messageID string, params map[string]string) *domain.Error {
+	return newTypedError(domain.CodeProjectConfigInvalid, messageID, params)
+}
+
 func filesystemError(messageID string, params map[string]string) *domain.Error {
 	return newTypedError(domain.CodeFilesystem, messageID, params)
 }
@@ -365,5 +375,24 @@ func newTypedError(code domain.ErrorCode, messageID string, params map[string]st
 			typed.Parameters[key] = domain.StringScalar(value)
 		}
 	}
+	return typed
+}
+
+// isNotExist はerrorが「存在しない」を表すかを返す。
+//
+// port実装はfs.ErrNotExistを包んで返す契約のため（internal/domain/port）、
+// errors.Isで判定する。
+func isNotExist(err error) bool { return errors.Is(err, fs.ErrNotExist) }
+
+// filesystemErrorWithCause はpath付きのfilesystem errorを作る。
+//
+// pathはrole付きで持つが、message parameterへは入れない。個人pathを公開境界へ
+// 出さないためである（docs/10-security.md §9.2）。
+func filesystemErrorWithCause(messageID, path string, cause error) *domain.Error {
+	typed := newTypedError(domain.CodeFilesystem, messageID, nil)
+	if value, err := domain.NewPathValue(domain.RoleProjectFile, path); err == nil {
+		typed.PathRole = value.Role()
+	}
+	typed.Cause = cause
 	return typed
 }
