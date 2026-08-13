@@ -40,6 +40,7 @@ var allowedGlobals = map[string]string{
 	"internal/domain.hexLength":                    "docs/04-storage-and-data.md §6のalgorithm別hex長。初期化後に変更しない対応表",
 	"internal/domain.platforms":                    "docs/02-architecture.md §3の固定platform表。同上",
 	"internal/domain.pathRoles":                    "docs/04-storage-and-data.md §17.2の22 role表。同上",
+	"internal/config.colorModes":                   "docs/05-configuration.md §3.1のcolor 3値。初期化後に変更しない対応表",
 	"internal/domain.exitCodes":                    "docs/03-cli.md §7のerror code→終了code写像。初期化後に変更しない対応表",
 	"internal/domain.nonRetryableCodes":            "docs/02-architecture.md §14がretryable=trueを禁じる8件。同上",
 	"internal/domain.idRe":                         "128 bit IDの32桁小文字hex grammar。compile済みregexpで、初期化後に再代入しない",
