@@ -35,7 +35,7 @@ DomainとApplication ServiceからCLI、具体的OS API、具体的HTTP client�
 | `internal/runtime` | 実行環境生成、コマンド解決、子プロセス起動 |
 | `internal/shim` | shim metadata生成、呼出名解決、実体委譲 |
 | `internal/shell` | setup、profile marker、undo |
-| `internal/store` | state、catalog、receipt、atomic write |
+| `internal/store` | state、catalog、receipt、atomic write、structured logの出力とrotation |
 | `internal/platform` | Windows/Linux固有のリンク、プロセス、権限、パス |
 | `internal/security` | upstream SHA-256/SHA-512、内部SHA-256、path検査、mask |
 | `internal/doctor` | 診断規則とreport生成 |
