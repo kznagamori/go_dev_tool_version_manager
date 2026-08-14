@@ -61,7 +61,9 @@ ALLOWED: dict[str, set[str]] = {
     "internal/selection": set(),
     "internal/shell": set(),
     "internal/shim": set(),
-    "internal/store": set(),
+    # 04-storage-and-data.md §7〜§18のcodecがdomainのID/digest/enum/path role/
+    # scalarを扱い、§18のstructured logがport.LogRecordを直接serializeする（P2-04）。
+    "internal/store": {"internal/domain", "internal/domain/port"},
 }
 
 # 表に関係なく常に成立させる不変条件。(判定関数, 説明) の組。
