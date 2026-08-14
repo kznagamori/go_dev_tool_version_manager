@@ -26,6 +26,9 @@ import (
 // 参照もできないため、表に載せずに通す。`_test.go`は対象外である。testが自分の
 // fixtureをpackage scopeへ置くことまで禁じる理由はない。
 var allowedGlobals = map[string]string{
+	"internal/domain/port.lockClassNames":          "docs/02-architecture.md §12のlock分類 exact 6値とrole名の対応表。初期化後に変更しない",
+	"internal/domain/port.ErrLockOrder":            "lock順序違反を表すsentinel error。errors.Isで判定するため値として公開する。初期化後に再代入しない",
+	"internal/domain/port.ErrLockTimeout":          "lock取得timeoutを表すsentinel error。同上",
 	"internal/store.resultWarningCodes":            "docs/04-storage-and-data.md §16.2のResultWarningCode exact 5値。初期化後に変更しない閉じた集合",
 	"internal/store.jsonCommands":                  "§17の`--json`対応command exact 5値。同上",
 	"internal/store.severities":                    "§17.1のseverity exact 3値。同上",

@@ -111,7 +111,7 @@ func TestNewServicesReportsMissingPortsInDeclarationOrder(t *testing.T) {
 	if err == nil {
 		t.Fatal("NewServices = nil, want error")
 	}
-	const want = "Clock, FileSystem, HTTPClient, LinkManager, Logger, ProcessRunner, Random, UserLookup"
+	const want = "Clock, FileSystem, HTTPClient, LinkManager, LockManager, Logger, ProcessRunner, Random, UserLookup"
 	if !strings.Contains(err.Error(), want) {
 		t.Errorf("error %q に %q が含まれない", err, want)
 	}
