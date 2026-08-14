@@ -148,7 +148,7 @@ Linux container（Go 1.26.5、Python 3.11.15）で実行した。
 
 ### 4.2 CI
 
-PR #55（workflow run 31797209544）で、6 job×2 OSの **12 checkすべてがsuccess** になった。
+PR #55で、6 job×2 OSの **12 checkすべてがsuccess** になった。実装commit `e2f4bf2`（run 31797209544）と、決定記録を足した`893b56d`（run 31797238473）の両方で確認している。
 
 ## 5. 未実施・制約
 
