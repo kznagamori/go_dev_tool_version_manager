@@ -477,11 +477,8 @@ func buildReceiptArtifact(table receiptArtifactTable) (ReceiptArtifact, error) {
 	}
 	// file名はpath componentとして安全でなければならない。区切りや相対参照が
 	// 入ると、download先がcache directoryの外へ出る（§6）。
-	if _, err := requireRelativePath("artifact.file", fileName); err != nil {
+	if _, err := requireFileName("artifact.file", fileName); err != nil {
 		return value, err
-	}
-	if strings.Contains(fileName, "/") {
-		return value, fmt.Errorf("artifact.fileはfile名でなければならない（%q）", fileName)
 	}
 	size, err := requireInt64("artifact.size", table.Size)
 	if err != nil {

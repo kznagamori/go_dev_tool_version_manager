@@ -98,6 +98,22 @@ func requireExactVersion(field, version string) error {
 	return nil
 }
 
+// requireFileName はpath componentを1つだけ持つfile名を読む。
+//
+// docs/04-storage-and-data.md §14の`artifact.file`、§15の`artifact_file`、
+// §16の`downloads[].file_name`はいずれも「file名」であり、pathではない。
+// 区切りを許すと、cache directoryやstaging directoryの外へ書ける
+// （§6のcontainment）。相対参照と絶対pathは[requireRelativePath]が拒否する。
+func requireFileName(field, text string) (string, error) {
+	if _, err := requireRelativePath(field, text); err != nil {
+		return "", err
+	}
+	if strings.Contains(text, "/") {
+		return "", fmt.Errorf("%sはfile名でなければならない（%q）", field, text)
+	}
+	return text, nil
+}
+
 // requireCommandName は公開command名を読む。
 func requireCommandName(field string, raw *string) (string, error) {
 	text, err := requirePresent(field, raw)

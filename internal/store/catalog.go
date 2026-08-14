@@ -10,7 +10,12 @@ import (
 // CatalogItem はcatalog JSONの1 versionである（docs/04-storage-and-data.md §15）。
 type CatalogItem struct {
 	// Version はcatalogが正規化した完全versionである。
+	//
+	// CLI JSON envelope（§17）から読んだitemはschemeを持たないためzeroになる。
+	// その場合は[CatalogItem.VersionText]を使う。
 	Version domain.Version
+	// VersionText はversionの元文字列である。schemeの有無によらず常に入る。
+	VersionText string
 	// Channel はstableかprereleaseかである。
 	Channel domain.Channel
 	// Lifecycle はsupported/eol/unknownである。
@@ -293,22 +298,77 @@ func requireCatalogItemOrder(entries []CatalogItem) error {
 	return nil
 }
 
+// catalogItemFields はversion以外のitem fieldである。
+//
+// §15 itemと§17の`CatalogItem`はexact key集合が同じだが、versionの扱いだけが
+// 違う。catalogはschemeを持つため[domain.Version]へ、CLI JSONはschemeを持たない
+// ためtextのまま扱う。共通部分を1か所にして、片方だけ検査が緩む余地を無くす。
+type catalogItemFields struct {
+	channel             domain.Channel
+	lifecycle           domain.Lifecycle
+	lifecycleEvidence   string
+	lifecycleAssessedAt time.Time
+	publishedAt         time.Time
+	installable         bool
+	unavailableReason   string
+	providerKind        ProviderKind
+	providerRelease     string
+	artifactFile        string
+	artifactURL         string
+	artifactSize        int64
+	artifactDigest      domain.Digest
+	checksumSource      ChecksumSource
+}
+
 func buildCatalogItem(
 	index int, raw catalogItemJSON, scheme domain.VersionScheme,
 ) (CatalogItem, error) {
 	var value CatalogItem
 	prefix := fmt.Sprintf("items[%d]", index)
-	versionText, err := requirePresent(prefix+".version", raw.Version)
+	versionText, err := requireExactVersionField(prefix+".version", raw.Version)
 	if err != nil {
-		return value, err
-	}
-	if err := requireExactVersion(prefix+".version", versionText); err != nil {
 		return value, err
 	}
 	version, err := domain.ParseVersion(scheme, versionText)
 	if err != nil {
 		return value, fmt.Errorf("%s.version: %w", prefix, err)
 	}
+	fields, err := buildCatalogItemFields(prefix, raw)
+	if err != nil {
+		return value, err
+	}
+	return catalogItemOf(fields, version, versionText), nil
+}
+
+// requireExactVersionField はscheme非依存に完全versionであることを確かめる。
+func requireExactVersionField(field string, raw *string) (string, error) {
+	text, err := requirePresent(field, raw)
+	if err != nil {
+		return "", err
+	}
+	if err := requireExactVersion(field, text); err != nil {
+		return "", err
+	}
+	return text, nil
+}
+
+func catalogItemOf(fields catalogItemFields, version domain.Version, text string) CatalogItem {
+	return CatalogItem{
+		Version: version, VersionText: text,
+		Channel: fields.channel, Lifecycle: fields.lifecycle,
+		LifecycleEvidence:   fields.lifecycleEvidence,
+		LifecycleAssessedAt: fields.lifecycleAssessedAt,
+		PublishedAt:         fields.publishedAt, Installable: fields.installable,
+		UnavailableReason: fields.unavailableReason,
+		ProviderKind:      fields.providerKind, ProviderRelease: fields.providerRelease,
+		ArtifactFile: fields.artifactFile, ArtifactURL: fields.artifactURL,
+		ArtifactSize: fields.artifactSize, ArtifactDigest: fields.artifactDigest,
+		ChecksumSource: fields.checksumSource,
+	}
+}
+
+func buildCatalogItemFields(prefix string, raw catalogItemJSON) (catalogItemFields, error) {
+	var value catalogItemFields
 	channelText, err := requirePresent(prefix+".channel", raw.Channel)
 	if err != nil {
 		return value, err
@@ -374,7 +434,7 @@ func buildCatalogItem(
 	if err != nil {
 		return value, err
 	}
-	if _, err := requireRelativePath(prefix+".artifact_file", artifactFile); err != nil {
+	if _, err := requireFileName(prefix+".artifact_file", artifactFile); err != nil {
 		return value, err
 	}
 	artifactURLText, err := requirePresent(prefix+".artifact_url", raw.ArtifactURL)
@@ -407,13 +467,13 @@ func buildCatalogItem(
 	if installable && digest.IsZero() {
 		return value, fmt.Errorf("%s: installable=trueなのにartifact_digestが未解決", prefix)
 	}
-	return CatalogItem{
-		Version: version, Channel: channel, Lifecycle: lifecycle,
-		LifecycleEvidence: evidence, LifecycleAssessedAt: assessedAt,
-		PublishedAt: publishedAt, Installable: installable, UnavailableReason: reason,
-		ProviderKind: providerKind, ProviderRelease: providerRelease,
-		ArtifactFile: artifactFile, ArtifactURL: artifactURL, ArtifactSize: size,
-		ArtifactDigest: digest, ChecksumSource: source,
+	return catalogItemFields{
+		channel: channel, lifecycle: lifecycle, lifecycleEvidence: evidence,
+		lifecycleAssessedAt: assessedAt, publishedAt: publishedAt,
+		installable: installable, unavailableReason: reason,
+		providerKind: providerKind, providerRelease: providerRelease,
+		artifactFile: artifactFile, artifactURL: artifactURL, artifactSize: size,
+		artifactDigest: digest, checksumSource: source,
 	}, nil
 }
 
@@ -481,7 +541,11 @@ func catalogScheme(items []CatalogItem) (domain.VersionScheme, error) {
 }
 
 func catalogItemJSONOf(item CatalogItem) *catalogItemJSON {
-	version := item.Version.String()
+	// schemeを持たないitem（CLI JSON由来）はVersionがzeroになる。元文字列を書く。
+	version := item.VersionText
+	if version == "" {
+		version = item.Version.String()
+	}
 	channel := string(item.Channel)
 	lifecycle := string(item.Lifecycle)
 	evidence := item.LifecycleEvidence
