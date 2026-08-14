@@ -3,7 +3,24 @@ package store
 import (
 	"strings"
 	"testing"
+
+	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain"
 )
+
+// describe はtyped errorを原因つきで表示する。
+//
+// [domain.Error.Error]は公開文へcauseを混ぜないためCauseを出さない（P1-04）。
+// testの失敗はどのfieldで落ちたかが分からないと直せないため、test側でだけ
+// causeを展開する。
+func describe(err *domain.Error) string {
+	if err == nil {
+		return "<nil>"
+	}
+	if err.Cause == nil {
+		return err.Error()
+	}
+	return err.Error() + ": " + err.Cause.Error()
+}
 
 // TestCheckDuplicateJSONKeys は`encoding/json`の後勝ち受理を塞げていることを固定する。
 //
