@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -27,6 +28,12 @@ const SchemaVersion = 1
 const (
 	// StateFileMaxBytes はsetup/selection等のstate TOML 1 fileの上限である。
 	StateFileMaxBytes = 1 << 20
+	// ReceiptFileMaxBytes はinstall receipt 1 fileの上限である。
+	ReceiptFileMaxBytes = 1 << 20
+	// CatalogFileMaxBytes はcatalog JSON 1 fileの上限である。
+	CatalogFileMaxBytes = 64 << 20
+	// URLMaxBytes は永続表現へ書くURLの上限である。
+	URLMaxBytes = 8 << 10
 	// LogLineMaxBytes はstructured log 1行の上限である。
 	//
 	// fields件数の上限は[port.LogFieldsMax]が正本である（P1-04）。
@@ -271,6 +278,64 @@ func parseTimestamp(field, text string) (time.Time, error) {
 // formatTimestamp はtimestampを§7の表現へ変換する。
 func formatTimestamp(value time.Time) string {
 	return value.UTC().Format(time.RFC3339)
+}
+
+// parseOptionalTimestamp は空文字列を許すtimestampを読む。
+//
+// §15が`published_at`について「providerがitem公開日時を提供せずdefinitionも
+// pointerを宣言しない場合だけ空文字を許す」と定めるなど、空を許すfieldが
+// 個別に存在する。許すかどうかは呼出し側が決める。
+func parseOptionalTimestamp(field, text string) (time.Time, error) {
+	if text == "" {
+		return time.Time{}, nil
+	}
+	return parseTimestamp(field, text)
+}
+
+// requireHTTPSURL はHTTPS・userinfoなし・8 KiB以内のURLを確かめる（§7）。
+//
+// userinfoを拒否するのは、`https://user:token@host/`のようなURLがcatalogや
+// receiptへ保存されると、credentialが平文でdiskとlogへ残るためである
+// （docs/10-security.md §9.2）。
+func requireHTTPSURL(field, text string) (string, error) {
+	if text == "" {
+		return "", fmt.Errorf("%sが空", field)
+	}
+	if len(text) > URLMaxBytes {
+		return "", fmt.Errorf("%sが%d byteを超える（%d byte）", field, URLMaxBytes, len(text))
+	}
+	parsed, err := url.Parse(text)
+	if err != nil {
+		return "", fmt.Errorf("%sがURLとして解釈できない（%q）", field, text)
+	}
+	if parsed.Scheme != "https" {
+		return "", fmt.Errorf("%sはHTTPSでなければならない（%q）", field, text)
+	}
+	if parsed.User != nil {
+		return "", fmt.Errorf("%sにuserinfoを含められない", field)
+	}
+	if parsed.Host == "" {
+		return "", fmt.Errorf("%sにhostが無い（%q）", field, text)
+	}
+	return text, nil
+}
+
+// looksLikeURL は値がURL schemeで始まるかを判定する。
+//
+// §15の`source_identity`はsource種別によりURLかdefinition記録のどちらかになる。
+// schemeを持つ値だけをURLとして検査し、`https`以外のschemeを黙って通さない。
+func looksLikeURL(value string) bool {
+	scheme, _, found := strings.Cut(value, "://")
+	return found && scheme != "" && !strings.ContainsAny(scheme, "/ ")
+}
+
+// parseUpstreamDigest はproviderが公開した`<algorithm>:<hex>`を読む（§7）。
+func parseUpstreamDigest(field, text string) (domain.Digest, error) {
+	digest, err := domain.ParseUpstreamDigest(text)
+	if err != nil {
+		return domain.Digest{}, fmt.Errorf("%s: %w", field, err)
+	}
+	return digest, nil
 }
 
 // parseInternalDigest はgdtvm自身が計算した64 lowercase hexを読む（§7）。
