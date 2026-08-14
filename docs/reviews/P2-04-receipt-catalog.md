@@ -124,7 +124,7 @@ Linux container（Go 1.26.5、Python 3.11.15）で実行した。
 | `go test ./... -race -shuffle=on -covermode=atomic -coverprofile=coverage.out` | 成功。total 92.8% |
 | `scripts/ci/check_policy.py` | 成功。production Go file 68件 |
 | `scripts/ci/check_imports.py` | 成功。package 20件 / internal import 58件 |
-| `scripts/ci/check_docs.py` | 成功。file 34件 |
+| `scripts/ci/check_docs.py` | 成功。file 35件 |
 | `scripts/ci/check_licenses.py` | 成功。module 14件 |
 | `scripts/ci/check_pr_refs.py` | 成功（task-id=p2-04, slug=receipt-catalog） |
 | `git diff --check` | 差分なし |
@@ -165,7 +165,7 @@ P1-03のglobal state検査が新規package変数17件を検出したため、根
 
 ### 4.4 CI
 
-<!-- PR作成後にworkflow runとcheck結果を追記する -->
+PR #43（commit `e696067`、workflow run 31777345312）で、6 job×2 OSの **12 checkすべてがsuccess** になった。
 
 ## 5. 未実施・制約
 
