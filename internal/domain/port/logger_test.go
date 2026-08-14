@@ -155,11 +155,11 @@ func fieldsOfSize(n int) domain.Parameters {
 
 func tooManyFields() domain.Parameters { return fieldsOfSize(LogFieldsMax + 1) }
 
-// TestPortsMissingListsEveryPort は8 portの欠落検出と宣言順を固定する。
+// TestPortsMissingListsEveryPort は9 portの欠落検出と宣言順を固定する。
 func TestPortsMissingListsEveryPort(t *testing.T) {
 	missing := Ports{}.Missing()
 	want := []string{
-		"Clock", "FileSystem", "HTTPClient", "LinkManager",
+		"Clock", "FileSystem", "HTTPClient", "LinkManager", "LockManager",
 		"Logger", "ProcessRunner", "Random", "UserLookup",
 	}
 	if len(missing) != len(want) {

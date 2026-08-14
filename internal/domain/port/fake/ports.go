@@ -18,32 +18,35 @@ func DefaultNow() time.Time {
 	return time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
 }
 
-// Set は8 portのfake一式と、それらが共有する失敗注入器である。
+// Set は9 portのfake一式と、それらが共有する失敗注入器である。
 type Set struct {
 	Injector      *Injector
 	Clock         *Clock
 	FileSystem    *FileSystem
 	HTTPClient    *HTTPClient
 	LinkManager   *LinkManager
+	LockManager   *LockManager
 	Logger        *Logger
 	ProcessRunner *ProcessRunner
 	Random        *Random
 	UserLookup    *UserLookup
 }
 
-// NewSet は8 portのfakeを1つのInjectorで束ねて作る。
+// NewSet は9 portのfakeを1つのInjectorで束ねて作る。
 //
 // Injectorを共有するのは、「downloadが失敗した後にstagingのcleanupが走ったか」
 // のようなport横断の順序をひとつの記録で検査できるようにするためである。
 func NewSet() *Set {
 	injector := NewInjector()
 	fsys := NewFileSystem(injector)
+	clock := NewClock(DefaultNow())
 	return &Set{
 		Injector:      injector,
-		Clock:         NewClock(DefaultNow()),
+		Clock:         clock,
 		FileSystem:    fsys,
 		HTTPClient:    NewHTTPClient(injector),
 		LinkManager:   NewLinkManager(fsys),
+		LockManager:   NewLockManager(injector, clock),
 		Logger:        NewLogger(),
 		ProcessRunner: NewProcessRunner(injector),
 		Random:        NewRandom(injector),
@@ -62,6 +65,7 @@ func (s *Set) Ports() port.Ports {
 		FileSystem:    s.FileSystem,
 		HTTPClient:    s.HTTPClient,
 		LinkManager:   s.LinkManager,
+		LockManager:   s.LockManager,
 		Logger:        s.Logger,
 		ProcessRunner: s.ProcessRunner,
 		Random:        s.Random,
