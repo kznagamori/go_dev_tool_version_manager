@@ -119,15 +119,13 @@ Linux container（Go 1.26.5、Python 3.11.15）で実行した。
 | `go test ./... -race -shuffle=on -covermode=atomic -coverprofile=coverage.out` | 成功。total 92.2% |
 | `scripts/ci/check_policy.py` | 成功。production Go file 64件 |
 | `scripts/ci/check_imports.py` | 成功。package 20件 / internal import 52件 |
-| `scripts/ci/check_docs.py` | 成功。file 33件 |
+| `scripts/ci/check_docs.py` | 成功。file 34件 |
 | `scripts/ci/check_licenses.py` | 成功。module 14件 |
 | `git diff --check` | 差分なし |
 
 package別coverage: `internal/progress` 100.0%、`internal/security` 99.0%、`internal/domain` 95.8%、`internal/app` 94.9%、`internal/config` 93.3%、`internal/domain/port` 92.7%、`internal/store` 91.6%、`internal/domain/port/fake` 86.1%、`cmd/gdtvm` 66.7%。
 
 test件数: `internal/store` 154件（subtest込み）、うちnegative subtest 112件。
-
-CI（PR）の結果は§4.3へ追記する。
 
 ### 4.2 主なnegative test
 
@@ -151,7 +149,7 @@ P1-03のglobal state検査が新規package変数9件を検出したため、根�
 
 ### 4.3 CI
 
-<!-- PR作成後にworkflow runとcheck結果を追記する -->
+PR #40（commit `d92836a`、workflow run 31775060355）で、6 job×2 OSの **12 checkすべてがsuccess** になった。
 
 ## 5. 未実施・制約
 
