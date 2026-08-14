@@ -207,6 +207,11 @@ func decodeScalarMap(source map[string]any, max int) (domain.Parameters, error) 
 	return parameters, nil
 }
 
+// jsonToScalar はJSON値またはencoder出力をscalarへ戻す（§7）。
+//
+// `json.Number`はdecodeJSONのUseNumberが返す形、`int64`は[encodeScalarMap]が
+// 返す形である。encode経路もdecodeと同じ検査を通すため（[EncodeEnvelope]・
+// [EncodePlan]）、両方を受け取れなければ自分が書いた値を読み直せない。
 func jsonToScalar(raw any) (domain.Scalar, error) {
 	switch value := raw.(type) {
 	case nil:
@@ -215,6 +220,11 @@ func jsonToScalar(raw any) (domain.Scalar, error) {
 		return domain.StringScalar(value), nil
 	case bool:
 		return domain.BoolScalar(value), nil
+	case int64:
+		if _, err := requireNonNegativeOrNegativeSafe(value); err != nil {
+			return domain.Scalar{}, err
+		}
+		return domain.IntScalar(value), nil
 	case json.Number:
 		// decodeJSONがUseNumberを設定しているため、数値はjson.Numberで届く。
 		// float64経由にすると大きなintegerが黙って丸まる。
