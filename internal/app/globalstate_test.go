@@ -26,6 +26,23 @@ import (
 // 参照もできないため、表に載せずに通す。`_test.go`は対象外である。testが自分の
 // fixtureをpackage scopeへ置くことまで禁じる理由はない。
 var allowedGlobals = map[string]string{
+	"internal/store.receiptProviderKinds":          "docs/04-storage-and-data.md §17.1のprovider_kind。receiptとcatalogは対象toolを必ず持つため`none`を含めない閉じた集合",
+	"internal/store.checksumSources":               "§17.1のchecksum_source exact 2値。初期化後に変更しない閉じた集合",
+	"internal/store.storageKinds":                  "docs/06-tool-definition.md §8のstorage kind exact 6値。同上",
+	"internal/store.storageScopes":                 "§17.1のstorage scope exact 2値。同上",
+	"internal/store.storagePurges":                 "§17.1のstorage purge exact 3値。同上",
+	"internal/store.workingDirectories":            "§17.1のworking_directory exact 2値。同上",
+	"internal/store.probeStreams":                  "§17.1のprobe stream exact 3値。同上",
+	"internal/store.probeExpects":                  "§17.1のprobe expect exact 3値。同上",
+	"internal/store.probeStatuses":                 "§17.1のprobe status exact 2値。同上",
+	"internal/store.requiredPathPrefixes":          "docs/06-tool-definition.md §11のrequired path prefix exact 2値。同上",
+	"internal/store.clientCommitRe":                "40桁小文字hexのcommit ID grammar。compile済みregexpで、初期化後に再代入しない",
+	"internal/store.identifierRe":                  "docs/06-tool-definition.md §3のkebab-case identifier grammar。同上",
+	"internal/store.envNameRe":                     "環境変数名のgrammar。同上",
+	"internal/store.storageTemplateRe":             "`{{storage.<id>}}` templateのgrammar。同上",
+	"internal/store.templateRootRe":                "未知`{{...}}`検出用のgrammar。同上",
+	"internal/store.commandScope":                  "docs/04-storage-and-data.md §14のcommand/storage/env用template許可root。初期化後に変更しない設定値",
+	"internal/store.probeScope":                    "docs/06-tool-definition.md §11のprobe用template許可root。同上",
 	"internal/store.utf8BOM":                       "docs/04-storage-and-data.md §7が拒否するUTF-8 BOMのbyte列。読取り専用の定数相当で、初期化後に変更しない",
 	"internal/store.relativePathRe":                "§7のPOSIX relative path grammar。compile済みregexpで、初期化後に再代入しない",
 	"internal/store.idHexRe":                       "§7の128 bit ID（32 lowercase hex）grammar。同上",
