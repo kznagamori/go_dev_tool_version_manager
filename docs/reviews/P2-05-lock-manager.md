@@ -110,7 +110,7 @@ package別coverage: `internal/progress` 100.0%、`internal/security` 99.0%、`in
 
 ### 4.4 CI
 
-<!-- PR作成後にworkflow runとcheck結果を追記する -->
+PR #49（commit `c477e9f`、workflow run 31785380574）で、6 job×2 OSの **12 checkすべてがsuccess** になった。
 
 ## 5. 未実施・制約
 
