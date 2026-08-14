@@ -63,7 +63,18 @@ ALLOWED: dict[str, set[str]] = {
     "internal/shim": set(),
     # 04-storage-and-data.md §7〜§18のcodecがdomainのID/digest/enum/path role/
     # scalarを扱い、§18のstructured logがport.LogRecordを直接serializeする（P2-04）。
-    "internal/store": {"internal/domain", "internal/domain/port"},
+    # 04-storage-and-data.md §4のatomic writeが公開fileのdigest照合へ内部SHA-256を
+    # 使い、§12のlog rotationがlogical rootからのpath組み立てを使う。
+    # 02-architecture.md §2が「内部SHA-256、path検査」をinternal/securityの責務とする（P2-05）。
+    # fakeは`_test.go`からの注入だけに使う。§4のfailure injectionとrotationの
+    # 並行testがfake FileSystemとInjectorを要する。production pathからのfake import
+    # は11-quality-and-ci.md §7.1に従いcheck_policy.pyが別途禁止する（P2-05）。
+    "internal/store": {
+        "internal/domain",
+        "internal/domain/port",
+        "internal/domain/port/fake",
+        "internal/security",
+    },
 }
 
 # 表に関係なく常に成立させる不変条件。(判定関数, 説明) の組。
