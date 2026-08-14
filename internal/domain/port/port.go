@@ -11,7 +11,8 @@
 //
 // docs/02-architecture.md §4.1 は14 portを定義する。本packageが持つのは
 // docs/11-quality-and-ci.md §6 が決定的検査の前提とする6件（P0-03）と、
-// structured logと128 bit IDのためのLogger／Random（P1-04）の計8件である。
+// structured logと128 bit IDのためのLogger／Random（P1-04）、process間lockの
+// ためのLockManager（P2-05）の計9件である。
 // 残る6件（Registry、Archive、Hash、Lock、Environment、ProgressSink）のうち
 // ProgressSinkは§4が`Ports`へ入れずrequestごとに渡すと定めるため
 // internal/progressが持ち、他は最初に必要とするtaskで追加する。
@@ -30,6 +31,7 @@ type Ports struct {
 	FileSystem    FileSystem
 	HTTPClient    HTTPClient
 	LinkManager   LinkManager
+	LockManager   LockManager
 	Logger        Logger
 	ProcessRunner ProcessRunner
 	Random        Random
@@ -58,6 +60,9 @@ func (p Ports) Missing() []string {
 	}
 	if p.LinkManager == nil {
 		missing = append(missing, "LinkManager")
+	}
+	if p.LockManager == nil {
+		missing = append(missing, "LockManager")
 	}
 	if p.Logger == nil {
 		missing = append(missing, "Logger")
