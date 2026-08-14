@@ -51,6 +51,7 @@ var allowedGlobals = map[string]string{
 	"internal/progress.phases":                     "docs/02-architecture.md §10のphase 10値。同上",
 	"internal/progress.units":                      "同§10のunit 4値。同上",
 	"internal/progress.resultWarningCodes":         "docs/04-storage-and-data.md §16.2のResultWarningCode 5値。同上",
+	"internal/security.windowsReservedNames":       "docs/04-storage-and-data.md §6のWindows予約device名。初期化後に変更しない対応表",
 	"internal/security.secretEnvSuffixes":          "docs/10-security.md §9.2の除去対象環境変数名pattern。初期化後に変更しないslice",
 	"internal/security.secretHeaders":              "同§9.2の除去対象HTTP header。初期化後に変更しない対応表",
 	"internal/domain/port/fake.ErrNotExist":        "sentinel error。errors.Isの比較対象であり、初期化後に再代入しない",
