@@ -10,16 +10,16 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 
 | 項目 | 現在値 |
 |---|---|
-| 全体状態 | `停止中` |
-| 現在フェーズ | `P2` |
-| 実行中タスクID | `なし` |
+| 全体状態 | `進行中` |
+| 現在フェーズ | `P3` |
+| 実行中タスクID | `P3-01`（3分割の1本目） |
 | 最後に完了したタスクID | `P2-05（atomic write・lock・log rotation、2分割すべて完了）` |
-| 次に開始するタスクID | `P3-01` |
+| 次に開始するタスクID | `P3-01`（3分割の2本目） |
 | CI状態 | `両OS 12 checkがgreen（PR #52、run 31790305980）` |
 | blocker | `なし` |
 | 最終更新日時 | `2026-08-14T19:00:12+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch | `claude/feature-p2-05-atomic-write` |
+| 作業branch | `claude/feature-p3-01-definition-skeleton` |
 | 使用環境 | `Linux container` |
 | 最新の証跡 | [P2-05 決定記録（2/2）](reviews/P2-05-atomic-write.md)、CI 12/12 success（run 31790305980）、`internal/store` coverage 89.2%、§4の7段階・`.bak`・破損復旧・log rotationのfailure injectionと並行test |
 
@@ -151,7 +151,7 @@ G-TOOLS達成後は、G-E2E/G-DONEの完了を待たずにDF-01（§17）のド�
 
 ## 9. P3 definition schema
 
-- [ ] **P3-01** schema 1の全field/conditional key/unknown/type/enum/limit validatorとJSON schemaを実装する。依存: P2-02。証跡: 未記録
+- [-] **P3-01** schema 1の全field/conditional key/unknown/type/enum/limit validatorとJSON schemaを実装する。対象が[06-tool-definition.md](06-tool-definition.md)§2〜§12の16 table・125 keyに及びP2-04と同規模のため、利用者判断により**3 PRへ分割**する（task IDはP3-01のまま、本項目は3本目のmerge後に`[x]`とする）。(1) `internal/definition`の基盤（strict TOML decode、§13の診断契約、§3 identifier grammar）＋§2 top-level＋§4 `[tool]`＋§5 `[[platforms]]`枠＋§5.1 provider＝`claude/feature-p3-01-definition-skeleton`、(2) §6 version source（§6.1〜§6.6）＝`claude/feature-p3-01-version-source`、(3) §7 artifact／§8 storage／§9 install／§10 runtime／§11 validation／§12 template＋`registry/schemas/tool-definition-v1.json`＝`claude/feature-p3-01-artifact-runtime`。依存: P2-02。完了: §2〜§12の全keyがunknown/重複/型違い/enum外/上限超過/条件付きkey違反込みで拒否され、§13の検証順序と診断4項目（path/line/column/field path/reason code）と100件上限が固定され、JSON schemaが`registry/schemas/`へ置かれ、両OSの12 checkがgreenである。証跡: 1本目は[P3-01 決定記録（1/3）](reviews/P3-01-definition-skeleton.md)
 - [ ] **P3-02** semver/go/python grammar、exact一致、comparison、channel/lifecycleを境界testする。依存: P3-01。証跡: 未記録
 - [ ] **P3-03** `json`/`json-index`/`static` version source、index 2段取得と部分catalog禁止、`item_flatten_pointer`の1段展開、親公開日時の継承、`channel_pointer`のstring/boolean、`document_lifecycle_pointer`と`lifecycle_map`（未定義値のsource error）、pointer/token/asset、lifecycle override/evidence、artifact template/selector、checksum 2 kindとdigest algorithm（`sha256`/`sha512`）をfake upstream testする。依存: P3-01,P1-03。証跡: 未記録
 - [ ] **P3-04** typed storage、install parameter（`strip_components` 0と1）、runtime command/env、probe（専用temp cwd）、`license_notice`を実装し、[06-tool-definition.md](06-tool-definition.md)§15〜§16の4 tool分をpositive fixture、全conditional違反をnegative fixtureにする。依存: P3-01～P3-03。証跡: 未記録

@@ -26,6 +26,11 @@ import (
 // 参照もできないため、表に載せずに通す。`_test.go`は対象外である。testが自分の
 // fixtureをpackage scopeへ置くことまで禁じる理由はない。
 var allowedGlobals = map[string]string{
+	"internal/definition.kebabIDRe":                "docs/06-tool-definition.md §3のtool ID/aliasとscoped IDのgrammar。compile済み正規表現で、初期化後に変更しない",
+	"internal/definition.commandNameRe":            "§3のcommand grammar。同上",
+	"internal/definition.metadataKeyRe":            "§3のmetadata key grammar。同上",
+	"internal/definition.spdxIDStringRe":           "SPDX 2.3のidstring grammar。同上",
+	"internal/definition.utf8BOM":                  "§1が拒否するUTF-8 BOMのbyte列。比較にだけ使い、初期化後に変更しない",
 	"internal/domain/port.lockClassNames":          "docs/02-architecture.md §12のlock分類 exact 6値とrole名の対応表。初期化後に変更しない",
 	"internal/domain/port.ErrLockOrder":            "lock順序違反を表すsentinel error。errors.Isで判定するため値として公開する。初期化後に再代入しない",
 	"internal/domain/port.ErrLockTimeout":          "lock取得timeoutを表すsentinel error。同上",

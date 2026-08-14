@@ -40,7 +40,11 @@ ALLOWED: dict[str, set[str]] = {
     # 04-storage-and-data.md §1のroot決定がmode/platform/path roleのdomain値と、
     # OS user lookupの結果（port.UserIdentity）を使うため（P2-01）。
     "internal/config": {"internal/domain", "internal/domain/port"},
-    "internal/definition": set(),
+    # 06-tool-definition.md §3のidentifier grammarがWindows予約device名を拒否し、
+    # §4・§5がversion scheme/platform tuple/message ID/tool IDのdomain値を扱う。
+    # 予約名listをinternal/securityから複製せず、02-architecture.md §2が同package
+    # へ割り当てたpath検査を使う（P3-01）。
+    "internal/definition": {"internal/domain", "internal/security"},
     "internal/doctor": set(),
     "internal/domain": set(),
     # LoggerのLogRecordとRandomのID byte長がdomain値を使うため

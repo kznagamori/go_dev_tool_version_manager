@@ -1,19 +1,31 @@
 package domain
 
 import (
+	"strings"
 	"testing"
 )
 
 // --- ToolID ---
 
+// TestParseToolID はdocs/06-tool-definition.md §3のtool ID grammarを固定する。
+//
+// 同§の`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`、1～64 byteが正本である。registryへ
+// 登録されたdefinitionだけがtool IDを持ち込むため、definitionが表現できない形を
+// domain値としても作れないようにしている。
 func TestParseToolID(t *testing.T) {
-	valid := []string{"go", "node", "python", "dotnet-sdk", "a1", "a-1-b"}
+	valid := []string{"go", "node", "python", "dotnet-sdk", "a1", "a-1-b", strings.Repeat("a", ToolIDMaxBytes)}
 	for _, text := range valid {
 		if _, err := ParseToolID(text); err != nil {
 			t.Errorf("ParseToolID(%q) = %v, want nil", text, err)
 		}
 	}
-	invalid := []string{"", "Go", "go_lang", "-go", "go-", "go--lang", "go lang", "go.lang", "ゴー"}
+	invalid := []string{
+		"", "Go", "go_lang", "-go", "go-", "go--lang", "go lang", "go.lang", "ゴー",
+		// §3は先頭を英字へ限る。数字始まりを許すとversion文字列と見分けが付かない。
+		"1go", "0",
+		// §3の1～64 byte上限。
+		strings.Repeat("a", ToolIDMaxBytes+1),
+	}
 	for _, text := range invalid {
 		if _, err := ParseToolID(text); err == nil {
 			t.Errorf("ParseToolID(%q) が成功した", text)
