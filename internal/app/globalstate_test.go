@@ -26,6 +26,15 @@ import (
 // 参照もできないため、表に載せずに通す。`_test.go`は対象外である。testが自分の
 // fixtureをpackage scopeへ置くことまで禁じる理由はない。
 var allowedGlobals = map[string]string{
+	"internal/store.utf8BOM":                       "docs/04-storage-and-data.md §7が拒否するUTF-8 BOMのbyte列。読取り専用の定数相当で、初期化後に変更しない",
+	"internal/store.relativePathRe":                "§7のPOSIX relative path grammar。compile済みregexpで、初期化後に再代入しない",
+	"internal/store.idHexRe":                       "§7の128 bit ID（32 lowercase hex）grammar。同上",
+	"internal/store.clientVersionRe":               "docs/11-quality-and-ci.md §2のCalVer grammar。同上",
+	"internal/store.commandNameRe":                 "§12のshim command名grammar。同上",
+	"internal/store.pathIntegrations":              "§17.1のpath_integration exact 3値。初期化後に変更しない閉じた集合",
+	"internal/store.shells":                        "§17.1のshell exact 3値。同上",
+	"internal/store.integrationKinds":              "§17.1のintegration_identity.kind exact 3値。同上",
+	"internal/store.backupKinds":                   "§17.1のsetup backup kind exact 2値。同上",
 	"internal/app.calVerRe":                        "docs/11-quality-and-ci.md §2のCalVer grammar。compile済みregexpで、初期化後に再代入しない",
 	"internal/app.commitRe":                        "40桁小文字hexのcommit ID grammar。同上",
 	"internal/app.goToolchainRe":                   "go toolchain名のgrammar。同上",
