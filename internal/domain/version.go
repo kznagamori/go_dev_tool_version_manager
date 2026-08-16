@@ -52,22 +52,34 @@ type Version struct {
 	scheme VersionScheme
 	text   string
 
-	major    int
-	minor    int
-	patch    int
+	major    uint64
+	minor    uint64
+	patch    uint64
 	stage    stage
-	stageNum int
+	stageNum uint64
 	// semverPre はsemverのprerelease識別子列である。空はfinalを表す。
-	semverPre []string
+	semverPre []semverIdent
+}
+
+// semverIdent はsemverのprerelease識別子1件である。
+//
+// 数値かどうかと数値としての値をParseVersionの時点で確定させる。Compareが比較の
+// たびに文字列を数値化すると、範囲外の識別子で失敗しうる変換が比較側に残り、
+// error を返せない[Version.Compare]の途中で扱えない値が出る。範囲検査はparseで
+// 済ませ、比較は大小判定だけにする。
+type semverIdent struct {
+	text    string
+	num     uint64
+	numeric bool
 }
 
 // 数値要素は不要なleading zeroを禁止する（docs/06-tool-definition.md §4）。
 var (
-	numRe       = regexp.MustCompile(`^(0|[1-9][0-9]*)$`)
-	semverRe    = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z.\-]+))?$`)
-	goRe        = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*)|(beta|rc)([1-9][0-9]*))?$`)
-	pythonRe    = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:(a|b|rc)([1-9][0-9]*))?$`)
-	semverIdent = regexp.MustCompile(`^[0-9A-Za-z\-]+$`)
+	numRe         = regexp.MustCompile(`^(0|[1-9][0-9]*)$`)
+	semverRe      = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z.\-]+))?$`)
+	goRe          = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*)|(beta|rc)([1-9][0-9]*))?$`)
+	pythonRe      = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:(a|b|rc)([1-9][0-9]*))?$`)
+	semverIdentRe = regexp.MustCompile(`^[0-9A-Za-z\-]+$`)
 )
 
 // ParseVersion は正規version文字列をVersionへ変換する。
@@ -97,29 +109,52 @@ func parseSemver(text string) (Version, error) {
 			"domain: semver version %q が MAJOR.MINOR.PATCH[-prerelease] に合わない。"+
 				"leading `v` と build metadata は含めない", text)
 	}
+	numbers, err := parseNumbers(text, match[1], match[2], match[3])
+	if err != nil {
+		return Version{}, err
+	}
 	version := Version{
 		scheme: SchemeSemver,
 		text:   text,
-		major:  mustAtoi(match[1]),
-		minor:  mustAtoi(match[2]),
-		patch:  mustAtoi(match[3]),
+		major:  numbers[0],
+		minor:  numbers[1],
+		patch:  numbers[2],
 		stage:  stageFinal,
 	}
 	if match[4] != "" {
-		idents := strings.Split(match[4], ".")
-		for _, ident := range idents {
-			if ident == "" || !semverIdent.MatchString(ident) {
-				return Version{}, fmt.Errorf("domain: semver version %q のprerelease識別子 %q が不正", text, ident)
-			}
-			// 数値識別子はleading zeroを禁止する（SemVer 2.0.0）。
-			if isAllDigits(ident) && !numRe.MatchString(ident) {
-				return Version{}, fmt.Errorf("domain: semver version %q のprerelease識別子 %q にleading zeroがある", text, ident)
-			}
+		idents, err := parseSemverPre(text, match[4])
+		if err != nil {
+			return Version{}, err
 		}
 		version.semverPre = idents
 		version.stage = stageSemverPre
 	}
 	return version, nil
+}
+
+// parseSemverPre はprerelease部を識別子列へ分解する。
+func parseSemverPre(text, raw string) ([]semverIdent, error) {
+	parts := strings.Split(raw, ".")
+	idents := make([]semverIdent, len(parts))
+	for i, part := range parts {
+		if part == "" || !semverIdentRe.MatchString(part) {
+			return nil, fmt.Errorf("domain: semver version %q のprerelease識別子 %q が不正", text, part)
+		}
+		if !isAllDigits(part) {
+			idents[i] = semverIdent{text: part}
+			continue
+		}
+		// 数値識別子はleading zeroを禁止する（SemVer 2.0.0）。
+		if !numRe.MatchString(part) {
+			return nil, fmt.Errorf("domain: semver version %q のprerelease識別子 %q にleading zeroがある", text, part)
+		}
+		numbers, err := parseNumbers(text, part)
+		if err != nil {
+			return nil, err
+		}
+		idents[i] = semverIdent{text: part, num: numbers[0], numeric: true}
+	}
+	return idents, nil
 }
 
 func parseGo(text string) (Version, error) {
@@ -128,19 +163,31 @@ func parseGo(text string) (Version, error) {
 		return Version{}, fmt.Errorf(
 			"domain: go version %q が MAJOR.MINOR / MAJOR.MINOR.PATCH / MAJOR.MINORbetaN|rcN に合わない", text)
 	}
+	numbers, err := parseNumbers(text, match[1], match[2])
+	if err != nil {
+		return Version{}, err
+	}
 	version := Version{
 		scheme: SchemeGo,
 		text:   text,
-		major:  mustAtoi(match[1]),
-		minor:  mustAtoi(match[2]),
+		major:  numbers[0],
+		minor:  numbers[1],
 		stage:  stageFinal,
 	}
 	switch {
 	case match[3] != "":
-		version.patch = mustAtoi(match[3])
+		patch, err := parseNumbers(text, match[3])
+		if err != nil {
+			return Version{}, err
+		}
+		version.patch = patch[0]
 	case match[4] != "":
 		// prereleaseにpatchは無い。比較はstageで先に決着する。
-		version.stageNum = mustAtoi(match[5])
+		stageNum, err := parseNumbers(text, match[5])
+		if err != nil {
+			return Version{}, err
+		}
+		version.stageNum = stageNum[0]
 		if match[4] == "beta" {
 			version.stage = stageGoBeta
 		} else {
@@ -156,16 +203,24 @@ func parsePython(text string) (Version, error) {
 		return Version{}, fmt.Errorf(
 			"domain: python version %q が MAJOR.MINOR.PATCH[aN|bN|rcN] に合わない", text)
 	}
+	numbers, err := parseNumbers(text, match[1], match[2], match[3])
+	if err != nil {
+		return Version{}, err
+	}
 	version := Version{
 		scheme: SchemePython,
 		text:   text,
-		major:  mustAtoi(match[1]),
-		minor:  mustAtoi(match[2]),
-		patch:  mustAtoi(match[3]),
+		major:  numbers[0],
+		minor:  numbers[1],
+		patch:  numbers[2],
 		stage:  stageFinal,
 	}
 	if match[4] != "" {
-		version.stageNum = mustAtoi(match[5])
+		stageNum, err := parseNumbers(text, match[5])
+		if err != nil {
+			return Version{}, err
+		}
+		version.stageNum = stageNum[0]
 		switch match[4] {
 		case "a":
 			version.stage = stagePythonA
@@ -187,6 +242,22 @@ func (v Version) String() string { return v.text }
 // IsZero はParseVersionを通していない値かどうかを返す。
 func (v Version) IsZero() bool { return v.text == "" }
 
+// IsPrerelease は正規versionがschemeのprerelease構文を持つかを返す。
+//
+// docs/06-tool-definition.md §6.1が「`channel_pointer`を省略した場合、正規
+// versionが各schemeのprerelease構文を持てば`prerelease`、それ以外は`stable`と
+// する」と定める。その判定に使う。
+//
+// 判定は**構文だけ**で行う。semverは`-`以降のprerelease識別子の有無、goは
+// `betaN`/`rcN`、pythonは`aN`/`bN`/`rcN`である。version番号の大小や公開日から
+// prereleaseを推測しない。未初期化のversionはfalseを返す。
+func (v Version) IsPrerelease() bool {
+	if v.IsZero() {
+		return false
+	}
+	return v.stage != stageFinal
+}
+
 // Compare は同じschemeのversion同士を比較する。
 //
 // v < other なら負、等しければ0、v > other なら正を返す。schemeが異なる場合は
@@ -203,46 +274,48 @@ func (v Version) Compare(other Version) (int, error) {
 	switch v.scheme {
 	case SchemeGo:
 		// 比較順は major/minor、beta<rc<final、prerelease番号、finalのpatch
-		// （docs/06-tool-definition.md §4）。
-		if c := compareInts(v.major, other.major); c != 0 {
+		// （docs/06-tool-definition.md §4）。stageをpatchより先に見るため、
+		// prereleaseは同じminorのどのfinal patchよりも小さくなる。
+		if c := compareUint64(v.major, other.major); c != 0 {
 			return c, nil
 		}
-		if c := compareInts(v.minor, other.minor); c != 0 {
+		if c := compareUint64(v.minor, other.minor); c != 0 {
 			return c, nil
 		}
 		if c := compareInts(int(v.stage), int(other.stage)); c != 0 {
 			return c, nil
 		}
-		if c := compareInts(v.stageNum, other.stageNum); c != 0 {
+		if c := compareUint64(v.stageNum, other.stageNum); c != 0 {
 			return c, nil
 		}
-		return compareInts(v.patch, other.patch), nil
+		return compareUint64(v.patch, other.patch), nil
 
 	case SchemePython:
-		// 比較順は数値3要素、a<b<rc<final、prerelease番号。
-		if c := compareInts(v.major, other.major); c != 0 {
+		// 比較順は数値3要素、a<b<rc<final、prerelease番号。goと違いpatchを
+		// stageより先に見るため、上のpatchのprereleaseが下のpatchのfinalより大きい。
+		if c := compareUint64(v.major, other.major); c != 0 {
 			return c, nil
 		}
-		if c := compareInts(v.minor, other.minor); c != 0 {
+		if c := compareUint64(v.minor, other.minor); c != 0 {
 			return c, nil
 		}
-		if c := compareInts(v.patch, other.patch); c != 0 {
+		if c := compareUint64(v.patch, other.patch); c != 0 {
 			return c, nil
 		}
 		if c := compareInts(int(v.stage), int(other.stage)); c != 0 {
 			return c, nil
 		}
-		return compareInts(v.stageNum, other.stageNum), nil
+		return compareUint64(v.stageNum, other.stageNum), nil
 
 	default:
 		// SemVer 2.0.0のprecedence。
-		if c := compareInts(v.major, other.major); c != 0 {
+		if c := compareUint64(v.major, other.major); c != 0 {
 			return c, nil
 		}
-		if c := compareInts(v.minor, other.minor); c != 0 {
+		if c := compareUint64(v.minor, other.minor); c != 0 {
 			return c, nil
 		}
-		if c := compareInts(v.patch, other.patch); c != 0 {
+		if c := compareUint64(v.patch, other.patch); c != 0 {
 			return c, nil
 		}
 		return compareSemverPre(v.semverPre, other.semverPre), nil
@@ -254,7 +327,7 @@ func (v Version) Compare(other Version) (int, error) {
 // prereleaseを持たない側が大きい。識別子は左から比較し、数値同士は数値順、
 // 文字列同士はASCII順、数値は文字列より小さい。すべて等しければ識別子数が
 // 多い側が大きい。
-func compareSemverPre(left, right []string) int {
+func compareSemverPre(left, right []semverIdent) int {
 	if len(left) == 0 && len(right) == 0 {
 		return 0
 	}
@@ -266,18 +339,17 @@ func compareSemverPre(left, right []string) int {
 	}
 	for i := 0; i < len(left) && i < len(right); i++ {
 		l, r := left[i], right[i]
-		lNum, rNum := isAllDigits(l), isAllDigits(r)
 		switch {
-		case lNum && rNum:
-			if c := compareInts(mustAtoi(l), mustAtoi(r)); c != 0 {
+		case l.numeric && r.numeric:
+			if c := compareUint64(l.num, r.num); c != 0 {
 				return c
 			}
-		case lNum:
+		case l.numeric:
 			return -1
-		case rNum:
+		case r.numeric:
 			return 1
 		default:
-			if c := strings.Compare(l, r); c != 0 {
+			if c := strings.Compare(l.text, r.text); c != 0 {
 				return c
 			}
 		}
@@ -286,6 +358,17 @@ func compareSemverPre(left, right []string) int {
 }
 
 func compareInts(a, b int) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func compareUint64(a, b uint64) int {
 	switch {
 	case a < b:
 		return -1
@@ -308,15 +391,26 @@ func isAllDigits(s string) bool {
 	return true
 }
 
-// mustAtoi は正規表現で数値と確定した部分文字列を整数へ変換する。
-// 正規表現を通った値だけを渡すため、変換失敗は起こらない。
-func mustAtoi(s string) int {
-	n, err := strconv.Atoi(s)
-	if err != nil {
-		// 呼出側が正規表現でmatchさせた部分だけを渡す契約であり、ここへ来るのは
-		// 実装の不整合である。production pathのerror処理としてpanicを使うのではなく、
-		// 到達不能を示す。
-		panic("domain: 数値化できない部分文字列を渡した: " + s)
+// parseNumbers は正規表現が数値と確定させた部分文字列群を数値へ変換する。
+//
+// 正規表現はleading zeroと非数字を既に排除しているため、ここで起こりうる失敗は
+// 桁あふれだけである。version文字列は上流catalogのJSONに由来する外部入力であり
+// （docs/06-tool-definition.md §6.3）、桁数に上限が無い。**桁あふれをparse errorに
+// して閉じる**。以前のようにpanicへ倒すと、上流が異常なversionを1件返しただけで
+// processが落ちる。
+//
+// 表現の範囲は64 bit符号なし整数とする。Goの`int`のままだと32 bit platformと
+// 64 bit platformで受理するversionが変わり、同じregistryがplatformごとに違う
+// 結果になる。
+func parseNumbers(text string, parts ...string) ([]uint64, error) {
+	values := make([]uint64, len(parts))
+	for i, part := range parts {
+		value, err := strconv.ParseUint(part, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"domain: version %q の数値要素 %q が64 bit符号なし整数の範囲を超える", text, part)
+		}
+		values[i] = value
 	}
-	return n
+	return values, nil
 }
