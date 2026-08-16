@@ -53,9 +53,9 @@ timeoutはhopごとに与える。redirect chain全体で1つにすると、hop�
 
 `Retry-After`は上限30秒で丸める。上流が過大な値を返しても従わない。解釈できない値・非正値・過去のHTTP-dateは「指定なし」として扱い、backoffの既定へ戻す。
 
-## 4. 実装中に見つけた欠陥2件
+## 4. 実装中に見つけた欠陥3件
 
-どちらもtestが検出した。
+2件はtestが、1件はCIが検出した。
 
 ### 4.1 mask済みURLをwrapしてもcause経由でsecretが漏れた
 
@@ -73,6 +73,21 @@ platform: https://…?access_token=<redacted> の取得に失敗した:
 `isTemporaryNetwork`が`net.Error`（`Timeout()`で判定）を`*net.OpError`より先に見ていた。`*net.OpError`は`net.Error`でもあるため、timeoutでないdial失敗（connection refused、reset、host unreachable）がすべて非retryとして落ちていた。
 
 より具体的な`*net.OpError`を先に判定するよう直した。相手側の再起動や一時的な経路障害は§10の「一時network」であり、有限回の再試行対象である。
+
+### 4.3 Go toolchainをgo1.26.6へ上げた（CIが検出）
+
+初回CIの`lint` jobが両OSで失敗した。**本taskのcodeが初めて`net/http`を呼んだため、`govulncheck`がstdlibの脆弱性を到達可能と判定した。**
+
+| ID | 内容 | 到達経路 |
+|---|---|---|
+| GO-2026-6218 | `net/url`の`resolvePath`が二次計算量 | `resolveRedirect`の`url.URL.Parse` |
+| GO-2026-6090 | `crypto/tls`のpost-handshake message数が無制限 | `Client.send`／`limitedBody.Read`／`Close` |
+| GO-2026-5972 | `encoding/asn1`の再帰深度 | `limitedBody.Close`経由の証明書処理 |
+| GO-2026-5026 | `x/net/idna`がASCII-onlyのPunycode labelを拒否しない | `Client.send`の`http.Client.Do` |
+
+4件すべて`go1.26.6`で修正済みである。[11-quality-and-ci.md](../11-quality-and-ci.md)§1が`go.mod`の`toolchain`を「採用minorの最新security patch」と定めるため、`go1.26.5`から`go1.26.6`へ上げ、同§の「現在は」表記も同じ変更で更新した。Go versionの正本は`go.mod`だけで、workflowへ数値を書かない契約に従っている。
+
+**`vuln.go.dev`へこのcontainerから到達できない**（403）ため、`govulncheck`のローカル再実行はできていない。修正の根拠はCIが出した「Fixed in: go1.26.6」であり、確認はCIで行う。
 
 ## 5. 検査が固定したこと
 
