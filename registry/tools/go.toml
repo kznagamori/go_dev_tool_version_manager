@@ -1,0 +1,293 @@
+schema = 1
+schema_id = "https://github.com/kznagamori/go_dev_tool_version_manager/schemas/tool-definition/v1"
+
+[tool]
+id = "go"
+name = "Go"
+aliases = ["golang"]
+description = "Go programming language toolchain"
+homepage = "https://go.dev/"
+license = "BSD-3-Clause"
+version_scheme = "go"
+
+[[platforms]]
+id = "windows-amd64"
+os = "windows"
+arch = "amd64"
+libc = "none"
+artifact_kind = "official"
+
+[platforms.provider]
+name = "Go project"
+homepage = "https://go.dev/"
+license = "BSD-3-Clause"
+
+[platforms.version_source]
+kind = "json"
+url = "https://go.dev/dl/?mode=json&include=all"
+items_pointer = ""
+version_pointer = "/version"
+version_regex = "^go(?P<version>[0-9]+[.][0-9]+(?:[.][0-9]+)?(?:(?:beta|rc)[1-9][0-9]*)?)$"
+channel_pointer = "/stable"
+assets_pointer = "/files"
+max_items = 10000
+cache_ttl = "24h"
+
+[platforms.version_source.asset_fields]
+name = "/filename"
+size = "/size"
+digest = "/sha256"
+os = "/os"
+arch = "/arch"
+
+[platforms.artifact]
+id = "primary"
+source = "asset"
+url = "https://go.dev/dl/{{asset.name}}"
+file = "{{asset.name}}"
+format = "zip"
+size = 0
+redirect_hosts = ["dl.google.com"]
+
+[platforms.artifact.selector]
+name_regex = "^go(?P<version>[0-9][0-9A-Za-z.]*)[.]windows-amd64[.]zip$"
+os = "windows"
+arch = "amd64"
+
+[platforms.artifact.checksum]
+kind = "asset-field"
+algorithm = "sha256"
+
+[platforms.install]
+strip_components = 1
+
+[[platforms.storage]]
+id = "config"
+kind = "config"
+scope = "tool"
+path = "config"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "workspace"
+kind = "runtime-data"
+scope = "tool"
+path = "workspace"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "module-cache"
+kind = "content-cache"
+scope = "tool"
+path = "module-cache"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "build-cache"
+kind = "build-cache"
+scope = "tool"
+path = "build-cache"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "global-tools"
+kind = "global-bin"
+scope = "tool"
+path = "global-tools"
+purge = "explicit"
+
+[[platforms.runtime.commands]]
+name = "go"
+target = "{{payload}}/bin/go.exe"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.commands]]
+name = "gofmt"
+target = "{{payload}}/bin/gofmt.exe"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.environment]]
+id = "default"
+path_prepend = ["{{payload}}/bin", "{{storage.global-tools}}"]
+path_append = []
+unset = []
+override_allowed = []
+shell_export = ["GOROOT", "GOBIN"]
+
+[platforms.runtime.environment.set]
+GOROOT = "{{payload}}"
+GOBIN = "{{storage.global-tools}}"
+GOENV = "{{storage.config}}/go.env"
+GOPATH = "{{storage.workspace}}"
+GOMODCACHE = "{{storage.module-cache}}"
+GOCACHE = "{{storage.build-cache}}"
+GOTOOLCHAIN = "local"
+
+[[platforms.validation.probes]]
+id = "version"
+runtime_command = "go"
+args = ["version"]
+stream = "stdout"
+expect = "version"
+regex = "^go version go(?P<version>[0-9]+[.][0-9]+(?:[.][0-9]+)?(?:(?:beta|rc)[1-9][0-9]*)?) windows/amd64$"
+expected_version = "{{version}}"
+timeout = "60s"
+required = true
+
+[[platforms.validation.probes]]
+id = "gofmt"
+runtime_command = "gofmt"
+args = ["-h"]
+stream = "combined"
+expect = "success"
+timeout = "30s"
+required = true
+
+[[platforms]]
+id = "linux-amd64-glibc"
+os = "linux"
+arch = "amd64"
+libc = "glibc"
+artifact_kind = "official"
+
+[platforms.provider]
+name = "Go project"
+homepage = "https://go.dev/"
+license = "BSD-3-Clause"
+
+[platforms.version_source]
+kind = "json"
+url = "https://go.dev/dl/?mode=json&include=all"
+items_pointer = ""
+version_pointer = "/version"
+version_regex = "^go(?P<version>[0-9]+[.][0-9]+(?:[.][0-9]+)?(?:(?:beta|rc)[1-9][0-9]*)?)$"
+channel_pointer = "/stable"
+assets_pointer = "/files"
+max_items = 10000
+cache_ttl = "24h"
+
+[platforms.version_source.asset_fields]
+name = "/filename"
+size = "/size"
+digest = "/sha256"
+os = "/os"
+arch = "/arch"
+
+[platforms.artifact]
+id = "primary"
+source = "asset"
+url = "https://go.dev/dl/{{asset.name}}"
+file = "{{asset.name}}"
+format = "tar.gz"
+size = 0
+redirect_hosts = ["dl.google.com"]
+
+[platforms.artifact.selector]
+name_regex = "^go(?P<version>[0-9][0-9A-Za-z.]*)[.]linux-amd64[.]tar[.]gz$"
+os = "linux"
+arch = "amd64"
+
+[platforms.artifact.checksum]
+kind = "asset-field"
+algorithm = "sha256"
+
+[platforms.install]
+strip_components = 1
+
+[[platforms.storage]]
+id = "config"
+kind = "config"
+scope = "tool"
+path = "config"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "workspace"
+kind = "runtime-data"
+scope = "tool"
+path = "workspace"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "module-cache"
+kind = "content-cache"
+scope = "tool"
+path = "module-cache"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "build-cache"
+kind = "build-cache"
+scope = "tool"
+path = "build-cache"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "global-tools"
+kind = "global-bin"
+scope = "tool"
+path = "global-tools"
+purge = "explicit"
+
+[[platforms.runtime.commands]]
+name = "go"
+target = "{{payload}}/bin/go"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.commands]]
+name = "gofmt"
+target = "{{payload}}/bin/gofmt"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.environment]]
+id = "default"
+path_prepend = ["{{payload}}/bin", "{{storage.global-tools}}"]
+path_append = []
+unset = []
+override_allowed = []
+shell_export = ["GOROOT", "GOBIN"]
+
+[platforms.runtime.environment.set]
+GOROOT = "{{payload}}"
+GOBIN = "{{storage.global-tools}}"
+GOENV = "{{storage.config}}/go.env"
+GOPATH = "{{storage.workspace}}"
+GOMODCACHE = "{{storage.module-cache}}"
+GOCACHE = "{{storage.build-cache}}"
+GOTOOLCHAIN = "local"
+
+[[platforms.validation.probes]]
+id = "version"
+runtime_command = "go"
+args = ["version"]
+stream = "stdout"
+expect = "version"
+regex = "^go version go(?P<version>[0-9]+[.][0-9]+(?:[.][0-9]+)?(?:(?:beta|rc)[1-9][0-9]*)?) linux/amd64$"
+expected_version = "{{version}}"
+timeout = "60s"
+required = true
+
+[[platforms.validation.probes]]
+id = "gofmt"
+runtime_command = "gofmt"
+args = ["-h"]
+stream = "combined"
+expect = "success"
+timeout = "30s"
+required = true

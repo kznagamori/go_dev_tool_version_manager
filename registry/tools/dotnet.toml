@@ -1,0 +1,278 @@
+schema = 1
+schema_id = "https://github.com/kznagamori/go_dev_tool_version_manager/schemas/tool-definition/v1"
+
+[tool]
+id = "dotnet"
+name = ".NET SDK"
+aliases = ["dotnet-sdk"]
+description = ".NET SDK (dotnet CLI, compilers, shared runtimes)"
+homepage = "https://dotnet.microsoft.com/"
+license = "MIT"
+version_scheme = "semver"
+
+[[platforms]]
+id = "windows-amd64"
+os = "windows"
+arch = "amd64"
+libc = "none"
+artifact_kind = "official"
+license_notice = "license.dotnet.windows_library_license"
+
+[platforms.provider]
+name = "Microsoft"
+repository = "https://github.com/dotnet/sdk"
+homepage = "https://dotnet.microsoft.com/"
+license = "LicenseRef-dotnet-library"
+
+[platforms.version_source]
+kind = "json-index"
+url = "https://builds.dotnet.microsoft.com/dotnet/release-metadata/releases-index.json"
+index_items_pointer = "/releases-index"
+index_document_pointer = "/releases.json"
+max_documents = 32
+document_lifecycle_pointer = "/support-phase"
+items_pointer = "/releases"
+item_flatten_pointer = "/sdks"
+item_parent_published_at_pointer = "/release-date"
+version_pointer = "/version"
+version_regex = "^(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?)$"
+assets_pointer = "/files"
+max_items = 10000
+cache_ttl = "24h"
+
+[platforms.version_source.lifecycle_map]
+preview = "supported"
+"go-live" = "supported"
+active = "supported"
+maintenance = "supported"
+eol = "eol"
+
+[platforms.version_source.asset_fields]
+name = "/name"
+url = "/url"
+digest = "/hash"
+
+[platforms.artifact]
+id = "primary"
+source = "asset"
+url = ""
+file = ""
+format = "zip"
+size = 0
+
+[platforms.artifact.selector]
+name_regex = "^dotnet-sdk-win-x64[.]zip$"
+
+[platforms.artifact.checksum]
+kind = "asset-field"
+algorithm = "sha512"
+
+[platforms.install]
+strip_components = 0
+
+[[platforms.storage]]
+id = "cli-home"
+kind = "runtime-data"
+scope = "version"
+path = "cli-home"
+purge = "with-version"
+
+[[platforms.storage]]
+id = "nuget-packages"
+kind = "content-cache"
+scope = "tool"
+path = "nuget-packages"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "nuget-http-cache"
+kind = "content-cache"
+scope = "tool"
+path = "nuget-http-cache"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "nuget-plugins-cache"
+kind = "content-cache"
+scope = "tool"
+path = "nuget-plugins-cache"
+purge = "explicit"
+
+[[platforms.runtime.commands]]
+name = "dotnet"
+target = "{{payload}}/dotnet.exe"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.environment]]
+id = "default"
+path_prepend = ["{{payload}}"]
+path_append = []
+unset = []
+override_allowed = []
+shell_export = ["DOTNET_ROOT", "NUGET_PACKAGES"]
+
+[platforms.runtime.environment.set]
+DOTNET_ROOT = "{{payload}}"
+DOTNET_CLI_HOME = "{{storage.cli-home}}"
+DOTNET_CLI_TELEMETRY_OPTOUT = "1"
+DOTNET_NOLOGO = "1"
+NUGET_PACKAGES = "{{storage.nuget-packages}}"
+NUGET_HTTP_CACHE_PATH = "{{storage.nuget-http-cache}}"
+NUGET_PLUGINS_CACHE_PATH = "{{storage.nuget-plugins-cache}}"
+
+[[platforms.validation.probes]]
+id = "version"
+runtime_command = "dotnet"
+args = ["--version"]
+stream = "stdout"
+expect = "version"
+regex = "^(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?)$"
+expected_version = "{{version}}"
+timeout = "120s"
+required = true
+
+[[platforms.validation.probes]]
+id = "list-sdks"
+runtime_command = "dotnet"
+args = ["--list-sdks"]
+stream = "stdout"
+expect = "success"
+timeout = "120s"
+required = true
+
+[[platforms]]
+id = "linux-amd64-glibc"
+os = "linux"
+arch = "amd64"
+libc = "glibc"
+artifact_kind = "official"
+
+[platforms.provider]
+name = "Microsoft"
+repository = "https://github.com/dotnet/sdk"
+homepage = "https://dotnet.microsoft.com/"
+license = "MIT"
+
+[platforms.version_source]
+kind = "json-index"
+url = "https://builds.dotnet.microsoft.com/dotnet/release-metadata/releases-index.json"
+index_items_pointer = "/releases-index"
+index_document_pointer = "/releases.json"
+max_documents = 32
+document_lifecycle_pointer = "/support-phase"
+items_pointer = "/releases"
+item_flatten_pointer = "/sdks"
+item_parent_published_at_pointer = "/release-date"
+version_pointer = "/version"
+version_regex = "^(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?)$"
+assets_pointer = "/files"
+max_items = 10000
+cache_ttl = "24h"
+
+[platforms.version_source.lifecycle_map]
+preview = "supported"
+"go-live" = "supported"
+active = "supported"
+maintenance = "supported"
+eol = "eol"
+
+[platforms.version_source.asset_fields]
+name = "/name"
+url = "/url"
+digest = "/hash"
+
+[platforms.artifact]
+id = "primary"
+source = "asset"
+url = ""
+file = ""
+format = "tar.gz"
+size = 0
+
+[platforms.artifact.selector]
+name_regex = "^dotnet-sdk-linux-x64[.]tar[.]gz$"
+
+[platforms.artifact.checksum]
+kind = "asset-field"
+algorithm = "sha512"
+
+[platforms.install]
+strip_components = 0
+
+[[platforms.storage]]
+id = "cli-home"
+kind = "runtime-data"
+scope = "version"
+path = "cli-home"
+purge = "with-version"
+
+[[platforms.storage]]
+id = "nuget-packages"
+kind = "content-cache"
+scope = "tool"
+path = "nuget-packages"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "nuget-http-cache"
+kind = "content-cache"
+scope = "tool"
+path = "nuget-http-cache"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "nuget-plugins-cache"
+kind = "content-cache"
+scope = "tool"
+path = "nuget-plugins-cache"
+purge = "explicit"
+
+[[platforms.runtime.commands]]
+name = "dotnet"
+target = "{{payload}}/dotnet"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.environment]]
+id = "default"
+path_prepend = ["{{payload}}"]
+path_append = []
+unset = []
+override_allowed = []
+shell_export = ["DOTNET_ROOT", "NUGET_PACKAGES"]
+
+[platforms.runtime.environment.set]
+DOTNET_ROOT = "{{payload}}"
+DOTNET_CLI_HOME = "{{storage.cli-home}}"
+DOTNET_CLI_TELEMETRY_OPTOUT = "1"
+DOTNET_NOLOGO = "1"
+NUGET_PACKAGES = "{{storage.nuget-packages}}"
+NUGET_HTTP_CACHE_PATH = "{{storage.nuget-http-cache}}"
+NUGET_PLUGINS_CACHE_PATH = "{{storage.nuget-plugins-cache}}"
+
+[[platforms.validation.probes]]
+id = "version"
+runtime_command = "dotnet"
+args = ["--version"]
+stream = "stdout"
+expect = "version"
+regex = "^(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?)$"
+expected_version = "{{version}}"
+timeout = "120s"
+required = true
+
+[[platforms.validation.probes]]
+id = "list-sdks"
+runtime_command = "dotnet"
+args = ["--list-sdks"]
+stream = "stdout"
+expect = "success"
+timeout = "120s"
+required = true

@@ -252,13 +252,14 @@ func resolveArtifact(
 		if asset == nil {
 			return nil, nil
 		}
-		if asset.URL == "" || asset.Name == "" {
-			return nil, fmt.Errorf("選択assetの`url`または`name`が空")
+		artifactURL, file, err := assetURLAndFile(artifact, values, asset)
+		if err != nil {
+			return nil, err
 		}
-		if urlErr := checkArtifactURL(asset.URL); urlErr != nil {
+		if urlErr := checkArtifactURL(artifactURL); urlErr != nil {
 			return nil, urlErr
 		}
-		if nameErr := checkFileName(asset.Name); nameErr != nil {
+		if nameErr := checkFileName(file); nameErr != nil {
 			return nil, nameErr
 		}
 		size := asset.Size
@@ -267,7 +268,7 @@ func resolveArtifact(
 			// そちらを使い、download応答との一致はP7が検査する。
 			size = artifact.Size
 		}
-		return &resolvedArtifact{file: asset.Name, url: asset.URL, size: size, asset: asset}, nil
+		return &resolvedArtifact{file: file, url: artifactURL, size: size, asset: asset}, nil
 	}
 
 	// source=templateはrender後のURL/fileを使う。
@@ -287,6 +288,34 @@ func resolveArtifact(
 		return nil, nameErr
 	}
 	return &resolvedArtifact{file: file, url: artifactURL, size: artifact.Size}, nil
+}
+
+// assetURLAndFile は`source=asset`のURLとfile名を決める（§7.1）。
+//
+// 「`url`/`file`は空なら選択assetの`url`/`name`を使い、非空なら選択assetを
+// `{{asset.<field>}}`で参照できるtemplateとしてrenderする。」upstreamがasset
+// listにdownload URLを載せず、file名からURLを組み立てる配布元（Go）に使う。
+func assetURLAndFile(
+	artifact definition.Artifact, values templateValues, asset *Asset,
+) (string, string, error) {
+	values.asset = asset
+	if artifact.URL == "" {
+		if asset.URL == "" || asset.Name == "" {
+			return "", "", fmt.Errorf("選択assetの`url`または`name`が空")
+		}
+		return asset.URL, asset.Name, nil
+	}
+	// definitionのschema検証が`url`と`file`を組で要求する。片方だけのtemplateは
+	// URLとfile名の出所が食い違う。
+	artifactURL, err := renderTemplate(artifact.URL, values, true)
+	if err != nil {
+		return "", "", fmt.Errorf("artifact.url: %w", err)
+	}
+	file, err := renderTemplate(artifact.File, values, false)
+	if err != nil {
+		return "", "", fmt.Errorf("artifact.file: %w", err)
+	}
+	return artifactURL, file, nil
 }
 
 // artifactBasename はURLのbasenameを返す。checksum text-fileの照合に使う。
