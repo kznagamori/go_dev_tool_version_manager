@@ -32,7 +32,27 @@ os = "windows"
 arch = "amd64"
 libc = "none"
 artifact_kind = "official"
-storage = []
+
+[[platforms.storage]]
+id = "config"
+kind = "config"
+scope = "tool"
+path = "config"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "cache"
+kind = "content-cache"
+scope = "tool"
+path = "cache"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "global-packages"
+kind = "global-packages"
+scope = "version"
+path = "global-packages"
+purge = "with-version"
 
 [platforms.provider]
 name = "Node.js project"
@@ -53,13 +73,70 @@ cache_ttl = "24h"
 
 [platforms.artifact]
 id = "primary"
+source = "template"
+url = "https://nodejs.org/dist/v{{version}}/node-v{{version}}-win-x64.zip"
+file = "node-v{{version}}-win-x64.zip"
+format = "zip"
+size = 0
+
+[platforms.artifact.checksum]
+kind = "text-file"
+url = "https://nodejs.org/dist/v{{version}}/SHASUMS256.txt"
+line_format = "sha256-space-filename"
 
 [platforms.install]
 strip_components = 1
 
-[platforms.runtime]
+[[platforms.runtime.commands]]
+name = "node"
+target = "{{payload}}/node.exe"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
 
-[platforms.validation]
+[[platforms.runtime.commands]]
+name = "npm"
+target = "{{payload}}/node.exe"
+args = ["{{payload}}/node_modules/npm/bin/npm-cli.js"]
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.environment]]
+id = "default"
+path_prepend = ["{{payload}}", "{{storage.global-packages}}"]
+path_append = []
+unset = []
+override_allowed = []
+shell_export = ["NPM_CONFIG_PREFIX", "NPM_CONFIG_CACHE"]
+
+[platforms.runtime.environment.set]
+NPM_CONFIG_USERCONFIG = "{{storage.config}}/npmrc"
+NPM_CONFIG_CACHE = "{{storage.cache}}"
+NPM_CONFIG_PREFIX = "{{storage.global-packages}}"
+
+[[platforms.validation.probes]]
+id = "version"
+runtime_command = "node"
+args = ["--version"]
+stream = "stdout"
+expect = "version"
+regex = "^v(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?)$"
+expected_version = "{{version}}"
+timeout = "30s"
+required = true
+
+[[platforms.validation.probes]]
+id = "npm"
+runtime_command = "npm"
+args = ["--version"]
+stream = "stdout"
+expect = "success"
+timeout = "60s"
+required = true
 `
 
 const specDefinitionPath = "tools/node.toml"
@@ -152,13 +229,30 @@ func TestParseAcceptsSpecExample(t *testing.T) {
 	if len(source.RequiredTokens) != 1 || source.RequiredTokens[0] != "win-x64-zip" {
 		t.Errorf("required_tokens = %v", source.RequiredTokens)
 	}
-	// §7以降のtableは中身を解釈せず保持する。
-	if platform.Artifact == nil || platform.Install == nil ||
-		platform.Runtime == nil || platform.Validation == nil {
-		t.Errorf("raw tableが保持されていない: %+v", platform)
+	// §7〜§11も型付きで読む。
+	if platform.Artifact.Source != SourceTemplate || platform.Artifact.Format != FormatZip {
+		t.Errorf("artifact = %q/%q", platform.Artifact.Source, platform.Artifact.Format)
 	}
-	if platform.Storage == nil || len(platform.Storage) != 0 {
-		t.Errorf("storage = %v, want 空配列", platform.Storage)
+	if platform.Artifact.Checksum.Kind != ChecksumTextFile ||
+		platform.Artifact.Checksum.LineFormat != LineFormatSHA256 {
+		t.Errorf("checksum = %+v", platform.Artifact.Checksum)
+	}
+	if platform.Install.StripComponents != 1 {
+		t.Errorf("strip_components = %d", platform.Install.StripComponents)
+	}
+	if len(platform.Storage) != 3 {
+		t.Fatalf("storage = %d件", len(platform.Storage))
+	}
+	if len(platform.Runtime.Commands) != 2 || len(platform.Runtime.Environment) != 1 {
+		t.Fatalf("runtime = command %d件 / profile %d件",
+			len(platform.Runtime.Commands), len(platform.Runtime.Environment))
+	}
+	if len(platform.Validation.Probes) != 2 {
+		t.Fatalf("probes = %d件", len(platform.Validation.Probes))
+	}
+	if platform.Validation.Probes[0].Expect != ExpectVersion ||
+		platform.Validation.Probes[0].Timeout != 30*time.Second {
+		t.Errorf("probe[0] = %+v", platform.Validation.Probes[0])
 	}
 }
 
@@ -259,11 +353,11 @@ func TestParseRejectsMalformedInput(t *testing.T) {
 	}
 }
 
-// requiredKeyCount は本PRが「全件必須」を検査するscalar keyの件数である。
+// requiredKeyCount は`[platforms.version_source]`より前の必須scalar keyの件数である。
 //
-// §2の2件、§4の7件、§5の6件（`storage`含む）、§5.1のofficial必須3件。
+// §2の2件、§4の7件、§5の5件、§8のstorage 3件×5 key、§5.1のofficial必須3件。
 // 件数を定数で持つのは、正規例が縮んで検査が空振りしたときに気付くためである。
-const requiredKeyCount = 18
+const requiredKeyCount = 32
 
 // TestParseRequiresEveryKey は§2・§4・§5・§5.1の「全件必須」を1行ずつ落として確かめる。
 //
@@ -309,24 +403,50 @@ func TestParseRequiresEveryKey(t *testing.T) {
 	}
 }
 
-// TestParseRejectsTableRemoval は必須tableの欠落を固定する。
-func TestParseRejectsTableRemoval(t *testing.T) {
-	tables := []string{
-		specVersionSourceBlock,
-		"[platforms.artifact]\nid = \"primary\"\n",
-		"[platforms.install]\nstrip_components = 1\n",
-		"[platforms.runtime]\n",
-		"[platforms.validation]\n",
-		"[platforms.provider]\nname = \"Node.js project\"\nhomepage = \"https://nodejs.org/\"\nlicense = \"MIT\"\n",
-	}
-	for _, table := range tables {
-		name, _, _ := strings.Cut(table, "\n")
-		t.Run(name, func(t *testing.T) {
-			source := strings.Replace(specDefinitionTOML, table, "", 1)
-			if source == specDefinitionTOML {
-				t.Fatalf("table %q が正規例に無い", name)
+// removeSections は正規例からprefixに一致するsectionをすべて落とす。
+//
+// header行の`[`を剥がしてからprefixと比較する。`[platforms.runtime`のように
+// 書けば`[[platforms.runtime.commands]]`も`[platforms.runtime.environment.set]`も
+// まとめて落とせる。header行だけを消すと、残ったkeyが直前のtableへ吸収されて
+// 別の失敗になる。
+func removeSections(t *testing.T, prefix string) string {
+	t.Helper()
+	lines := strings.Split(specDefinitionTOML, "\n")
+	kept := make([]string, 0, len(lines))
+	skipping, removed := false, 0
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "[") {
+			header := strings.TrimLeft(trimmed, "[")
+			skipping = strings.HasPrefix(header, prefix)
+			if skipping {
+				removed++
 			}
-			_, err := Parse(specDefinitionPath, []byte(source))
+		}
+		if !skipping {
+			kept = append(kept, line)
+		}
+	}
+	if removed == 0 {
+		t.Fatalf("prefix %q に一致するsectionが正規例に無い", prefix)
+	}
+	return strings.Join(kept, "\n")
+}
+
+// TestParseRejectsTableRemoval は§5の必須tableの欠落を固定する。
+func TestParseRejectsTableRemoval(t *testing.T) {
+	prefixes := []string{
+		"platforms.provider",
+		"platforms.version_source",
+		"platforms.artifact",
+		"platforms.install",
+		"platforms.storage",
+		"platforms.runtime",
+		"platforms.validation",
+	}
+	for _, prefix := range prefixes {
+		t.Run(prefix, func(t *testing.T) {
+			_, err := Parse(specDefinitionPath, []byte(removeSections(t, prefix)))
 			if err == nil {
 				t.Fatal("必須tableが無くても通った")
 			}

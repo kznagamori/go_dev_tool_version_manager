@@ -47,8 +47,46 @@ func buildPlatform(
 	value.Provider = buildProvider(table.Provider, field, value.ArtifactKind, diagnostics)
 	value.VersionSource = buildVersionSource(
 		table.VersionSource, field+".version_source", scheme, diagnostics)
-	buildRawSections(table, field, &value, diagnostics)
+
+	// §13の検証順序に従い、storage → install → runtime → probeの順で読む。
+	// template検査がstorage IDの宣言集合を要るため、storageを先に確定させる。
+	value.Storage = buildStorages(table.Storage, field+".storage", diagnostics)
+	value.Install = buildInstall(table.Install, field+".install", diagnostics)
+
+	context := newTemplateContext(value.Storage, value.VersionSource)
+	value.Artifact = buildArtifact(
+		table.Artifact, field+".artifact", context, value.VersionSource, diagnostics)
+	windows := value.Platform.OS() == domain.OSWindows
+	value.Runtime = buildRuntime(table.Runtime, field+".runtime", context, windows, diagnostics)
+	value.Validation = buildValidation(
+		table.Validation, field+".validation", context, value.Runtime.Commands, diagnostics)
 	return value
+}
+
+// newTemplateContext は§12のtemplate検査に要る宣言済み集合を組み立てる。
+func newTemplateContext(storages []Storage, source VersionSource) templateContext {
+	context := templateContext{
+		storageIDs:   make(map[string]struct{}, len(storages)),
+		metadataKeys: make(map[string]struct{}, len(source.MetadataFields)),
+		assetFields:  make(map[AssetField]struct{}, len(source.AssetFields)),
+	}
+	for _, storage := range storages {
+		context.storageIDs[storage.ID] = struct{}{}
+	}
+	for key := range source.MetadataFields {
+		context.metadataKeys[key] = struct{}{}
+	}
+	for field := range source.AssetFields {
+		context.assetFields[field] = struct{}{}
+	}
+	// static sourceはassetを直接書くため、`asset_fields`の宣言を持たない。
+	// §6.6が13 field全件必須であることから、全fieldを宣言済みとして扱う。
+	if source.Kind == SourceStatic {
+		for _, field := range assetFieldOrder {
+			context.assetFields[field] = struct{}{}
+		}
+	}
+	return context
 }
 
 // checkStaticVersionSets は§6.6の両platform一致を検査する。
@@ -216,46 +254,4 @@ func buildProvider(
 		// kind側の診断が既に出ているため、ここでは追加で報告しない。
 	}
 	return value
-}
-
-// buildRawSections は§7〜§11のtableの存在だけを検査する（§5の「全件必須」）。
-//
-// 内容の検証はP3-01の3本目である。存在検査だけを先に置くのは、必須table
-// の欠落を後続PRまで検出できない状態にしないためである。
-func buildRawSections(table *platformTable, field string, value *Platform, diagnostics *Diagnostics) {
-	required := []struct {
-		key    string
-		raw    *RawTable
-		target *RawTable
-	}{
-		{"artifact", table.Artifact, &value.Artifact},
-		{"install", table.Install, &value.Install},
-		{"runtime", table.Runtime, &value.Runtime},
-		{"validation", table.Validation, &value.Validation},
-	}
-	for _, entry := range required {
-		if entry.raw == nil {
-			diagnostics.Add(field+"."+entry.key, reason(reasonMissing),
-				fmt.Sprintf("`[platforms.%s]`が無い", entry.key))
-			continue
-		}
-		// 空tableのdecode結果はnil mapになる。そのまま入れると「table自体が
-		// 無い」と区別できないため、空の非nil mapへ正規化する。
-		if *entry.raw == nil {
-			*entry.target = RawTable{}
-			continue
-		}
-		*entry.target = *entry.raw
-	}
-	// storageは必須keyだが空配列を許す（§5）。
-	if table.Storage == nil {
-		diagnostics.Add(field+".storage", reason(reasonMissing), "`storage`が無い")
-		return
-	}
-	if len(*table.Storage) > ArrayMax {
-		diagnostics.Add(field+".storage", reason(reasonLimit),
-			fmt.Sprintf("storageが%d件を超える（%d件）", ArrayMax, len(*table.Storage)))
-		return
-	}
-	value.Storage = append([]RawTable{}, *table.Storage...)
 }
