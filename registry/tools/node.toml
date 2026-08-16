@@ -1,0 +1,299 @@
+schema = 1
+schema_id = "https://github.com/kznagamori/go_dev_tool_version_manager/schemas/tool-definition/v1"
+
+[tool]
+id = "node"
+name = "Node.js"
+aliases = ["nodejs"]
+description = "Node.js JavaScript runtime"
+homepage = "https://nodejs.org/"
+license = "MIT"
+version_scheme = "semver"
+
+[[platforms]]
+id = "windows-amd64"
+os = "windows"
+arch = "amd64"
+libc = "none"
+artifact_kind = "official"
+
+[platforms.provider]
+name = "Node.js project"
+homepage = "https://nodejs.org/"
+license = "MIT"
+
+[platforms.version_source]
+kind = "json"
+url = "https://nodejs.org/dist/index.json"
+items_pointer = ""
+version_pointer = "/version"
+version_regex = "^v(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?)$"
+published_at_pointer = "/date"
+required_tokens_pointer = "/files"
+required_tokens = ["win-x64-zip"]
+max_items = 10000
+cache_ttl = "24h"
+
+[[platforms.version_source.lifecycle_overrides]]
+version = "18.20.8"
+status = "eol"
+evidence = "https://github.com/nodejs/Release"
+assessed_at = 2026-08-07T00:00:00Z
+
+[platforms.artifact]
+id = "primary"
+source = "template"
+url = "https://nodejs.org/dist/v{{version}}/node-v{{version}}-win-x64.zip"
+file = "node-v{{version}}-win-x64.zip"
+format = "zip"
+size = 0
+
+[platforms.artifact.checksum]
+kind = "text-file"
+url = "https://nodejs.org/dist/v{{version}}/SHASUMS256.txt"
+line_format = "sha256-space-filename"
+
+[platforms.install]
+strip_components = 1
+
+[[platforms.storage]]
+id = "config"
+kind = "config"
+scope = "tool"
+path = "config"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "cache"
+kind = "content-cache"
+scope = "tool"
+path = "cache"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "history"
+kind = "runtime-data"
+scope = "tool"
+path = "history"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "global-packages"
+kind = "global-packages"
+scope = "version"
+path = "global-packages"
+purge = "with-version"
+
+[[platforms.runtime.commands]]
+name = "node"
+target = "{{payload}}/node.exe"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.commands]]
+name = "npm"
+target = "{{payload}}/node.exe"
+args = ["{{payload}}/node_modules/npm/bin/npm-cli.js"]
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.commands]]
+name = "npx"
+target = "{{payload}}/node.exe"
+args = ["{{payload}}/node_modules/npm/bin/npx-cli.js"]
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.environment]]
+id = "default"
+path_prepend = ["{{payload}}", "{{storage.global-packages}}"]
+path_append = []
+unset = []
+override_allowed = []
+shell_export = ["NPM_CONFIG_PREFIX", "NPM_CONFIG_USERCONFIG", "NPM_CONFIG_CACHE"]
+
+[platforms.runtime.environment.set]
+NPM_CONFIG_USERCONFIG = "{{storage.config}}/npmrc"
+NPM_CONFIG_CACHE = "{{storage.cache}}"
+NPM_CONFIG_PREFIX = "{{storage.global-packages}}"
+NODE_REPL_HISTORY = "{{storage.history}}/repl_history"
+
+[[platforms.validation.probes]]
+id = "version"
+runtime_command = "node"
+args = ["--version"]
+stream = "stdout"
+expect = "version"
+regex = "^v(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?)$"
+expected_version = "{{version}}"
+timeout = "30s"
+required = true
+
+[[platforms.validation.probes]]
+id = "npm"
+runtime_command = "npm"
+args = ["--version"]
+stream = "stdout"
+expect = "success"
+timeout = "60s"
+required = true
+
+[[platforms.validation.probes]]
+id = "npx"
+runtime_command = "npx"
+args = ["--version"]
+stream = "stdout"
+expect = "success"
+timeout = "60s"
+required = true
+
+[[platforms]]
+id = "linux-amd64-glibc"
+os = "linux"
+arch = "amd64"
+libc = "glibc"
+artifact_kind = "official"
+
+[platforms.provider]
+name = "Node.js project"
+homepage = "https://nodejs.org/"
+license = "MIT"
+
+[platforms.version_source]
+kind = "json"
+url = "https://nodejs.org/dist/index.json"
+items_pointer = ""
+version_pointer = "/version"
+version_regex = "^v(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?)$"
+published_at_pointer = "/date"
+required_tokens_pointer = "/files"
+required_tokens = ["linux-x64"]
+max_items = 10000
+cache_ttl = "24h"
+
+[[platforms.version_source.lifecycle_overrides]]
+version = "18.20.8"
+status = "eol"
+evidence = "https://github.com/nodejs/Release"
+assessed_at = 2026-08-07T00:00:00Z
+
+[platforms.artifact]
+id = "primary"
+source = "template"
+url = "https://nodejs.org/dist/v{{version}}/node-v{{version}}-linux-x64.tar.gz"
+file = "node-v{{version}}-linux-x64.tar.gz"
+format = "tar.gz"
+size = 0
+
+[platforms.artifact.checksum]
+kind = "text-file"
+url = "https://nodejs.org/dist/v{{version}}/SHASUMS256.txt"
+line_format = "sha256-space-filename"
+
+[platforms.install]
+strip_components = 1
+
+[[platforms.storage]]
+id = "config"
+kind = "config"
+scope = "tool"
+path = "config"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "cache"
+kind = "content-cache"
+scope = "tool"
+path = "cache"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "history"
+kind = "runtime-data"
+scope = "tool"
+path = "history"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "global-packages"
+kind = "global-packages"
+scope = "version"
+path = "global-packages"
+purge = "with-version"
+
+[[platforms.runtime.commands]]
+name = "node"
+target = "{{payload}}/bin/node"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.commands]]
+name = "npm"
+target = "{{payload}}/bin/node"
+args = ["{{payload}}/lib/node_modules/npm/bin/npm-cli.js"]
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.commands]]
+name = "npx"
+target = "{{payload}}/bin/node"
+args = ["{{payload}}/lib/node_modules/npm/bin/npx-cli.js"]
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.environment]]
+id = "default"
+path_prepend = ["{{payload}}/bin", "{{storage.global-packages}}/bin"]
+path_append = []
+unset = []
+override_allowed = []
+shell_export = ["NPM_CONFIG_PREFIX", "NPM_CONFIG_USERCONFIG", "NPM_CONFIG_CACHE"]
+
+[platforms.runtime.environment.set]
+NPM_CONFIG_USERCONFIG = "{{storage.config}}/npmrc"
+NPM_CONFIG_CACHE = "{{storage.cache}}"
+NPM_CONFIG_PREFIX = "{{storage.global-packages}}"
+NODE_REPL_HISTORY = "{{storage.history}}/repl_history"
+
+[[platforms.validation.probes]]
+id = "version"
+runtime_command = "node"
+args = ["--version"]
+stream = "stdout"
+expect = "version"
+regex = "^v(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?)$"
+expected_version = "{{version}}"
+timeout = "30s"
+required = true
+
+[[platforms.validation.probes]]
+id = "npm"
+runtime_command = "npm"
+args = ["--version"]
+stream = "stdout"
+expect = "success"
+timeout = "60s"
+required = true
+
+[[platforms.validation.probes]]
+id = "npx"
+runtime_command = "npx"
+args = ["--version"]
+stream = "stdout"
+expect = "success"
+timeout = "60s"
+required = true
