@@ -77,7 +77,9 @@ ALLOWED: dict[str, set[str]] = {
     # 02-architecture.md §2「型付き進捗、warning、cancel境界」。Progressと
     # ResultWarningがmessage ID、scalar、ID、tool/versionのdomain値を持つ（P1-04）。
     "internal/progress": {"internal/domain"},
-    "internal/registry": set(),
+    # 07-registry-and-tools.md §3のregistry manifestがtool ID、client version、
+    # message ID、path roleのdomain値を扱う（P4-01）。
+    "internal/registry": {"internal/domain"},
     "internal/runtime": set(),
     # 10-security.md §9.2のmaskをscalar parameterへ適用するため（P1-04）。
     "internal/security": {"internal/domain"},
