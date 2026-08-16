@@ -2,6 +2,7 @@ package definition
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain"
 )
@@ -9,7 +10,9 @@ import (
 // buildPlatforms は§5の`[[platforms]]`を検証してmodelへ入れる。
 //
 // platformは1件以上、[PlatformMax]件以下、ID一意（§2・§21）。
-func buildPlatforms(tables []platformTable, value *Definition, diagnostics *Diagnostics) {
+func buildPlatforms(
+	tables []platformTable, scheme domain.VersionScheme, value *Definition, diagnostics *Diagnostics,
+) {
 	switch {
 	case len(tables) == 0:
 		diagnostics.Add("platforms", reason(reasonMissing), "`[[platforms]]`が1件も無い")
@@ -22,7 +25,7 @@ func buildPlatforms(tables []platformTable, value *Definition, diagnostics *Diag
 	ids := make([]string, 0, len(tables))
 	for index := range tables {
 		field := fmt.Sprintf("platforms[%d]", index)
-		platform := buildPlatform(&tables[index], field, diagnostics)
+		platform := buildPlatform(&tables[index], field, scheme, diagnostics)
 		if !platform.Platform.IsZero() {
 			ids = append(ids, platform.Platform.ID())
 		}
@@ -34,14 +37,61 @@ func buildPlatforms(tables []platformTable, value *Definition, diagnostics *Diag
 	}
 }
 
-func buildPlatform(table *platformTable, field string, diagnostics *Diagnostics) Platform {
+func buildPlatform(
+	table *platformTable, field string, scheme domain.VersionScheme, diagnostics *Diagnostics,
+) Platform {
 	var value Platform
 	value.Platform = buildPlatformTuple(table, field, diagnostics)
 	value.ArtifactKind = buildArtifactKind(table.ArtifactKind, field, diagnostics)
 	value.LicenseNotice = buildLicenseNotice(table.LicenseNotice, field, diagnostics)
 	value.Provider = buildProvider(table.Provider, field, value.ArtifactKind, diagnostics)
+	value.VersionSource = buildVersionSource(
+		table.VersionSource, field+".version_source", scheme, diagnostics)
 	buildRawSections(table, field, &value, diagnostics)
 	return value
+}
+
+// checkStaticVersionSets は§6.6の両platform一致を検査する。
+//
+// 「`version_source`はplatform配下にあるため、static sourceは両platformへ同じ
+// version集合を記述する。registry validatorは両platformの正規version集合が
+// 完全一致することを検査し、片方だけの更新漏れを拒否する」。
+func checkStaticVersionSets(value *Definition, diagnostics *Diagnostics) {
+	var reference []string
+	referenceIndex := -1
+	for index, platform := range value.Platforms {
+		if platform.VersionSource.Kind != SourceStatic {
+			continue
+		}
+		versions := make([]string, 0, len(platform.VersionSource.StaticVersions))
+		for _, static := range platform.VersionSource.StaticVersions {
+			versions = append(versions, static.Version.String())
+		}
+		sort.Strings(versions)
+		if referenceIndex < 0 {
+			reference, referenceIndex = versions, index
+			continue
+		}
+		if !equalStrings(reference, versions) {
+			diagnostics.Add(
+				fmt.Sprintf("platforms[%d].version_source.static_versions", index),
+				reason(reasonPlatformSet),
+				fmt.Sprintf("platforms[%d]とversion集合が一致しない（%v / %v）",
+					referenceIndex, reference, versions))
+		}
+	}
+}
+
+func equalStrings(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for index := range left {
+		if left[index] != right[index] {
+			return false
+		}
+	}
+	return true
 }
 
 // buildPlatformTuple は§5のIDとOS/arch/libcの一致を検査する（§13-4）。
@@ -139,10 +189,10 @@ func buildProvider(
 	}
 	value := Provider{
 		Name:     requireText(table.Name, scope+".name", 1, NameMaxBytes, diagnostics),
-		Homepage: requireHTTPSURL(table.Homepage, scope+".homepage", diagnostics),
+		Homepage: requireHTTPSURL(table.Homepage, scope+".homepage", urlReference, diagnostics),
 		License:  requireLicense(table.License, scope+".license", diagnostics),
 	}
-	value.Repository = optionalHTTPSURL(table.Repository, scope+".repository", diagnostics)
+	value.Repository = optionalHTTPSURL(table.Repository, scope+".repository", urlReference, diagnostics)
 
 	switch kind {
 	case KindOfficial:
@@ -168,9 +218,9 @@ func buildProvider(
 	return value
 }
 
-// buildRawSections は§6〜§11のtableの存在だけを検査する（§5の「全件必須」）。
+// buildRawSections は§7〜§11のtableの存在だけを検査する（§5の「全件必須」）。
 //
-// 内容の検証はP3-01の2本目・3本目である。存在検査だけを先に置くのは、必須table
+// 内容の検証はP3-01の3本目である。存在検査だけを先に置くのは、必須table
 // の欠落を後続PRまで検出できない状態にしないためである。
 func buildRawSections(table *platformTable, field string, value *Platform, diagnostics *Diagnostics) {
 	required := []struct {
@@ -178,7 +228,6 @@ func buildRawSections(table *platformTable, field string, value *Platform, diagn
 		raw    *RawTable
 		target *RawTable
 	}{
-		{"version_source", table.VersionSource, &value.VersionSource},
 		{"artifact", table.Artifact, &value.Artifact},
 		{"install", table.Install, &value.Install},
 		{"runtime", table.Runtime, &value.Runtime},

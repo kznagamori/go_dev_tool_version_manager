@@ -50,9 +50,9 @@ const (
 
 // Platform は§5の`[[platforms]]` 1件である。
 //
-// §6〜§11のtableは本structが宣言だけを持ち、内容の検証はP3-01の2本目・3本目で
-// 実装する。ここで型を与えずrawのまま保持しているのは、未実装の検証を「通った」
-// ように見せないためである（docs/13-progress.md P3-01）。
+// §7〜§11のtableは本structが宣言だけを持ち、内容の検証はP3-01の3本目で実装する。
+// ここで型を与えずrawのまま保持しているのは、未実装の検証を「通った」ように
+// 見せないためである（docs/13-progress.md P3-01）。
 type Platform struct {
 	// Platform はIDとOS/arch/libcのtupleである。
 	//
@@ -68,8 +68,8 @@ type Platform struct {
 	// Provider は§5.1の取得主体である。
 	Provider Provider
 
-	// VersionSource は§6の`version_source`である（2本目で型を与える）。
-	VersionSource RawTable
+	// VersionSource は§6のversion発見契約である。
+	VersionSource VersionSource
 	// Artifact は§7の`artifact`である（3本目で型を与える）。
 	Artifact RawTable
 	// Install は§9の`install`である（3本目で型を与える）。
@@ -127,19 +127,19 @@ type toolTable struct {
 }
 
 type platformTable struct {
-	ID            *string        `toml:"id"`
-	OS            *string        `toml:"os"`
-	Arch          *string        `toml:"arch"`
-	Libc          *string        `toml:"libc"`
-	ArtifactKind  *string        `toml:"artifact_kind"`
-	LicenseNotice *string        `toml:"license_notice"`
-	Provider      *providerTable `toml:"provider"`
-	VersionSource *RawTable      `toml:"version_source"`
-	Artifact      *RawTable      `toml:"artifact"`
-	Install       *RawTable      `toml:"install"`
-	Storage       *[]RawTable    `toml:"storage"`
-	Runtime       *RawTable      `toml:"runtime"`
-	Validation    *RawTable      `toml:"validation"`
+	ID            *string             `toml:"id"`
+	OS            *string             `toml:"os"`
+	Arch          *string             `toml:"arch"`
+	Libc          *string             `toml:"libc"`
+	ArtifactKind  *string             `toml:"artifact_kind"`
+	LicenseNotice *string             `toml:"license_notice"`
+	Provider      *providerTable      `toml:"provider"`
+	VersionSource *versionSourceTable `toml:"version_source"`
+	Artifact      *RawTable           `toml:"artifact"`
+	Install       *RawTable           `toml:"install"`
+	Storage       *[]RawTable         `toml:"storage"`
+	Runtime       *RawTable           `toml:"runtime"`
+	Validation    *RawTable           `toml:"validation"`
 }
 
 type providerTable struct {
@@ -169,6 +169,15 @@ const (
 	reasonPlatformTuple = "definition.platform_tuple_mismatch"
 	reasonProviderKey   = "definition.provider_key_invalid"
 	reasonMessageID     = "definition.message_id_invalid"
+	reasonPointer       = "definition.pointer_invalid"
+	reasonRegex         = "definition.regex_invalid"
+	reasonDuration      = "definition.duration_invalid"
+	reasonTime          = "definition.time_invalid"
+	reasonVersion       = "definition.version_invalid"
+	reasonDigest        = "definition.digest_invalid"
+	reasonKindKey       = "definition.kind_key_forbidden"
+	reasonConditional   = "definition.conditional_key_invalid"
+	reasonPlatformSet   = "definition.platform_version_set_mismatch"
 )
 
 // Parse はdefinition TOMLを検証してtyped modelへ変換する。
@@ -177,9 +186,10 @@ const (
 // ことの検査と、§13の診断へ載せるpathに使う。
 //
 // 検証順序は§13に従う。byte/TOML/unknown/duplicate（1）、schema/schema_id（2）、
-// identifier/URL/enum/型/上限（3）、platform tupleと`license_notice`（4）まで
-// を本PRが担当する。§6以降（5〜10）はP3-01の2本目・3本目、registry全体の衝突
-// 検査（11）はP4-01の範囲である。
+// identifier/URL/enum/型/上限（3）、platform tupleと`license_notice`（4）、
+// version source kindごとの許可keyとpointer/regex/field契約（5）までを実装して
+// いる。§7以降（6〜10）はP3-01の3本目、registry全体の衝突検査（11）はP4-01の
+// 範囲である。
 //
 // 1件目で止めず[DiagnosticMax]件まで集約する。registry更新のたびに1件ずつしか
 // 直せないと、修正の往復が実用にならない。
@@ -198,7 +208,10 @@ func Parse(path string, data []byte) (*Definition, *domain.Error) {
 	checkSchema(&file, diagnostics)
 	value := &Definition{Path: path}
 	buildTool(file.Tool, path, value, diagnostics)
-	buildPlatforms(file.Platforms, value, diagnostics)
+	// version schemeは§6.4のoverrideと§6.6のstatic versionの検査に要るため、
+	// `[tool]`を先に読んでからplatformへ渡す。
+	buildPlatforms(file.Platforms, value.Tool.VersionScheme, value, diagnostics)
+	checkStaticVersionSets(value, diagnostics)
 
 	if err := diagnostics.Err(); err != nil {
 		return nil, err

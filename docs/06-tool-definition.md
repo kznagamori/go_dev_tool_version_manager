@@ -118,7 +118,7 @@ cache_ttl = "24h"
 
 | kind | 契約 |
 |---|---|
-| `json` | HTTPS GETで**1文書**だけを読む。`index_*`, `max_documents`, `document_lifecycle_pointer`, `lifecycle_map`, `static_versions`を禁止する |
+| `json` | HTTPS GETで**1文書**だけを読む。`index_*`, `max_documents`, `document_lifecycle_pointer`, `lifecycle_pointer`, `lifecycle_map`, `static_versions`を禁止する |
 | `json-index` | index文書から子文書URL群を得て、**各子文書を読む**。§6.2の追加契約に従う。`static_versions`を禁止する |
 | `static` | networkなし。`static_versions` arrayと`max_items`だけを使用し、他pointer/url/index/cache fieldを禁止する |
 
@@ -158,7 +158,7 @@ eol = "eol"
 - `max_documents`は必須で1以上、組込み上限32以下。重複URLは1回だけ取得する。子文書は宣言順に処理し、1件でも取得・parseに失敗したらcatalog全体をsource errorにする。部分catalogを公開しない。
 - `items_pointer`以降のpointerは**各子文書へ**適用する。全子文書の結果を連結してcatalogを作る。
 - `document_lifecycle_pointer`は任意で、子文書の**top-level**から1つの値を読み、その子文書由来の全itemへ同じlifecycleを与える。`lifecycle_pointer`（item相対）と同時指定できない。
-- `lifecycle_map`は`document_lifecycle_pointer`または`lifecycle_pointer`と組で使う任意table。sourceのstring値から`supported|eol|unknown`への写像を全件明示する。**mapに無い値はsource error**とし、黙って`unknown`へ倒さない。上流がenum値を増やした場合にlive smokeで検出するための規定である。
+- `lifecycle_map`は`document_lifecycle_pointer`または`lifecycle_pointer`と組で使う任意table。**どちらか一方を宣言したら必須**とし、片方だけの宣言を拒否する。sourceのstring値から`supported|eol|unknown`への写像を全件明示する。**mapに無い値はsource error**とし、黙って`unknown`へ倒さない。上流がenum値を増やした場合にlive smokeで検出するための規定である。
 - `cache_ttl`はindex文書と全子文書へ同じ値を適用する。`source_identity`はindex文書のURLとする。
 
 `required_tokens_pointer`と`required_tokens`は組で指定する。pointer先は一意string array、requiredはASCII stringの一意非空配列。required tokenが1件でもないversion itemはsource errorではなく現在platformで`installable=false/artifact-not-found`。Node.js index等、URL templateは作れるがplatform archiveの公開有無を別fieldで示すsourceに使う。
@@ -172,8 +172,8 @@ channelは§6.1の規則で、`channel_pointer`のstring/booleanを厳密に写�
 lifecycleは次の優先順位で決める。gdtvm codeが公開日やversionの古さからEOLを推測しない。
 
 1. §6.4のexact version override。
-2. `lifecycle_pointer`（item相対）または`document_lifecycle_pointer`（子文書top-level）が読んだ値を`lifecycle_map`で写像した結果。mapに無い値はsource error。
-3. どれも無ければ`unknown`。
+2. `lifecycle_pointer`（item相対）または`document_lifecycle_pointer`（子文書top-level）が読んだ値を`lifecycle_map`で写像した結果。mapに無い値はsource error。どちらのpointerも`json-index`でだけ使え、`lifecycle_map`と組でなければ宣言できない。写像先が無いpointerは全itemをsource errorにするだけで、lifecycleを決められないためである。
+3. どれも無ければ`unknown`。`json` sourceのlifecycleは1と3だけで決まる。
 
 ### 6.4 lifecycle override
 
