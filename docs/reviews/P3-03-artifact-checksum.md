@@ -106,7 +106,7 @@ Linux container（Go 1.26.5、Python 3.11.15）で実行した。
 
 ### 5.2 CI
 
-PR作成後に6 job×2 OSの12 checkの結果を記録する。
+PR #73で、6 job×2 OSの **12 checkすべてがsuccess** になった（run 31951284256）。
 
 ## 6. 未実施・制約
 
