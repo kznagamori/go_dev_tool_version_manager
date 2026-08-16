@@ -1,0 +1,435 @@
+schema = 1
+schema_id = "https://github.com/kznagamori/go_dev_tool_version_manager/schemas/tool-definition/v1"
+
+[tool]
+id = "python"
+name = "Python"
+aliases = ["cpython"]
+description = "CPython interpreter (python, pip)"
+homepage = "https://www.python.org/"
+license = "PSF-2.0"
+version_scheme = "python"
+
+[[platforms]]
+id = "windows-amd64"
+os = "windows"
+arch = "amd64"
+libc = "none"
+artifact_kind = "third-party"
+
+[platforms.provider]
+name = "Astral python-build-standalone"
+repository = "https://github.com/astral-sh/python-build-standalone"
+homepage = "https://github.com/astral-sh/python-build-standalone"
+license = "MPL-2.0"
+adoption_reason = "provider.python.standalone_reason"
+
+[platforms.version_source]
+kind = "static"
+max_items = 10000
+
+[[platforms.version_source.static_versions]]
+version = "3.13.6"
+channel = "stable"
+lifecycle = "unknown"
+lifecycle_evidence = "https://devguide.python.org/versions/"
+lifecycle_assessed_at = 2026-08-16T00:00:00Z
+published_at = "2025-08-14T00:00:00Z"
+
+[[platforms.version_source.static_versions.assets]]
+name = "cpython-3.13.6+20250814-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20250814/cpython-3.13.6%2B20250814-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
+size = 21069469
+digest = "09e489d2e7123cbd8111293e91af08efd203c9229c9e761ba3995bb263a6fa92"
+digest_algorithm = "sha256"
+os = "windows"
+arch = "amd64"
+libc = "none"
+release_tag = "20250814"
+release_url = "https://github.com/astral-sh/python-build-standalone/releases/tag/20250814"
+release_id = "0"
+asset_id = "0"
+published_at = "2025-08-14T00:00:00Z"
+
+[[platforms.version_source.static_versions]]
+version = "3.12.11"
+channel = "stable"
+lifecycle = "unknown"
+lifecycle_evidence = "https://devguide.python.org/versions/"
+lifecycle_assessed_at = 2026-08-16T00:00:00Z
+published_at = "2025-08-14T00:00:00Z"
+
+[[platforms.version_source.static_versions.assets]]
+name = "cpython-3.12.11+20250814-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20250814/cpython-3.12.11%2B20250814-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
+size = 21187218
+digest = "5ff0f9ae27ec91aeca44792a464251cfe4057aa85c73501486dbeeb5f2ec0d27"
+digest_algorithm = "sha256"
+os = "windows"
+arch = "amd64"
+libc = "none"
+release_tag = "20250814"
+release_url = "https://github.com/astral-sh/python-build-standalone/releases/tag/20250814"
+release_id = "0"
+asset_id = "0"
+published_at = "2025-08-14T00:00:00Z"
+
+[platforms.artifact]
+id = "primary"
+source = "asset"
+url = ""
+file = ""
+format = "tar.gz"
+size = 0
+redirect_hosts = ["release-assets.githubusercontent.com"]
+
+[platforms.artifact.selector]
+name_regex = "^cpython-(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:a[1-9][0-9]*|b[1-9][0-9]*|rc[1-9][0-9]*)?)[+][0-9]{8}-x86_64-pc-windows-msvc-install_only_stripped[.]tar[.]gz$"
+os = "windows"
+arch = "amd64"
+
+[platforms.artifact.checksum]
+kind = "asset-field"
+
+[platforms.install]
+strip_components = 1
+
+[[platforms.storage]]
+id = "config"
+kind = "config"
+scope = "tool"
+path = "config"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "cache"
+kind = "content-cache"
+scope = "tool"
+path = "cache"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "history"
+kind = "runtime-data"
+scope = "tool"
+path = "history"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "user-packages"
+kind = "global-packages"
+scope = "version"
+path = "user-packages"
+purge = "with-version"
+
+[[platforms.runtime.commands]]
+name = "python"
+target = "{{payload}}/python.exe"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.commands]]
+name = "python3"
+target = "{{payload}}/python.exe"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.commands]]
+name = "pip"
+target = "{{payload}}/python.exe"
+args = ["-m", "pip"]
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.commands]]
+name = "pip3"
+target = "{{payload}}/python.exe"
+args = ["-m", "pip"]
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.environment]]
+id = "default"
+path_prepend = ["{{payload}}", "{{storage.user-packages}}"]
+path_append = []
+unset = []
+override_allowed = []
+shell_export = ["PIP_CONFIG_FILE", "PIP_CACHE_DIR", "PYTHONUSERBASE"]
+
+[platforms.runtime.environment.set]
+PIP_CONFIG_FILE = "{{storage.config}}/pip.ini"
+PIP_CACHE_DIR = "{{storage.cache}}"
+PYTHON_HISTORY = "{{storage.history}}/python_history"
+PYTHONUSERBASE = "{{storage.user-packages}}"
+
+[[platforms.validation.probes]]
+id = "version"
+runtime_command = "python"
+args = ["--version"]
+stream = "stdout"
+expect = "version"
+regex = "^Python (?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:a[1-9][0-9]*|b[1-9][0-9]*|rc[1-9][0-9]*)?)$"
+expected_version = "{{version}}"
+timeout = "60s"
+required = true
+
+[[platforms.validation.probes]]
+id = "pip"
+runtime_command = "pip"
+args = ["--version"]
+stream = "stdout"
+expect = "success"
+timeout = "120s"
+required = true
+
+[[platforms.validation.probes]]
+id = "stdlib"
+runtime_command = "python"
+args = ["-c", "import ssl, sqlite3, venv"]
+stream = "combined"
+expect = "success"
+timeout = "60s"
+required = true
+
+[[platforms.validation.probes]]
+id = "venv"
+runtime_command = "python"
+args = ["-m", "venv", "{{probe_temp}}/venv"]
+stream = "combined"
+expect = "success"
+required_paths = ["file:{{probe_temp}}/venv/Scripts/python.exe"]
+timeout = "120s"
+required = true
+
+[[platforms.validation.probes]]
+id = "prefix"
+runtime_command = "python"
+args = ["-c", "import sys; print(sys.prefix)"]
+stream = "stdout"
+expect = "path-within"
+regex = "^(?P<path>.+)$"
+expected_root = "payload"
+timeout = "60s"
+required = true
+
+[[platforms]]
+id = "linux-amd64-glibc"
+os = "linux"
+arch = "amd64"
+libc = "glibc"
+artifact_kind = "third-party"
+
+[platforms.provider]
+name = "Astral python-build-standalone"
+repository = "https://github.com/astral-sh/python-build-standalone"
+homepage = "https://github.com/astral-sh/python-build-standalone"
+license = "MPL-2.0"
+adoption_reason = "provider.python.standalone_reason"
+
+[platforms.version_source]
+kind = "static"
+max_items = 10000
+
+[[platforms.version_source.static_versions]]
+version = "3.13.6"
+channel = "stable"
+lifecycle = "unknown"
+lifecycle_evidence = "https://devguide.python.org/versions/"
+lifecycle_assessed_at = 2026-08-16T00:00:00Z
+published_at = "2025-08-14T00:00:00Z"
+
+[[platforms.version_source.static_versions.assets]]
+name = "cpython-3.13.6+20250814-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20250814/cpython-3.13.6%2B20250814-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+size = 32327269
+digest = "d847458546425b6fc28d5fa9238f12f8c3a7ac41f28b5882dc249d0fc595f359"
+digest_algorithm = "sha256"
+os = "linux"
+arch = "amd64"
+libc = "glibc"
+release_tag = "20250814"
+release_url = "https://github.com/astral-sh/python-build-standalone/releases/tag/20250814"
+release_id = "0"
+asset_id = "0"
+published_at = "2025-08-14T00:00:00Z"
+
+[[platforms.version_source.static_versions]]
+version = "3.12.11"
+channel = "stable"
+lifecycle = "unknown"
+lifecycle_evidence = "https://devguide.python.org/versions/"
+lifecycle_assessed_at = 2026-08-16T00:00:00Z
+published_at = "2025-08-14T00:00:00Z"
+
+[[platforms.version_source.static_versions.assets]]
+name = "cpython-3.12.11+20250814-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20250814/cpython-3.12.11%2B20250814-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+size = 31382541
+digest = "8592d071a3636e1af1bfcb473b31b1f058a092acd35a0a360238d6779ba48f28"
+digest_algorithm = "sha256"
+os = "linux"
+arch = "amd64"
+libc = "glibc"
+release_tag = "20250814"
+release_url = "https://github.com/astral-sh/python-build-standalone/releases/tag/20250814"
+release_id = "0"
+asset_id = "0"
+published_at = "2025-08-14T00:00:00Z"
+
+[platforms.artifact]
+id = "primary"
+source = "asset"
+url = ""
+file = ""
+format = "tar.gz"
+size = 0
+redirect_hosts = ["release-assets.githubusercontent.com"]
+
+[platforms.artifact.selector]
+name_regex = "^cpython-(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:a[1-9][0-9]*|b[1-9][0-9]*|rc[1-9][0-9]*)?)[+][0-9]{8}-x86_64-unknown-linux-gnu-install_only_stripped[.]tar[.]gz$"
+os = "linux"
+arch = "amd64"
+
+[platforms.artifact.checksum]
+kind = "asset-field"
+
+[platforms.install]
+strip_components = 1
+
+[[platforms.storage]]
+id = "config"
+kind = "config"
+scope = "tool"
+path = "config"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "cache"
+kind = "content-cache"
+scope = "tool"
+path = "cache"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "history"
+kind = "runtime-data"
+scope = "tool"
+path = "history"
+purge = "explicit"
+
+[[platforms.storage]]
+id = "user-packages"
+kind = "global-packages"
+scope = "version"
+path = "user-packages"
+purge = "with-version"
+
+[[platforms.runtime.commands]]
+name = "python"
+target = "{{payload}}/bin/python3"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.commands]]
+name = "python3"
+target = "{{payload}}/bin/python3"
+args = []
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.commands]]
+name = "pip"
+target = "{{payload}}/bin/python3"
+args = ["-m", "pip"]
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.commands]]
+name = "pip3"
+target = "{{payload}}/bin/python3"
+args = ["-m", "pip"]
+environment_profile = "default"
+required = true
+working_directory = "inherit"
+passthrough_signals = true
+
+[[platforms.runtime.environment]]
+id = "default"
+path_prepend = ["{{payload}}/bin", "{{storage.user-packages}}/bin"]
+path_append = []
+unset = []
+override_allowed = []
+shell_export = ["PIP_CONFIG_FILE", "PIP_CACHE_DIR", "PYTHONUSERBASE"]
+
+[platforms.runtime.environment.set]
+PIP_CONFIG_FILE = "{{storage.config}}/pip.conf"
+PIP_CACHE_DIR = "{{storage.cache}}"
+PYTHON_HISTORY = "{{storage.history}}/python_history"
+PYTHONUSERBASE = "{{storage.user-packages}}"
+
+[[platforms.validation.probes]]
+id = "version"
+runtime_command = "python"
+args = ["--version"]
+stream = "stdout"
+expect = "version"
+regex = "^Python (?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:a[1-9][0-9]*|b[1-9][0-9]*|rc[1-9][0-9]*)?)$"
+expected_version = "{{version}}"
+timeout = "60s"
+required = true
+
+[[platforms.validation.probes]]
+id = "pip"
+runtime_command = "pip"
+args = ["--version"]
+stream = "stdout"
+expect = "success"
+timeout = "120s"
+required = true
+
+[[platforms.validation.probes]]
+id = "stdlib"
+runtime_command = "python"
+args = ["-c", "import ssl, sqlite3, venv"]
+stream = "combined"
+expect = "success"
+timeout = "60s"
+required = true
+
+[[platforms.validation.probes]]
+id = "venv"
+runtime_command = "python"
+args = ["-m", "venv", "{{probe_temp}}/venv"]
+stream = "combined"
+expect = "success"
+required_paths = ["file:{{probe_temp}}/venv/bin/python"]
+timeout = "120s"
+required = true
+
+[[platforms.validation.probes]]
+id = "prefix"
+runtime_command = "python"
+args = ["-c", "import sys; print(sys.prefix)"]
+stream = "stdout"
+expect = "path-within"
+regex = "^(?P<path>.+)$"
+expected_root = "payload"
+timeout = "60s"
+required = true
