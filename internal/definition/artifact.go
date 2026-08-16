@@ -144,8 +144,14 @@ func buildArtifact(
 
 // buildArtifactBySource は§7.1の`source`別契約を検査する。
 //
-// templateはURL/fileが必須でselectorを持てない。assetはselectorが必須で
-// URL/fileを空にする。逆を許すと、取得先が2通りに決まる定義を受理してしまう。
+// templateはURL/fileが必須でselectorを持てない。assetはselectorが必須で、
+// URL/fileは空でも非空でもよい。**空なら選択assetの`url`/`name`を使い、非空なら
+// 選択assetを`{{asset.<field>}}`で参照できるtemplateとしてrenderする**（§7.1）。
+// upstreamがasset listにdownload URLを載せず、file名からURLを組み立てる配布元
+// （Go）があるためで、artifactの同一性はどちらの場合もselectorが決める。
+//
+// source=templateへselectorを許さないのは、取得先が2通りに決まる定義を
+// 受理しないためである。
 func buildArtifactBySource(
 	table *artifactTable, field string, context templateContext,
 	source ArtifactSource, value *Artifact, diagnostics *Diagnostics,
@@ -159,13 +165,19 @@ func buildArtifactBySource(
 				"source=templateでは`selector`を書けない")
 		}
 	case SourceAsset:
-		// §16.2・§16.3のasset sourceは`url = ""`と`file = ""`を明示する。
-		// 値そのものは使われないため、非空だけを拒否する。
+		// 空は「選択assetの値を使う」を表すため、必須検査を通さずに素通しする。
+		// 非空のときだけtemplateとして検査する。
 		if table.URL != nil && *table.URL != "" {
-			diagnostics.Add(field+".url", reason(reasonConditional), "source=assetでは`url`を空にする")
+			value.URL = buildArtifactURL(table.URL, field+".url", context, diagnostics)
 		}
 		if table.File != nil && *table.File != "" {
-			diagnostics.Add(field+".file", reason(reasonConditional), "source=assetでは`file`を空にする")
+			value.File = buildArtifactFile(table.File, field+".file", context, diagnostics)
+		}
+		// 片方だけのtemplateはURLとfile名の出所が食い違う。§7.1はどちらも
+		// 「空なら選択asset」と定めるため、組で宣言させる。
+		if (value.URL == "") != (value.File == "") {
+			diagnostics.Add(field+".url", reason(reasonConditional),
+				"source=assetの`url`と`file`は両方空にするか両方templateにする")
 		}
 		value.Selector = buildSelector(table.Selector, field+".selector", diagnostics)
 	}
