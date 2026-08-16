@@ -65,7 +65,7 @@ func MapChannel(value domain.Scalar) (domain.Channel, error) {
 // （docs/04-storage-and-data.md §15）。
 type LifecycleSource string
 
-// LifecycleSource の値。§6.3の優先順位と1対1で対応する。
+// LifecycleSource の値。前3件は§6.3の優先順位と1対1で対応する。
 const (
 	// LifecycleFromOverride は§6.4のexact version overrideで決まった状態である。
 	LifecycleFromOverride LifecycleSource = "override"
@@ -73,6 +73,13 @@ const (
 	LifecycleFromSource LifecycleSource = "source"
 	// LifecycleFromDefault はどれも無く`unknown`になった状態である。
 	LifecycleFromDefault LifecycleSource = "default"
+	// LifecycleFromStatic は§6.6のstatic version item自身が書いた状態である。
+	//
+	// §6.3の優先順位はnetwork sourceの規則である。static sourceはitem自身へ
+	// lifecycleを書き（§6.6）、§6.4がoverrideを禁じるため、3段の優先順位を
+	// 通らない。同じ`source`で表すと、上流から読んだ値とdefinitionへ書いた値の
+	// 区別が`doctor`のevidence欄で付かなくなる。
+	LifecycleFromStatic LifecycleSource = "static"
 )
 
 // LifecycleDecision はlifecycleとその根拠である。
