@@ -36,7 +36,7 @@ DomainとApplication ServiceからCLI、具体的OS API、具体的HTTP client�
 | `internal/shim` | shim metadata生成、呼出名解決、実体委譲 |
 | `internal/shell` | setup、profile marker、undo |
 | `internal/store` | state、catalog、receipt、atomic write、structured logの出力とrotation |
-| `internal/platform` | Windows/Linux固有のリンク、プロセス、権限、パス |
+| `internal/platform` | Windows/Linux固有のリンク、プロセス、権限、パス、HTTP client |
 | `internal/security` | upstream SHA-256/SHA-512、内部SHA-256、path検査、mask |
 | `internal/doctor` | 診断規則とreport生成 |
 | `internal/progress` | 型付き進捗、warning、cancel境界 |
@@ -94,7 +94,7 @@ constructorは依存の存在とbuild metadata形式だけを検査し、filesys
 | LockManager | process間共有/排他ロック、所有情報、timeout |
 | Environment | 親環境取得、case規則、process block生成 |
 | UserLookup | 実user/UID、Known Folder/OS account home、owner identity |
-| Clock | 現在時刻、単調時間 |
+| Clock | 現在時刻、単調時間、待機 |
 | Random | 128 bit ID生成 |
 | ProgressSink | 型付きphase/current/total/rate通知 |
 | Logger | 構造化level、operation ID、秘密値マスク |

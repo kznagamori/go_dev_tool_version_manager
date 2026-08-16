@@ -37,6 +37,70 @@ func TestClockAdvanceMovesBothClocks(t *testing.T) {
 
 // wall clockが巻き戻っても単調時間は進み続けることを確認する。
 // timeout判定がwall clockに依存していると負の経過時間になる。
+// TestClockSleepRecordsWithoutWaiting はSleepが実際には待たず、要求された
+// 待機時間を記録して時計を進めることを固定する。
+//
+// docs/04-storage-and-data.md §21のretry backoff（1/2/4秒）を実時間なしで
+// 検査できることが、Clockへ待機を置いた理由である。
+func TestClockSleepRecordsWithoutWaiting(t *testing.T) {
+	c := NewClock(DefaultNow())
+	start := c.Now()
+	monotonic := c.Monotonic()
+
+	for _, d := range []time.Duration{time.Second, 2 * time.Second, 4 * time.Second} {
+		if err := c.Sleep(context.Background(), d); err != nil {
+			t.Fatalf("Sleep(%v): %v", d, err)
+		}
+	}
+
+	want := []time.Duration{time.Second, 2 * time.Second, 4 * time.Second}
+	got := c.Sleeps()
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Sleeps = %v, want %v", got, want)
+	}
+	// wall clockと単調時間の両方が待機分だけ進む。
+	if elapsed := c.Now().Sub(start); elapsed != 7*time.Second {
+		t.Errorf("wall clockの経過 = %v, want 7s", elapsed)
+	}
+	if elapsed := c.Since(monotonic); elapsed != 7*time.Second {
+		t.Errorf("単調時間の経過 = %v, want 7s", elapsed)
+	}
+}
+
+// TestClockSleepIgnoresNonPositive は0以下の待機を記録しないことを固定する。
+func TestClockSleepIgnoresNonPositive(t *testing.T) {
+	c := NewClock(DefaultNow())
+	for _, d := range []time.Duration{0, -time.Second} {
+		if err := c.Sleep(context.Background(), d); err != nil {
+			t.Fatalf("Sleep(%v): %v", d, err)
+		}
+	}
+	if got := c.Sleeps(); len(got) != 0 {
+		t.Errorf("Sleeps = %v, want 空", got)
+	}
+}
+
+// TestClockSleepReturnsContextError はcancel済みcontextで待たずに抜けることを
+// 固定する。
+//
+// retryの途中cancelが「待機せずに抜ける」ことを検査できるようにするためである。
+func TestClockSleepReturnsContextError(t *testing.T) {
+	c := NewClock(DefaultNow())
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := c.Sleep(ctx, time.Hour)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Sleep = %v, want context.Canceled", err)
+	}
+	if got := c.Sleeps(); len(got) != 0 {
+		t.Errorf("cancel済みで待機を記録した: %v", got)
+	}
+	if c.Now() != DefaultNow() {
+		t.Error("cancel済みで時計が進んだ")
+	}
+}
+
 func TestClockRewindDoesNotAffectMonotonic(t *testing.T) {
 	c := NewClock(DefaultNow())
 	start := c.Monotonic()
