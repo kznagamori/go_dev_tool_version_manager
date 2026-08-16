@@ -16,17 +16,29 @@ type ToolID struct {
 
 // toolIDRe はkebab-case grammarである。
 //
-// docs/02-architecture.md §3が「正規化済みkebab-case」と定め、
-// docs/06-tool-definition.md §3が`id`をdefinition fileのbasenameと一致させる。
-// 大文字、underscore、連続hyphen、先頭末尾hyphenを拒否する。
-// 長さ上限は仕様が定めていないため設けない。
-var toolIDRe = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+// docs/06-tool-definition.md §3の「tool ID/alias `^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`、
+// 1～64 byte」が正本である。大文字、underscore、連続hyphen、先頭末尾hyphen、
+// 先頭の数字を拒否する。
+var toolIDRe = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$`)
+
+// ToolIDMaxBytes はtool IDの上限である（docs/06-tool-definition.md §3）。
+//
+// grammarがASCIIへ限るためbyte数とrune数は一致する。
+const ToolIDMaxBytes = 64
 
 // ParseToolID は文字列をToolIDへ変換する。
+//
+// registryへ登録されたdefinitionだけがtool IDを持ち込むため、definition schema
+// の§3 grammarをdomain値の不変条件としてそのまま使う。CLI入力やstateから読んだ
+// 値もここを通り、definitionに存在しえない形のIDが型として作れないようにする。
 func ParseToolID(text string) (ToolID, error) {
+	if len(text) > ToolIDMaxBytes {
+		return ToolID{}, fmt.Errorf(
+			"domain: tool id %q が%d byteを超える（%d byte）", text, ToolIDMaxBytes, len(text))
+	}
 	if !toolIDRe.MatchString(text) {
 		return ToolID{}, fmt.Errorf(
-			"domain: tool id %q がkebab-case（小文字英数字を単一hyphenで連結）に合わない", text)
+			"domain: tool id %q がkebab-case（小文字英字で始まり英数字を単一hyphenで連結）に合わない", text)
 	}
 	return ToolID{value: text}, nil
 }
