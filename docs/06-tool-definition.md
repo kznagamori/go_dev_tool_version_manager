@@ -257,6 +257,7 @@ url = "https://example.invalid/{{version}}/SHASUMS256.txt"
 
 - `source=template|asset`。
 - templateはrender後URL/fileを使う。assetはversion itemのassetsからselectorでexactly 1件選ぶ。
+- `source=asset`の`url`/`file`は、**空なら選択assetの`url`/`name`を使い、非空なら選択assetを`{{asset.<field>}}`で参照できるtemplateとしてrenderする**。upstreamがasset listにdownload URLを載せず、file名からURLを組み立てる配布元（Go）に使う。selectorはどちらの場合も必須で、artifactの同一性はselectorが決める。
 - `format=zip|tar.gz`。schema 1はこの2形式だけを扱う。
 - `size=0`はunknown、正値はexpected size。download responseと一致必須。
 - `redirect_hosts`はartifact URLとchecksum URLに共通の追加許可host。省略時はそれぞれの元hostだけ。各値はASCII lowercase完全hostでwildcard不可。redirect先を最終URLから動的allowlist化しない。
@@ -622,8 +623,8 @@ arch = "/arch"
 [platforms.artifact]
 id = "primary"
 source = "asset"
-url = ""
-file = ""
+url = "https://go.dev/dl/{{asset.name}}"
+file = "{{asset.name}}"
 format = "zip"
 size = 0
 redirect_hosts = ["dl.google.com"]
@@ -637,6 +638,8 @@ arch = "amd64"
 kind = "asset-field"
 algorithm = "sha256"
 ```
+
+Go JSONの`files[]`はdownload URLを持たずfile名だけを載せるため、`url`と`file`を選択assetのtemplateとしてrenderする。hostは`go.dev`で、`dl.google.com`へredirectする。
 
 `channel_pointer`はGo JSONの`stable` booleanを`stable|prerelease`へmapする。同じentryにinstaller/source archiveが並ぶため、`name_regex`で目的のarchiveだけをexactly 1件に絞る。selectorはsourceの`kind` fieldを直接参照しない。
 

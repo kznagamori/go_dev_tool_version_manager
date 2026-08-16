@@ -120,10 +120,50 @@ algorithm = "sha256"
 		}
 	})
 
-	t.Run("source=assetでurlが非空", func(t *testing.T) {
-		rejectSpec(t, currentArtifact,
-			strings.Replace(assetArtifact, `url = ""`, `url = "https://x.invalid/a.zip"`, 1)+"\n",
-			reasonConditional)
+	// §7.1は「`source=asset`の`url`/`file`は空なら選択assetの`url`/`name`を使い、
+	// 非空なら選択assetを`{{asset.<field>}}`で参照できるtemplateとしてrenderする」
+	// と定める。Goのようにasset listがdownload URLを持たない配布元に使う。
+	// `{{asset.<field>}}`は`asset_fields`の宣言と突き合わせるため、asset field
+	// を宣言する§16.2のGo sourceへ差し替えて確かめる。
+	templateArtifact := strings.Replace(assetArtifact,
+		`url = ""`+"\n"+`file = ""`,
+		`url = "https://go.dev/dl/{{asset.name}}"`+"\n"+`file = "{{asset.name}}"`, 1)
+
+	t.Run("source=assetでurl/file templateが通る", func(t *testing.T) {
+		value, err := parseSpec(t,
+			specVersionSourceBlock, goSourceBlock,
+			currentArtifact, templateArtifact+"\n")
+		if err != nil {
+			t.Fatalf("Parse = %s", describe(err))
+		}
+		artifact := value.Platforms[0].Artifact
+		if artifact.URL != "https://go.dev/dl/{{asset.name}}" || artifact.File != "{{asset.name}}" {
+			t.Fatalf("artifact = %+v", artifact)
+		}
+		if artifact.Selector == nil {
+			t.Fatal("selectorが必要である")
+		}
+	})
+
+	// URLとfile名の出所が食い違う定義を受理しない。
+	rejectAssetTemplate := func(t *testing.T, artifactBlock string) {
+		t.Helper()
+		_, err := parseSpec(t,
+			specVersionSourceBlock, goSourceBlock,
+			currentArtifact, artifactBlock+"\n")
+		if err == nil {
+			t.Fatal("片方だけのtemplateが通った")
+		}
+	}
+
+	t.Run("source=assetでurlだけ非空", func(t *testing.T) {
+		rejectAssetTemplate(t, strings.Replace(assetArtifact,
+			`url = ""`, `url = "https://go.dev/dl/{{asset.name}}"`, 1))
+	})
+
+	t.Run("source=assetでfileだけ非空", func(t *testing.T) {
+		rejectAssetTemplate(t, strings.Replace(assetArtifact,
+			`file = ""`, `file = "{{asset.name}}"`, 1))
 	})
 
 	t.Run("source=assetでselectorが無い", func(t *testing.T) {
