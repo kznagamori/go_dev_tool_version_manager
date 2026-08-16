@@ -83,7 +83,15 @@ ALLOWED: dict[str, set[str]] = {
     # 拒否するため、10-security.md §9.2のmask対象名の判定をinternal/securityから
     # 使う。同じpatternをregistry側へ複製すると、mask規則を変えたときに片方だけ
     # 古いままになる（P4-02）。
-    "internal/registry": {"internal/domain", "internal/security"},
+    # 07-registry-and-tools.md §5のsource validationが、§7〜§10の表との一致を
+    # 検査するためdefinitionをparseする。§13-11の「registry全体のID/alias/command
+    # 衝突と07-registry-and-tools.md contract」はdefinition単体では判定できず、
+    # registry全体を見る側の責務である（P4-02）。
+    "internal/registry": {
+        "internal/domain",
+        "internal/security",
+        "internal/definition",
+    },
     "internal/runtime": set(),
     # 10-security.md §9.2のmaskをscalar parameterへ適用するため（P1-04）。
     "internal/security": {"internal/domain"},
