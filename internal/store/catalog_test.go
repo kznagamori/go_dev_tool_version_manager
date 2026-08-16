@@ -364,3 +364,61 @@ func TestCatalogAllowsEmptyItems(t *testing.T) {
 		t.Errorf("item 0件のencodeが落ちた: %s", describe(encodeErr))
 	}
 }
+
+// TestParseCatalogAcceptsUnavailableItem はunavailable itemがartifact 3 fieldを
+// 空で持てることを固定する（P3-03の3本目で判明）。
+//
+// docs/06-tool-definition.md §7.1が「selectorに0件一致したversionは
+// `installable=false/artifact-not-found`」、§6.2が「required tokenが1件でも
+// ないversion itemは`installable=false/artifact-not-found`」と定める。その
+// itemにはartifactが無く、file名もURLもdigestも書けない。空を拒否すると
+// 仕様が要求する状態を表現できない。keyは常に存在し、値だけが空になる。
+func TestParseCatalogAcceptsUnavailableItem(t *testing.T) {
+	data := `{
+  "schema": 1,
+  "tool_id": "node",
+  "platform_id": "windows-amd64",
+  "definition_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "source_identity": "https://nodejs.org/dist/index.json",
+  "fetched_at": "2026-08-07T09:00:00Z",
+  "expires_at": "2026-08-08T09:00:00Z",
+  "items": [
+    {
+      "version": "22.17.0",
+      "channel": "stable",
+      "lifecycle": "unknown",
+      "lifecycle_evidence": "https://nodejs.org/dist/index.json",
+      "lifecycle_assessed_at": "2026-08-07T09:00:00Z",
+      "published_at": "2026-06-01T00:00:00Z",
+      "installable": false,
+      "unavailable_reason": "catalog.artifact_not_found",
+      "provider_kind": "official",
+      "provider_release": "v22.17.0",
+      "artifact_file": "",
+      "artifact_url": "",
+      "artifact_size": 0,
+      "artifact_digest": "",
+      "checksum_source": "text-file"
+    }
+  ]
+}`
+	catalog, err := ParseCatalog(semverRequest(data))
+	if err != nil {
+		t.Fatalf("ParseCatalog = %s", err.Cause)
+	}
+	item := catalog.Items[0]
+	if item.Installable {
+		t.Fatal("installableがtrueになった")
+	}
+	if item.ArtifactFile != "" || item.ArtifactURL != "" || !item.ArtifactDigest.IsZero() {
+		t.Fatalf("artifact fieldが空でない: %+v", item)
+	}
+
+	// installable=trueなら3 fieldは今までどおり必須である。
+	installable := strings.Replace(data, `"installable": false`, `"installable": true`, 1)
+	installable = strings.Replace(installable,
+		`"unavailable_reason": "catalog.artifact_not_found"`, `"unavailable_reason": ""`, 1)
+	if _, err := ParseCatalog(semverRequest(installable)); err == nil {
+		t.Fatal("installable=trueでartifactが空のitemが通った")
+	}
+}
