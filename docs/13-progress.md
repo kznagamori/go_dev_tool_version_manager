@@ -12,14 +12,14 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 |---|---|
 | 全体状態 | `進行中` |
 | 現在フェーズ | `P3` |
-| 実行中タスクID | `なし（P3-03は3分割の1/3が完了、2本目は未着手）` |
+| 実行中タスクID | `P3-03（3分割の2/3）` |
 | 最後に完了したタスクID | `P3-02（version grammar・比較・channel/lifecycleの境界test）` |
-| 次に開始するタスクID | `P3-03の2本目` |
+| 次に開始するタスクID | `P3-03の3本目` |
 | CI状態 | `両OS 12 checkがgreen（PR #67、run 31947801691）` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-08-16T21:52:40+09:00` |
+| 最終更新日時 | `2026-08-16T22:40:18+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch | `claude/feature-p3-03-json-source` |
+| 作業branch | `claude/feature-p3-03-index-static-source` |
 | 使用環境 | `Linux container` |
 | 最新の証跡 | [P3-03 決定記録（1/3）](reviews/P3-03-json-source.md)、CI 12/12 success（run 31947801691）、`internal/catalog` coverage 95.9%・test 77件 |
 

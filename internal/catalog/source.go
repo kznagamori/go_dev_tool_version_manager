@@ -27,8 +27,17 @@ type VersionItem struct {
 	// 選択assetの`published_at`との突き合わせは後段で行う（§6.1の
 	// 「item pointer、親pointer、選択assetの順で最初の宣言済み値」）。
 	PublishedAt string
+	// Lifecycle は§6.3の優先順位で決めたlifecycleとその根拠である。
+	Lifecycle LifecycleDecision
 	// Node はitem本体のJSON nodeである。asset/tokenの抽出に使う。
+	//
+	// static sourceではnilになる。代わりに[VersionItem.Static]を持つ。
 	Node any
+	// Static は§6.6のstatic version entryである。network sourceではnilになる。
+	//
+	// asset、lifecycle evidence、assessment時刻がdefinition側にあるため、
+	// catalog組立てが元entryを参照できるようにする。
+	Static *definition.StaticVersion
 }
 
 // ItemsRequest は1文書からversion itemを読む要求である。
@@ -86,15 +95,41 @@ func BuildItems(req ItemsRequest) ([]VersionItem, *domain.Error) {
 		return nil, domain.Internal(fmt.Errorf("catalog: version_regexをcompileできない: %w", compileErr))
 	}
 
+	// `document_lifecycle_pointer`は子文書のtop-levelから1つの値を読み、その
+	// 子文書由来の全itemへ同じlifecycleを与える（§6.2）。item単位のpointerと
+	// 同時には宣言できないため、ここで1回だけ解決する。
+	documentLifecycle, docErr := resolveDocumentLifecycle(req)
+	if docErr != nil {
+		return nil, sourceError(req.Origin, docErr)
+	}
+
 	items := make([]VersionItem, 0, len(raws))
 	for index, raw := range raws {
-		item, itemErr := buildItem(req, versionRe, raw)
+		item, itemErr := buildItem(req, versionRe, raw, documentLifecycle)
 		if itemErr != nil {
 			return nil, sourceError(fmt.Sprintf("%s items[%d]", req.Origin, index), itemErr)
 		}
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+// resolveDocumentLifecycle は`document_lifecycle_pointer`を子文書top-levelへ
+// 適用する（§6.2）。宣言していなければnilを返す。
+func resolveDocumentLifecycle(req ItemsRequest) (*domain.Lifecycle, error) {
+	pointer := req.Source.DocumentLifecyclePointer
+	if !pointer.Declared() {
+		return nil, nil
+	}
+	text, err := pointerString(req.Document, pointer.Value())
+	if err != nil {
+		return nil, fmt.Errorf("document_lifecycle_pointer: %w", err)
+	}
+	mapped, err := MapLifecycle(req.Source.LifecycleMap, text)
+	if err != nil {
+		return nil, err
+	}
+	return &mapped, nil
 }
 
 // collectRawItems は`items_pointer`と`item_flatten_pointer`でitem候補を集める。
@@ -142,7 +177,9 @@ func collectRawItems(req ItemsRequest) ([]rawItem, error) {
 }
 
 // buildItem は1件のversion itemを組み立てる。
-func buildItem(req ItemsRequest, versionRe *regexp.Regexp, raw rawItem) (VersionItem, error) {
+func buildItem(
+	req ItemsRequest, versionRe *regexp.Regexp, raw rawItem, documentLifecycle *domain.Lifecycle,
+) (VersionItem, error) {
 	source := req.Source
 	rawVersion, err := pointerString(raw.node, source.VersionPointer)
 	if err != nil {
@@ -165,13 +202,42 @@ func buildItem(req ItemsRequest, versionRe *regexp.Regexp, raw rawItem) (Version
 	if err != nil {
 		return VersionItem{}, err
 	}
+	lifecycle, err := resolveItemLifecycle(source, raw.node, version, documentLifecycle)
+	if err != nil {
+		return VersionItem{}, err
+	}
 	return VersionItem{
 		Version:     version,
 		RawVersion:  rawVersion,
 		Channel:     channel,
 		PublishedAt: publishedAt,
+		Lifecycle:   lifecycle,
 		Node:        raw.node,
 	}, nil
+}
+
+// resolveItemLifecycle は§6.3の優先順位でitemのlifecycleを決める。
+//
+// 上流由来の値は`lifecycle_pointer`（item相対）か`document_lifecycle_pointer`
+// （子文書top-level）のどちらか一方だけである。両方の同時宣言はdefinitionの
+// schema検証が拒否する。
+func resolveItemLifecycle(
+	source definition.VersionSource, node any,
+	version domain.Version, documentLifecycle *domain.Lifecycle,
+) (LifecycleDecision, error) {
+	mapped := documentLifecycle
+	if source.LifecyclePointer.Declared() {
+		text, err := pointerString(node, source.LifecyclePointer.Value())
+		if err != nil {
+			return LifecycleDecision{}, fmt.Errorf("lifecycle_pointer: %w", err)
+		}
+		value, mapErr := MapLifecycle(source.LifecycleMap, text)
+		if mapErr != nil {
+			return LifecycleDecision{}, mapErr
+		}
+		mapped = &value
+	}
+	return ResolveLifecycle(source.LifecycleOverrides, version, mapped)
 }
 
 // applyVersionRegex は`version_regex`のnamed capture`version`を取り出す（§6.3）。
