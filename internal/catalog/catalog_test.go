@@ -489,3 +489,61 @@ func mustPlatform(t *testing.T, text string) domain.Platform {
 	}
 	return platform
 }
+
+// TestBuildCatalogRendersAssetURLTemplate は§7.1の
+// 「`source=asset`の`url`/`file`は非空なら選択assetを`{{asset.<field>}}`で
+// 参照できるtemplateとしてrenderする」を固定する（利用者判断で§7.1へ明記）。
+//
+// Goの`https://go.dev/dl/?mode=json`の`files[]`はdownload URLを持たずfile名だけ
+// を載せる。空のままではdownload先を決められない。
+func TestBuildCatalogRendersAssetURLTemplate(t *testing.T) {
+	// upstreamがURLを持たない形を再現する。
+	document := mustDecode(t, `[
+	  {"version":"go1.25.0","stable":true,"files":[
+	    {"filename":"go1.25.0.windows-amd64.zip","size":1,"sha256":"`+digest64+`",
+	     "os":"windows","arch":"amd64"}
+	  ]}
+	]`)
+	source := goAssetSource()
+	delete(source.AssetFields, definition.AssetURL)
+
+	artifact := goArtifact()
+	artifact.URL = "https://go.dev/dl/{{asset.name}}"
+	artifact.File = "{{asset.name}}"
+
+	items := mustBuildItems(t, ItemsRequest{
+		Source: source, Scheme: domain.SchemeGo, Document: document, Origin: goSourceURL,
+	})
+	catalog, _, err := BuildCatalog(context.Background(), nil, BuildRequest{
+		Tool: mustToolID(t, "go"), Platform: mustPlatform(t, "windows-amd64"),
+		Source: source, Artifact: artifact, ArtifactKind: definition.KindOfficial,
+		DefinitionSHA256: strings.Repeat("a", 64), SourceIdentity: goSourceURL,
+		FetchedAt: fetchedAt, Items: items,
+	})
+	if err != nil {
+		t.Fatalf("BuildCatalog = %s", describeErr(err))
+	}
+	item := catalog.Items[0]
+	if item.ArtifactURL != "https://go.dev/dl/go1.25.0.windows-amd64.zip" {
+		t.Errorf("artifact_url = %q", item.ArtifactURL)
+	}
+	if item.ArtifactFile != "go1.25.0.windows-amd64.zip" {
+		t.Errorf("artifact_file = %q", item.ArtifactFile)
+	}
+	// digestはassetのfieldから決まる（`checksum.kind=asset-field`）。
+	if item.ArtifactDigest.Upstream() != "sha256:"+digest64 {
+		t.Errorf("artifact_digest = %q", item.ArtifactDigest.Upstream())
+	}
+}
+
+// TestBuildCatalogUsesAssetURLWhenTemplateEmpty は空のときに選択assetの
+// `url`/`name`を使うことを固定する（Python static sourceが該当する）。
+func TestBuildCatalogUsesAssetURLWhenTemplateEmpty(t *testing.T) {
+	catalog, _, err := BuildCatalog(context.Background(), nil, goRequest(t, goDocument(t)))
+	if err != nil {
+		t.Fatalf("BuildCatalog = %s", describeErr(err))
+	}
+	if catalog.Items[0].ArtifactURL != "https://go.dev/dl/go1.25.0.windows-amd64.zip" {
+		t.Fatalf("artifact_url = %q", catalog.Items[0].ArtifactURL)
+	}
+}
