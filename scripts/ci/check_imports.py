@@ -36,7 +36,11 @@ ALLOWED: dict[str, set[str]] = {
     # fakeは`_test.go`からの注入だけに使う。production pathからのfake importは
     # 11-quality-and-ci.md §7.1に従いcheck_policy.pyが別途禁止する。
     "internal/app": {"internal/domain/port", "internal/domain/port/fake"},
-    "internal/catalog": set(),
+    # 02-architecture.md §2「配布元照会、版正規化、channel/lifecycle判定」。
+    # 06-tool-definition.md §6.1・§6.3のchannel導出とlifecycle優先順位が、
+    # domainのVersion/Channel/Lifecycle/Scalarと、definitionが読んだ
+    # `lifecycle_overrides`・`lifecycle_map`を入力に取る（P3-02）。
+    "internal/catalog": {"internal/domain", "internal/definition"},
     # 04-storage-and-data.md §1のroot決定がmode/platform/path roleのdomain値と、
     # OS user lookupの結果（port.UserIdentity）を使うため（P2-01）。
     "internal/config": {"internal/domain", "internal/domain/port"},
