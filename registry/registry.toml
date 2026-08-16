@@ -1,0 +1,23 @@
+schema = 1
+tool_definition_schema = 1
+client_min_version = "2026.08.07.00"
+
+[[tools]]
+id = "dotnet"
+path = "tools/dotnet.toml"
+sha256 = "1fd27d7197c18c76bca81cce88aa0909358a82ed4c836045432879e903acdb38"
+
+[[tools]]
+id = "go"
+path = "tools/go.toml"
+sha256 = "50a38633a801ff8e199d0e7d3c7e794b5b87a8a87340f550139d399c3de21b59"
+
+[[tools]]
+id = "node"
+path = "tools/node.toml"
+sha256 = "5c142a2d4c48d1f06356dfb42ab01119cb3e060adb6437d86e69e4a52ed061e7"
+
+[[tools]]
+id = "python"
+path = "tools/python.toml"
+sha256 = "a68dc5e571ffb34471baea7f12cc334959580afbef17c2184a33d2a26d0ace8e"
