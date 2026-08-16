@@ -430,20 +430,34 @@ func buildCatalogItemFields(prefix string, raw catalogItemJSON) (catalogItemFiel
 	if err != nil {
 		return value, err
 	}
-	artifactFile, err := requireNonEmpty(prefix+".artifact_file", raw.ArtifactFile)
+	// artifact 3 fieldは`installable=true`でだけ必須である。
+	//
+	// docs/06-tool-definition.md §7.1が「selectorに0件一致したversionは
+	// `installable=false/artifact-not-found`」、§6.2が「required tokenが1件でも
+	// ないversion itemは`installable=false/artifact-not-found`」と定める。その
+	// itemにはartifactが存在せず、file名もURLもdigestも書けない。空を拒否すると
+	// 仕様が要求する状態を表現できない（P3-03の3本目で判明）。
+	//
+	// §15の「key集合は例のとおり」は保つ。keyは常に存在し、値だけが空になる。
+	artifactFile, err := requirePresent(prefix+".artifact_file", raw.ArtifactFile)
 	if err != nil {
 		return value, err
 	}
-	if _, err := requireFileName(prefix+".artifact_file", artifactFile); err != nil {
-		return value, err
+	if installable || artifactFile != "" {
+		if _, err := requireFileName(prefix+".artifact_file", artifactFile); err != nil {
+			return value, err
+		}
 	}
 	artifactURLText, err := requirePresent(prefix+".artifact_url", raw.ArtifactURL)
 	if err != nil {
 		return value, err
 	}
-	artifactURL, err := requireHTTPSURL(prefix+".artifact_url", artifactURLText)
-	if err != nil {
-		return value, err
+	var artifactURL string
+	if installable || artifactURLText != "" {
+		artifactURL, err = requireHTTPSURL(prefix+".artifact_url", artifactURLText)
+		if err != nil {
+			return value, err
+		}
 	}
 	size, err := requireInt64(prefix+".artifact_size", raw.ArtifactSize)
 	if err != nil {
@@ -453,17 +467,20 @@ func buildCatalogItemFields(prefix string, raw catalogItemJSON) (catalogItemFiel
 	if err != nil {
 		return value, err
 	}
-	digest, err := parseUpstreamDigest(prefix+".artifact_digest", digestText)
-	if err != nil {
-		return value, err
+	var digest domain.Digest
+	if installable || digestText != "" {
+		digest, err = parseUpstreamDigest(prefix+".artifact_digest", digestText)
+		if err != nil {
+			return value, err
+		}
 	}
 	source, err := requireEnum(prefix+".checksum_source", raw.ChecksumSource, checksumSources)
 	if err != nil {
 		return value, err
 	}
 	// §15が「`artifact_digest`は§7のupstream digest形式で、Plan前に未解決のitemは
-	// `installable=true`にしない」と定める。digestが必須なので未解決item自体を
-	// 作れないが、installableとdigestの整合はここで明示的に確かめる。
+	// `installable=true`にしない」と定める。未解決のdigestを持つitemを
+	// installableにしない、という向きでの検査はここで明示的に行う。
 	if installable && digest.IsZero() {
 		return value, fmt.Errorf("%s: installable=trueなのにartifact_digestが未解決", prefix)
 	}

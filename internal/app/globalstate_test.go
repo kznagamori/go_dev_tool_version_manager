@@ -46,6 +46,7 @@ var allowedGlobals = map[string]string{
 	"internal/definition.probeArgScope":            "§11のprobe args/required_pathsが許すroot集合。同上",
 	"internal/definition.expectedVersionScope":     "§11の`expected_version`が許すroot集合。同上",
 	"internal/definition.payloadOnlyScope":         "§10.1のcommand targetが許すroot集合。同上",
+	"internal/catalog.templateVarRe":               "docs/06-tool-definition.md §12のtemplate変数の出現を切り出す正規表現。render時に使うcompile済みregexpで、初期化後に変更しない",
 	"internal/domain/port.lockClassNames":          "docs/02-architecture.md §12のlock分類 exact 6値とrole名の対応表。初期化後に変更しない",
 	"internal/domain/port.ErrLockOrder":            "lock順序違反を表すsentinel error。errors.Isで判定するため値として公開する。初期化後に再代入しない",
 	"internal/domain/port.ErrLockTimeout":          "lock取得timeoutを表すsentinel error。同上",
