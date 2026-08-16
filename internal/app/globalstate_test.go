@@ -104,7 +104,7 @@ var allowedGlobals = map[string]string{
 	"internal/domain.semverRe":                     "semver grammar。同上",
 	"internal/domain.goRe":                         "go scheme grammar。同上",
 	"internal/domain.pythonRe":                     "python scheme grammar。同上",
-	"internal/domain.semverIdent":                  "semver prerelease識別子grammar。同上",
+	"internal/domain.semverIdentRe":                "semver prerelease識別子grammar。同上",
 	"internal/domain.toolIDRe":                     "tool IDのkebab-case grammar。同上",
 	"internal/domain.lowerHexRe":                   "digest hexのgrammar。同上",
 	"internal/domain.hexLength":                    "docs/04-storage-and-data.md §6のalgorithm別hex長。初期化後に変更しない対応表",
