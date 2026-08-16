@@ -1,0 +1,127 @@
+# gdtvm 日本語 message catalog（docs/04-storage-and-data.md §20）
+#
+# keyは§7のmessage ID grammar（`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`、segment
+# 2件以上、1～128文字）に従うASCII dotted key。値はUTF-8 template stringで、
+# placeholderは`{name}`、literal braceは`{{`/`}}`。
+#
+# template内へANSI escape、terminal control、秘密値展開を書かない。表示側が
+# escapeしても、catalogが制御文字を持つとlog/report経由で漏れる。
+#
+# v0.1の言語は日本語だけだが、message ID機構はそのまま保持する。言語追加時は
+# catalog fileを増やし、key/parameter集合の一致をtestで担保する。
+#
+# **sourceが参照しないkeyを置かない。** scripts/ci/check_messages.py が
+# production GoとregistryのTOMLを走査し、網羅と未使用の両方を検査する。
+
+# --- catalog（内部catalog組立て。docs/06-tool-definition.md §6・§7、§15） ---
+
+catalog.artifact_not_found = "このplatform向けのartifactが配布元に見つかりません。"
+catalog.lifecycle_override_unused = "lifecycle_overridesのversion {version}（{status}）が配布元のversion一覧に無いため適用されませんでした。"
+catalog.source_fetch_failed = "配布元 {url} からversion一覧を取得できませんでした: {reason}"
+catalog.source_invalid = "配布元のversion情報の {field} を解釈できませんでした: {reason}"
+
+# --- config（docs/05-configuration.md、docs/04-storage-and-data.md §1〜§3） ---
+
+config.account_home_unavailable = "利用者アカウントのhome directoryを特定できませんでした。"
+config.color_invalid = "color の値 {value} は auto、always、never のいずれかにしてください。"
+config.current_user_unknown = "現在の利用者を特定できませんでした。"
+config.duration_invalid = "{key} の値 {value} を時間として解釈できませんでした。"
+config.duration_out_of_range = "{key} の値 {value} が範囲外です。{min} 以上 {max} 以下にしてください。"
+config.executable_dir_missing = "gdtvm実行fileの位置を特定できませんでした。"
+config.filesystem_missing = "filesystemを操作できません。"
+config.global_file_too_large = "global設定fileが大きすぎます（{size} byte、上限 {limit} byte）。"
+config.global_parse_failed = "global設定fileを解釈できませんでした: {detail}"
+config.global_schema_invalid = "global設定fileのschemaが対応外です: {reason}"
+config.home_is_distribution_root = "home directory {home} をgdtvmの配布先と同じにできません。"
+config.home_is_filesystem_root = "home directory {home} がfilesystem rootです。"
+config.home_not_absolute = "home directory {home} が絶対pathではありません。"
+config.home_with_portable = "portable modeではhome directoryを指定できません。"
+config.host_platform_missing = "実行中のplatformを判別できませんでした。"
+config.local_app_data_unavailable = "Windowsのlocal application data directoryを特定できませんでした。"
+config.log_level_invalid = "log_level の値 {value} は error、warn、info、debug、trace のいずれかにしてください。"
+config.mode_invalid = "動作mode {mode} は指定できません（指定元: {origin}）。"
+config.project_file_not_absolute = "project設定fileのpath {value} が絶対pathではありません。"
+config.project_file_too_large = "project設定fileが大きすぎます（{size} byte、上限 {limit} byte）。"
+config.project_file_with_no_project = "project設定を無効にしたまま設定fileを指定することはできません。"
+config.project_filename_invalid = "project設定のfile名 {value} は使用できません。"
+config.project_parse_failed = "project設定fileを解釈できませんでした: {detail}"
+config.project_schema_invalid = "project設定fileのschemaが対応外です。"
+config.project_search_request_incomplete = "project設定の探索に必要な情報が揃っていません。"
+config.project_tool_id_invalid = "project設定のtool ID {value} は使用できません。"
+config.project_version_empty = "project設定のversionが空です。"
+config.project_version_has_space = "project設定のversion {value} に空白を含めることはできません。"
+config.project_version_latest = "project設定に latest は書けません。完全versionを指定してください。"
+config.project_version_not_exact = "project設定のversion {value} は完全versionではありません。"
+config.root_ancestor_scan_exhausted = "root directoryの親を辿りきっても既存のdirectoryが見つかりませんでした。"
+config.root_ancestor_stat_failed = "root directoryの親directoryの状態を取得できませんでした。"
+config.root_check_ports_missing = "root directoryを検査するための機能が利用できません。"
+config.root_group_or_world_writable = "root directoryがgroupまたはotherから書込み可能です。"
+config.root_has_no_existing_ancestor = "root directoryにもその親にも既存のdirectoryがありません。"
+config.root_is_filesystem_root = "root directoryにfilesystem rootは指定できません。"
+config.root_is_link = "root directoryがlinkです。実体のdirectoryを指定してください。"
+config.root_is_network_share = "root directoryにnetwork共有は指定できません。"
+config.root_not_directory = "root directoryとして指定されたpathがdirectoryではありません。"
+config.root_owned_by_other_user = "root directoryの所有者が現在の利用者ではありません。"
+config.root_owner_lookup_failed = "root directoryの所有者を確認できませんでした。"
+config.root_parent_not_directory = "root directoryの親がdirectoryではありません。"
+config.root_path_missing = "root directoryのpathが指定されていません。"
+config.root_realpath_failed = "root directoryの実体pathを解決できませんでした。"
+config.root_stat_failed = "root directoryの状態を取得できませんでした。"
+config.user_data_root_in_portable = "portable modeでは利用者data rootを指定できません。"
+config.user_data_root_not_absolute = "利用者data root {value} が絶対pathではありません。"
+config.value_out_of_range = "{key} の値 {value} が範囲外です。{min} 以上 {max} 以下にしてください。"
+
+# --- definition（docs/06-tool-definition.md §13のstable reason code） ---
+#
+# `definition.invalid`だけが利用者へ出すtyped errorで、他はその診断1件ごとの
+# 理由codeである。診断はpath、行、列、field pathを併せて表示するため、理由text
+# 側はpathやfieldを再掲しない。
+
+definition.invalid = "tool定義 {path} に {count} 件のerrorがあります。最初のerrorは {field}: {first} です。"
+definition.conditional_key_invalid = "この組合せでは指定できないkeyがあります"
+definition.decode_failed = "TOMLとして解釈できません"
+definition.digest_invalid = "digestの書式が不正です"
+definition.duplicate_entry = "同じ値のentryが重複しています"
+definition.duration_invalid = "時間の書式が不正です"
+definition.enum_invalid = "許可されていない値です"
+definition.environment_invalid = "環境変数の指定が不正です"
+definition.id_basename_mismatch = "IDがfile名と一致しません"
+definition.identifier_invalid = "識別子の書式が不正です"
+definition.key_missing = "必須keyがありません"
+definition.kind_key_forbidden = "この種別では指定できないkeyです"
+definition.license_invalid = "license識別子の書式が不正です"
+definition.limit_exceeded = "上限を超えています"
+definition.message_id_invalid = "message IDの書式が不正です"
+definition.platform_tuple_mismatch = "対応外のplatformの組合せです"
+definition.platform_version_set_mismatch = "platform間でversionの集合が一致しません"
+definition.pointer_invalid = "JSON pointerの書式が不正です"
+definition.provider_key_invalid = "providerのkey構成が不正です"
+definition.regex_invalid = "正規表現の書式が不正です"
+definition.schema_id_mismatch = "schema_idが対応するschemaと一致しません"
+definition.schema_unsupported = "対応していないschema版です"
+definition.storage_path_invalid = "storageのpathが不正です"
+definition.template_invalid = "templateの書式が不正です"
+definition.text_invalid = "文字列の内容が不正です"
+definition.time_invalid = "日時の書式が不正です"
+definition.url_invalid = "URLの書式が不正です"
+definition.version_invalid = "versionの書式が不正です"
+
+# --- error（docs/02-architecture.md §10・§14が変換路を固定する2件） ---
+
+error.cancelled = "操作を中止しました。"
+error.internal = "内部errorが発生しました。"
+
+# --- license（docs/07-registry-and-tools.md §10.2） ---
+#
+# .NET SDKのWindows配布archiveはMITではなくMicrosoft独自EULAである。Planの
+# 重要要約へ W_RESTRICTIVE_LICENSE として出し、明示承認を求めるためのtext。
+
+license.dotnet.windows_library_license = ".NET SDKのWindows配布archiveは、OSI承認のOSS licenseではなく .NET Library License（Microsoft独自の使用許諾契約）で提供されています。導入前に許諾内容を確認し、同意できる場合だけ続行してください。"
+
+# --- provider（docs/07-registry-and-tools.md §9.1のthird-party採用理由） ---
+
+provider.python.standalone_reason = "CPython公式のWindows installerはsystem/user installationとして動作し、公式sourceからLinuxでbuildする方式はcompilerとsystem libraryを必要とします。Windows/Linux共通・非管理者権限・短時間・複数の完全version併存・可搬という条件を満たすため、Astralの python-build-standalone が配布するCPython install-only archiveを採用しています。"
+
+# --- registry（docs/07-registry-and-tools.md §3） ---
+
+registry.invalid = "同梱registryの内容が不正です: {reason}"

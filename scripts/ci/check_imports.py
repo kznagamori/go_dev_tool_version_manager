@@ -79,7 +79,11 @@ ALLOWED: dict[str, set[str]] = {
     "internal/progress": {"internal/domain"},
     # 07-registry-and-tools.md §3のregistry manifestがtool ID、client version、
     # message ID、path roleのdomain値を扱う（P4-01）。
-    "internal/registry": {"internal/domain"},
+    # 04-storage-and-data.md §20のmessage catalogが「template内の秘密値展開」を
+    # 拒否するため、10-security.md §9.2のmask対象名の判定をinternal/securityから
+    # 使う。同じpatternをregistry側へ複製すると、mask規則を変えたときに片方だけ
+    # 古いままになる（P4-02）。
+    "internal/registry": {"internal/domain", "internal/security"},
     "internal/runtime": set(),
     # 10-security.md §9.2のmaskをscalar parameterへ適用するため（P1-04）。
     "internal/security": {"internal/domain"},
