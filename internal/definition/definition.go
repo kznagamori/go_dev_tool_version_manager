@@ -49,10 +49,6 @@ const (
 )
 
 // Platform は§5の`[[platforms]]` 1件である。
-//
-// §7〜§11のtableは本structが宣言だけを持ち、内容の検証はP3-01の3本目で実装する。
-// ここで型を与えずrawのまま保持しているのは、未実装の検証を「通った」ように
-// 見せないためである（docs/13-progress.md P3-01）。
 type Platform struct {
 	// Platform はIDとOS/arch/libcのtupleである。
 	//
@@ -70,23 +66,17 @@ type Platform struct {
 
 	// VersionSource は§6のversion発見契約である。
 	VersionSource VersionSource
-	// Artifact は§7の`artifact`である（3本目で型を与える）。
-	Artifact RawTable
-	// Install は§9の`install`である（3本目で型を与える）。
-	Install RawTable
-	// Storage は§8の`storage`である（3本目で型を与える）。空可。
-	Storage []RawTable
-	// Runtime は§10の`runtime`である（3本目で型を与える）。
-	Runtime RawTable
-	// Validation は§11の`validation`である（3本目で型を与える）。
-	Validation RawTable
+	// Artifact は§7のprimary artifactである。
+	Artifact Artifact
+	// Install は§9の展開parameterである。
+	Install Install
+	// Storage は§8のtyped storageである。空可。
+	Storage []Storage
+	// Runtime は§10のcommandとenvironmentである。
+	Runtime Runtime
+	// Validation は§11のprobeである。
+	Validation Validation
 }
-
-// RawTable は未検証のTOML tableである。
-//
-// 本PRの範囲外の節を、内容を解釈せずにそのまま保持する。keyの存在だけを見て、
-// 中身の許可key・enum・上限は後続PRが検査する。
-type RawTable map[string]any
 
 // Provider は§5.1の取得主体である。
 //
@@ -135,11 +125,11 @@ type platformTable struct {
 	LicenseNotice *string             `toml:"license_notice"`
 	Provider      *providerTable      `toml:"provider"`
 	VersionSource *versionSourceTable `toml:"version_source"`
-	Artifact      *RawTable           `toml:"artifact"`
-	Install       *RawTable           `toml:"install"`
-	Storage       *[]RawTable         `toml:"storage"`
-	Runtime       *RawTable           `toml:"runtime"`
-	Validation    *RawTable           `toml:"validation"`
+	Artifact      *artifactTable      `toml:"artifact"`
+	Install       *installTable       `toml:"install"`
+	Storage       *[]storageTable     `toml:"storage"`
+	Runtime       *runtimeTable       `toml:"runtime"`
+	Validation    *validationTable    `toml:"validation"`
 }
 
 type providerTable struct {
@@ -187,9 +177,9 @@ const (
 //
 // 検証順序は§13に従う。byte/TOML/unknown/duplicate（1）、schema/schema_id（2）、
 // identifier/URL/enum/型/上限（3）、platform tupleと`license_notice`（4）、
-// version source kindごとの許可keyとpointer/regex/field契約（5）までを実装して
-// いる。§7以降（6〜10）はP3-01の3本目、registry全体の衝突検査（11）はP4-01の
-// 範囲である。
+// version source（5）、artifact selector/checksum/template（6）、storage（7）、
+// install（8）、runtime（9）、probe（10）までを実装している。registry全体の
+// ID/alias/command衝突（11）はP4-01の範囲である。
 //
 // 1件目で止めず[DiagnosticMax]件まで集約する。registry更新のたびに1件ずつしか
 // 直せないと、修正の往復が実用にならない。
@@ -236,3 +226,10 @@ func checkSchema(file *definitionFile, diagnostics *Diagnostics) {
 			fmt.Sprintf("schema_idが%qと一致しない", SchemaID))
 	}
 }
+
+// 本PRで追加したstable reason code（§7〜§12）。
+const (
+	reasonTemplate    = "definition.template_invalid"
+	reasonStoragePath = "definition.storage_path_invalid"
+	reasonEnvironment = "definition.environment_invalid"
+)
