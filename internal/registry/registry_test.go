@@ -323,18 +323,15 @@ func TestRepositoryManifestMatchesDefinitions(t *testing.T) {
 	}
 }
 
-// TestRepositoryRegistryHasNoExtraEntries はrepositoryのregistryへ§2に無い
-// entryが混ざっていないことを固定する。
+// TestRepositoryRegistryMatchesExactTree はrepositoryのregistryが§2のexact tree
+// と**完全一致**することを固定する。
 //
-// **完全一致は検査しない。** `messages/ja.toml`と`licenses/*.txt`は§5のsource
-// validatorを作るP4-02で追加するため、この時点では欠落する。余分の検出だけ先に
-// 効かせ、完全一致はtree全体が揃った時点で[CheckTree]へ切り替える。
-func TestRepositoryRegistryHasNoExtraEntries(t *testing.T) {
-	allowed := make(map[string]struct{}, len(ExactTree()))
-	for _, path := range ExactTree() {
-		allowed[path] = struct{}{}
-	}
-	var extra []string
+// P4-01の時点では`messages/ja.toml`と`licenses/*.txt`が未作成のため余分の検出
+// だけを行っていた。P4-02の1本目で両方を追加したので、過不足の両方を見る
+// [CheckTree]へ切り替えた。§2は「上記以外のentryをrelease registryへ含めない」
+// と定めており、欠落を許すとrelease registryが不完全なまま通る。
+func TestRepositoryRegistryMatchesExactTree(t *testing.T) {
+	var paths []string
 	walkErr := filepath.Walk(registryDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -346,18 +343,15 @@ func TestRepositoryRegistryHasNoExtraEntries(t *testing.T) {
 		if relErr != nil {
 			return relErr
 		}
-		slashed := filepath.ToSlash(relative)
-		if _, ok := allowed[slashed]; !ok {
-			extra = append(extra, slashed)
-		}
+		paths = append(paths, filepath.ToSlash(relative))
 		return nil
 	})
 	if walkErr != nil {
 		t.Fatalf("Walk: %v", walkErr)
 	}
-	sort.Strings(extra)
-	if len(extra) != 0 {
-		t.Fatalf("§2に無いentryがregistryにある: %v", extra)
+	sort.Strings(paths)
+	if err := CheckTree(paths); err != nil {
+		t.Fatalf("registry treeが§2と一致しない: %v", err.Cause)
 	}
 }
 
