@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain"
@@ -75,6 +76,12 @@ func TestRegistryToolDefinitionsMatchSpec(t *testing.T) {
 			// 同§10。archiveにtop-level directoryが無いため`strip_components=0`。
 			"dotnet.toml", domain.SchemeSemver, SourceJSONIndex, SourceAsset, ChecksumAssetField, 0,
 			[]string{"dotnet"},
+		},
+		{
+			// 同§9。live releaseから毎回artifactを選ばず`static_versions`へ固定する。
+			// top-level `python/`を1 component除去する。
+			"python.toml", domain.SchemePython, SourceStatic, SourceAsset, ChecksumAssetField, 1,
+			[]string{"python", "python3", "pip", "pip3"},
 		},
 	}
 	for _, c := range cases {
@@ -148,6 +155,93 @@ func TestRegistryDefinitionsDeclareOfficialProvider(t *testing.T) {
 				t.Errorf("%s %s にadoption_reasonがある", file, platform.Platform.ID())
 			}
 		}
+	}
+}
+
+// TestRegistryPythonDeclaresThirdPartyProvider は§5.1のthird-party契約を固定する。
+//
+// 「third-partyは全件必須。Planでprovider、repository、license、adoption_reasonを
+// 常に表示する」。[07-registry-and-tools.md](../../docs/07-registry-and-tools.md)
+// §9.1はPythonのprovider licenseをMPL-2.0とし、**`license_notice`は宣言しない**
+// （archive内のPython/dependency license bundleも保持する）。
+func TestRegistryPythonDeclaresThirdPartyProvider(t *testing.T) {
+	value := parseRegistryTool(t, filepath.Join(registryToolsDir, "python.toml"))
+	for index := range value.Platforms {
+		platform := &value.Platforms[index]
+		id := platform.Platform.ID()
+		if platform.ArtifactKind != KindThirdParty {
+			t.Errorf("%s artifact_kind = %q, want third-party", id, platform.ArtifactKind)
+		}
+		if platform.Provider.Repository == "" || platform.Provider.AdoptionReason == "" {
+			t.Errorf("%s third-partyのrepository/adoption_reasonが空: %+v", id, platform.Provider)
+		}
+		if !platform.LicenseNotice.IsZero() {
+			t.Errorf("%s へlicense_noticeが宣言されている（MPL-2.0はOSI承認）", id)
+		}
+	}
+}
+
+// TestRegistryPythonPinsUpstreamDigests は§6.6・§7.2の固定catalog契約を固定する。
+//
+// [07-registry-and-tools.md](../../docs/07-registry-and-tools.md)§9.2が「Windows/
+// Linux exact asset name/URL/ID/size/SHA-256」をversionごとに固定すると定め、
+// §7.2が「v0.1はchecksumを公開しないartifactを扱わない」と定める。digestは
+// providerが公開した値であり、sizeは正整数である。
+func TestRegistryPythonPinsUpstreamDigests(t *testing.T) {
+	value := parseRegistryTool(t, filepath.Join(registryToolsDir, "python.toml"))
+	for index := range value.Platforms {
+		platform := &value.Platforms[index]
+		id := platform.Platform.ID()
+		versions := platform.VersionSource.StaticVersions
+		if len(versions) == 0 {
+			t.Fatalf("%s のstatic_versionsが空", id)
+		}
+		for _, version := range versions {
+			// §9.2は新旧各1件の固定を求める。asset数は1 platformにつき1件である。
+			if len(version.Assets) != 1 {
+				t.Errorf("%s %s asset = %d件, want 1", id, version.Version, len(version.Assets))
+				continue
+			}
+			asset := version.Assets[0]
+			if asset.DigestAlgorithm != AlgorithmSHA256 {
+				t.Errorf("%s %s digest_algorithm = %q", id, version.Version, asset.DigestAlgorithm)
+			}
+			if len(asset.Digest) != DigestHexLength(AlgorithmSHA256) {
+				t.Errorf("%s %s digestのhex長 = %d", id, version.Version, len(asset.Digest))
+			}
+			if asset.Size <= 0 {
+				t.Errorf("%s %s size = %d, want 正整数", id, version.Version, asset.Size)
+			}
+			if asset.ReleaseTag == "" {
+				t.Errorf("%s %s release_tagが空（provider releaseに使う）", id, version.Version)
+			}
+			// `unknown`でも「不明と判断した調査根拠」をevidenceへ残す（§6.6）。
+			if version.LifecycleEvidence == "" || version.LifecycleAssessedAt.IsZero() {
+				t.Errorf("%s %s のlifecycle根拠か評価日が空", id, version.Version)
+			}
+		}
+	}
+}
+
+// TestRegistryPythonVersionSetsMatchAcrossPlatforms は§6.6の
+// 「registry validatorは両platformの正規version集合が完全一致することを検査し、
+// 片方だけの更新漏れを拒否する」を固定する。
+func TestRegistryPythonVersionSetsMatchAcrossPlatforms(t *testing.T) {
+	value := parseRegistryTool(t, filepath.Join(registryToolsDir, "python.toml"))
+	sets := make([][]string, 0, len(value.Platforms))
+	for index := range value.Platforms {
+		versions := make([]string, 0)
+		for _, entry := range value.Platforms[index].VersionSource.StaticVersions {
+			versions = append(versions, entry.Version.String())
+		}
+		sort.Strings(versions)
+		sets = append(sets, versions)
+	}
+	if len(sets) != 2 {
+		t.Fatalf("platform = %d件", len(sets))
+	}
+	if strings.Join(sets[0], ",") != strings.Join(sets[1], ",") {
+		t.Fatalf("version集合が一致しない: %v / %v", sets[0], sets[1])
 	}
 }
 
