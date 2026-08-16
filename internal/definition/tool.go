@@ -21,7 +21,7 @@ func buildTool(table *toolTable, filePath string, value *Definition, diagnostics
 	value.Tool.Aliases = buildAliases(table.Aliases, value.Tool.ID, diagnostics)
 	value.Tool.Description = requireText(
 		table.Description, "tool.description", 1, DescriptionMaxBytes, diagnostics)
-	value.Tool.Homepage = requireHTTPSURL(table.Homepage, "tool.homepage", diagnostics)
+	value.Tool.Homepage = requireHTTPSURL(table.Homepage, "tool.homepage", urlReference, diagnostics)
 	value.Tool.License = requireLicense(table.License, "tool.license", diagnostics)
 	value.Tool.VersionScheme = buildVersionScheme(table.VersionScheme, diagnostics)
 }
