@@ -12,14 +12,14 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 |---|---|
 | 全体状態 | `進行中` |
 | 現在フェーズ | `P3` |
-| 実行中タスクID | `なし（P3-03は3分割の2/3が完了、3本目は未着手）` |
+| 実行中タスクID | `P3-03（3分割の3/3）` |
 | 最後に完了したタスクID | `P3-02（version grammar・比較・channel/lifecycleの境界test）` |
 | 次に開始するタスクID | `P3-03の3本目` |
 | CI状態 | `両OS 12 checkがgreen（PR #70、run 31948826942）` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-08-16T22:58:04+09:00` |
+| 最終更新日時 | `2026-08-16T23:58:41+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch | `claude/feature-p3-03-index-static-source` |
+| 作業branch | `claude/feature-p3-03-artifact-checksum` |
 | 使用環境 | `Linux container` |
 | 最新の証跡 | [P3-03 決定記録（2/3）](reviews/P3-03-index-static-source.md)、CI 12/12 success（run 31948826942）、`internal/catalog` coverage 96.5%・test 124件 |
 
@@ -158,7 +158,7 @@ G-TOOLS達成後は、G-E2E/G-DONEの完了を待たずにDF-01（§17）のド�
 
 - [x] **P3-01** schema 1の全field/conditional key/unknown/type/enum/limit validatorとJSON schemaを実装する。対象が[06-tool-definition.md](06-tool-definition.md)§2〜§12の16 table・125 keyに及びP2-04と同規模のため、利用者判断により**3 PRへ分割**する（task IDはP3-01のまま、本項目は3本目のmerge後に`[x]`とする）。(1) `internal/definition`の基盤（strict TOML decode、§13の診断契約、§3 identifier grammar）＋§2 top-level＋§4 `[tool]`＋§5 `[[platforms]]`枠＋§5.1 provider＝`claude/feature-p3-01-definition-skeleton`、(2) §6 version source（§6.1〜§6.6）＝`claude/feature-p3-01-version-source`、(3) §7 artifact／§8 storage／§9 install／§10 runtime／§11 validation／§12 template＋`registry/schemas/tool-definition-v1.json`＝`claude/feature-p3-01-artifact-runtime`。依存: P2-02。完了: §2〜§12の全keyがunknown/重複/型違い/enum外/上限超過/条件付きkey違反込みで拒否され、§13の検証順序と診断4項目（path/line/column/field path/reason code）と100件上限が固定され、JSON schemaが`registry/schemas/`へ置かれ、両OSの12 checkがgreenである。証跡: [P3-01 決定記録（1/3）](reviews/P3-01-definition-skeleton.md)、[（2/3）](reviews/P3-01-version-source.md)、[（3/3）](reviews/P3-01-artifact-runtime.md)と本書§3.3の3 record
 - [x] **P3-02** semver/go/python grammar、exact一致、comparison、channel/lifecycleを境界testする。依存: P3-01。証跡: [P3-02 決定記録](reviews/P3-02-version-grammar.md)と本書§3.3のrecord
-- [-] **P3-03** `json`/`json-index`/`static` version source、index 2段取得と部分catalog禁止、`item_flatten_pointer`の1段展開、親公開日時の継承、`channel_pointer`のstring/boolean、`document_lifecycle_pointer`と`lifecycle_map`（未定義値のsource error）、pointer/token/asset、lifecycle override/evidence、artifact template/selector、checksum 2 kindとdigest algorithm（`sha256`/`sha512`）をfake upstream testする。対象が§6の評価全体と§7 artifact/checksum、§15 catalog組立てに及びP3-01と同規模のため、利用者判断により**3 PRへ分割**する（task IDはP3-03のまま、本項目は3本目のmerge後に`[x]`とする）。(1) 文書取得＋RFC 6901 pointer解決＋`json` source＋`item_flatten_pointer`の1段展開＋親公開日時の継承＝`claude/feature-p3-03-json-source`、(2) `json-index`の2段取得と部分catalog禁止＋`static` source＋`document_lifecycle_pointer`/`lifecycle_map`＋lifecycle override＝`claude/feature-p3-03-index-static-source`、(3) asset field/`required_tokens`＋artifact template/selector＋checksum 2 kind＋§15 catalog組立てと並び＝`claude/feature-p3-03-artifact-checksum`。依存: P3-01,P1-03。証跡: 未記録
+- [x] **P3-03** `json`/`json-index`/`static` version source、index 2段取得と部分catalog禁止、`item_flatten_pointer`の1段展開、親公開日時の継承、`channel_pointer`のstring/boolean、`document_lifecycle_pointer`と`lifecycle_map`（未定義値のsource error）、pointer/token/asset、lifecycle override/evidence、artifact template/selector、checksum 2 kindとdigest algorithm（`sha256`/`sha512`）をfake upstream testする。対象が§6の評価全体と§7 artifact/checksum、§15 catalog組立てに及びP3-01と同規模のため、利用者判断により**3 PRへ分割**する（task IDはP3-03のまま、本項目は3本目のmerge後に`[x]`とする）。(1) 文書取得＋RFC 6901 pointer解決＋`json` source＋`item_flatten_pointer`の1段展開＋親公開日時の継承＝`claude/feature-p3-03-json-source`、(2) `json-index`の2段取得と部分catalog禁止＋`static` source＋`document_lifecycle_pointer`/`lifecycle_map`＋lifecycle override＝`claude/feature-p3-03-index-static-source`、(3) asset field/`required_tokens`＋artifact template/selector＋checksum 2 kind＋§15 catalog組立てと並び＝`claude/feature-p3-03-artifact-checksum`。依存: P3-01,P1-03。証跡: [P3-03 決定記録（1/3）](reviews/P3-03-json-source.md)、[（2/3）](reviews/P3-03-index-static-source.md)、[（3/3）](reviews/P3-03-artifact-checksum.md)と本書§3.3の3 record
 - [ ] **P3-04** typed storage、install parameter（`strip_components` 0と1）、runtime command/env、probe（専用temp cwd）、`license_notice`を実装し、[06-tool-definition.md](06-tool-definition.md)§15〜§16の4 tool分をpositive fixture、全conditional違反をnegative fixtureにする。依存: P3-01～P3-03。証跡: 未記録
 
 ## 10. P4 registry

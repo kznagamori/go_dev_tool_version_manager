@@ -127,3 +127,12 @@ func sortedKeys(source map[string]string) []string {
 	sort.Strings(keys)
 	return keys
 }
+
+// AssetFieldOrder は§6.5のasset field exactly 13値を仕様の並び順で返す。
+//
+// catalog側がasset fieldを宣言順に解決するために使う。内部sliceを共有しない
+// のは、呼出し側の変更でdiagnosticsとstatic assetの必須検査の順序が変わらない
+// ようにするためである（docs/02-architecture.md §5）。
+func AssetFieldOrder() []AssetField {
+	return append([]AssetField(nil), assetFieldOrder...)
+}

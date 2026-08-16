@@ -499,3 +499,24 @@ func requireFileName(raw *string, field string, diagnostics *Diagnostics) string
 // PathComponentMaxBytes は1 path componentの上限である
 // （docs/04-storage-and-data.md §21）。
 const PathComponentMaxBytes = 255
+
+// ParseDigestAlgorithm は§6.5・§7.2のdigest algorithmを読む。
+//
+// schema 1は`sha256`と`sha512`だけを扱う。sourceの`digest_algorithm` fieldから
+// 読んだ値もこの2値へ閉じる。上流がalgorithmを増やしたら、hex長の照合より前に
+// ここで止める。
+func ParseDigestAlgorithm(text string) (DigestAlgorithm, error) {
+	switch DigestAlgorithm(text) {
+	case AlgorithmSHA256, AlgorithmSHA512:
+		return DigestAlgorithm(text), nil
+	default:
+		return "", fmt.Errorf("digest algorithmは%s|%sだけ（%q）",
+			AlgorithmSHA256, AlgorithmSHA512, text)
+	}
+}
+
+// DigestHexLength はalgorithmごとのhex長を返す。未知algorithmは0を返す。
+//
+// §6.5が「hex長がalgorithmと一致しない値を拒否する」と定める。長さの正本を
+// packageごとに複製しないため、catalog側もこの値を使う。
+func DigestHexLength(algorithm DigestAlgorithm) int { return digestHexLength[algorithm] }
