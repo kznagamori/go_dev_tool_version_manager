@@ -40,7 +40,16 @@ ALLOWED: dict[str, set[str]] = {
     # 06-tool-definition.md §6.1・§6.3のchannel導出とlifecycle優先順位が、
     # domainのVersion/Channel/Lifecycle/Scalarと、definitionが読んだ
     # `lifecycle_overrides`・`lifecycle_map`を入力に取る（P3-02）。
-    "internal/catalog": {"internal/domain", "internal/definition"},
+    # 06-tool-definition.md §6.1の文書取得がHTTPClient portを使う（P3-03）。
+    # fakeは`_test.go`からの注入だけに使う。fake upstream応答でversion sourceの
+    # 取得と評価を決定的にtestするためで、production pathからのfake importは
+    # 11-quality-and-ci.md §7.1に従いcheck_policy.pyが別途禁止する（P3-03）。
+    "internal/catalog": {
+        "internal/domain",
+        "internal/domain/port",
+        "internal/domain/port/fake",
+        "internal/definition",
+    },
     # 04-storage-and-data.md §1のroot決定がmode/platform/path roleのdomain値と、
     # OS user lookupの結果（port.UserIdentity）を使うため（P2-01）。
     "internal/config": {"internal/domain", "internal/domain/port"},

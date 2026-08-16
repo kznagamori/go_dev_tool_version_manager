@@ -100,7 +100,7 @@ payloadは全platformで再配置可能であることを前提とする。再�
 [platforms.version_source]
 kind = "json"
 url = "https://example.invalid/versions.json"
-items_pointer = "/"
+items_pointer = ""
 version_pointer = "/version"
 version_regex = "^v(?P<version>[0-9]+[.][0-9]+[.][0-9]+)$"
 channel_pointer = "/channel"
@@ -122,7 +122,7 @@ cache_ttl = "24h"
 | `json-index` | index文書から子文書URL群を得て、**各子文書を読む**。§6.2の追加契約に従う。`static_versions`を禁止する |
 | `static` | networkなし。`static_versions` arrayと`max_items`だけを使用し、他pointer/url/index/cache fieldを禁止する |
 
-pointerはすべてRFC 6901。1文書あたり16 MiB、全文書合計のitemsは10,000の組込み上限以下。`max_items`は1以上で上限を縮小する値だけ。redirect後もHTTPS。unknown JSON fieldは無視できるが、definitionが参照するfieldの欠落/型違いはそのitemを黙ってskipせずsource errorにする。
+pointerはすべてRFC 6901。**空文字が文書全体を指し、`/`はkeyが空文字のmemberを指す。** top-levelが配列の文書のitemsは空文字で指す（Node.jsとGoが該当する）。配列やobjectの型に応じて`/`をrootへ読み替える等の代替解釈を行わない。1文書あたり16 MiB、全文書合計のitemsは10,000の組込み上限以下。`max_items`は1以上で上限を縮小する値だけ。redirect後もHTTPS。unknown JSON fieldは無視できるが、definitionが参照するfieldの欠落/型違いはそのitemを黙ってskipせずsource errorにする。
 
 `item_flatten_pointer`は`json`と`json-index`で任意。指定した場合、`items_pointer`が指す配列の各要素へこのpointerを適用し、得られた配列を**1段だけ**連結した結果をversion itemの集合とする。pointer先が配列でない、または存在しないrequirementはsource errorとする。展開は1段までで、入れ子の再帰展開を行わない。`items_pointer`自体にwildcardを書かない。
 
@@ -458,7 +458,7 @@ license = "MIT"
 [platforms.version_source]
 kind = "json"
 url = "https://nodejs.org/dist/index.json"
-items_pointer = "/"
+items_pointer = ""
 version_pointer = "/version"
 version_regex = "^v(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?)$"
 published_at_pointer = "/date"
@@ -604,7 +604,7 @@ Node.js公式は同じ`SHASUMS256.txt`で`.tar.gz`と`.tar.xz`の両方を配布
 [platforms.version_source]
 kind = "json"
 url = "https://go.dev/dl/?mode=json&include=all"
-items_pointer = "/"
+items_pointer = ""
 version_pointer = "/version"
 version_regex = "^go(?P<version>[0-9]+[.][0-9]+(?:[.][0-9]+)?(?:(?:beta|rc)[1-9][0-9]*)?)$"
 channel_pointer = "/stable"
