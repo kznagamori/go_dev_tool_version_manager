@@ -52,6 +52,31 @@ func validatePointer(text, field string) error {
 	return nil
 }
 
+// OptionalPointer は宣言の有無を保持する任意JSON pointerである。
+//
+// 空文字は「文書全体」または「item全体」を指す正当なRFC 6901 pointerであるため、
+// **宣言していないことを空文字で表せない**。§6.1は`channel_pointer`を「省略した
+// 場合」に正規versionの構文からchannelを導出すると定めており、省略と空文字宣言で
+// 動作が変わる。`published_at_pointer`の「どれも宣言しないsourceは空文字とし」、
+// `item_flatten_pointer`の「指定した場合」も同じである。
+//
+// zero値は未宣言を表す。
+type OptionalPointer struct {
+	value    string
+	declared bool
+}
+
+// DeclaredPointer は宣言済みのpointerを作る。
+func DeclaredPointer(value string) OptionalPointer {
+	return OptionalPointer{value: value, declared: true}
+}
+
+// Declared はdefinitionがこのkeyを書いたかどうかを返す。
+func (p OptionalPointer) Declared() bool { return p.declared }
+
+// Value はpointer文字列を返す。未宣言では空文字である。
+func (p OptionalPointer) Value() string { return p.value }
+
 // requirePointer は必須のJSON pointerを検査する。
 func requirePointer(raw *string, field string, diagnostics *Diagnostics) string {
 	if raw == nil {
@@ -65,17 +90,18 @@ func requirePointer(raw *string, field string, diagnostics *Diagnostics) string 
 	return *raw
 }
 
-// optionalPointer は任意のJSON pointerを検査する。未設定は空文字を返す。
+// optionalPointer は任意のJSON pointerを検査する。
 //
-// 空文字が「文書全体」を指す正当な値であるため、宣言の有無は戻り値では区別
-// できない。呼出し側はpointer側のraw pointerで判定する。
-func optionalPointer(raw *string, field string, diagnostics *Diagnostics) string {
+// 戻り値が宣言の有無を持つのは、空文字が「文書全体」を指す正当な値であり、
+// 未宣言と区別できないためである（[OptionalPointer]）。grammar違反は宣言済み
+// 扱いにしない。診断を出した時点でdefinitionは拒否され、値は使われない。
+func optionalPointer(raw *string, field string, diagnostics *Diagnostics) OptionalPointer {
 	if raw == nil {
-		return ""
+		return OptionalPointer{}
 	}
 	if err := validatePointer(*raw, field); err != nil {
 		diagnostics.Add(field, reason(reasonPointer), err.Error())
-		return ""
+		return OptionalPointer{}
 	}
-	return *raw
+	return DeclaredPointer(*raw)
 }

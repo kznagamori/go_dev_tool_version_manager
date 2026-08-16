@@ -56,7 +56,7 @@ func TestValidatePointerFollowsRFC6901(t *testing.T) {
 func TestParseRejectsInvalidPointer(t *testing.T) {
 	// 必須pointerと任意pointerの両方を確かめる。
 	tests := []struct{ name, old, value string }{
-		{"items_pointer", `items_pointer = "/"`, `items_pointer = "version"`},
+		{"items_pointer", `items_pointer = ""`, `items_pointer = "version"`},
 		{"version_pointer", `version_pointer = "/version"`, `version_pointer = "/a~"`},
 		{"published_at_pointer", `published_at_pointer = "/date"`, `published_at_pointer = "date"`},
 		{"required_tokens_pointer", `required_tokens_pointer = "/files"`,
