@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain"
 )
 
 // specDefinitionTOML はdocs/06-tool-definition.md §15の正規例（Node.js）から、
-// 本PRが検証する§2・§4・§5・§5.1をそのまま取ったものである。
+// §2・§4・§5・§5.1・§6をそのまま取ったものである。
 //
-// §6以降のtableは本PRでは存在検査だけを行うため、最小の中身で置く。内容の検証は
-// P3-01の2本目・3本目で足す。
+// §7以降のtableは存在検査だけを行うため、最小の中身で置く。内容の検証は
+// P3-01の3本目で足す。
 const specDefinitionTOML = `schema = 1
 schema_id = "https://github.com/kznagamori/go_dev_tool_version_manager/schemas/tool-definition/v1"
 
@@ -40,6 +41,15 @@ license = "MIT"
 
 [platforms.version_source]
 kind = "json"
+url = "https://nodejs.org/dist/index.json"
+items_pointer = "/"
+version_pointer = "/version"
+version_regex = "^v(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?)$"
+published_at_pointer = "/date"
+required_tokens_pointer = "/files"
+required_tokens = ["win-x64-zip"]
+max_items = 10000
+cache_ttl = "24h"
 
 [platforms.artifact]
 id = "primary"
@@ -53,6 +63,23 @@ strip_components = 1
 `
 
 const specDefinitionPath = "tools/node.toml"
+
+// specVersionSourceBlock は正規例の`[platforms.version_source]` block全体である。
+//
+// blockごと差し替えるtestが使う。header行だけを消すと、残りのkeyが直前のtableへ
+// 吸収されて別の失敗になる。
+const specVersionSourceBlock = `[platforms.version_source]
+kind = "json"
+url = "https://nodejs.org/dist/index.json"
+items_pointer = "/"
+version_pointer = "/version"
+version_regex = "^v(?P<version>[0-9]+[.][0-9]+[.][0-9]+(?:-[0-9A-Za-z.-]+)?)$"
+published_at_pointer = "/date"
+required_tokens_pointer = "/files"
+required_tokens = ["win-x64-zip"]
+max_items = 10000
+cache_ttl = "24h"
+`
 
 // describe はtyped errorのCauseまで出す。Error()はCauseを含めない。
 func describe(err *domain.Error) string {
@@ -114,9 +141,20 @@ func TestParseAcceptsSpecExample(t *testing.T) {
 	if platform.Provider.Name != "Node.js project" || platform.Provider.Repository != "" {
 		t.Errorf("provider = %+v", platform.Provider)
 	}
-	// §6以降のtableは中身を解釈せず保持する。
-	if platform.VersionSource == nil || platform.Artifact == nil ||
-		platform.Install == nil || platform.Runtime == nil || platform.Validation == nil {
+	// §6は型付きで読む。§15の正規例そのものであることを確かめる。
+	source := platform.VersionSource
+	if source.Kind != SourceJSON || source.URL != "https://nodejs.org/dist/index.json" {
+		t.Errorf("version_source = %q/%q", source.Kind, source.URL)
+	}
+	if source.MaxItems != 10000 || source.CacheTTL != 24*time.Hour {
+		t.Errorf("max_items/cache_ttl = %d/%v", source.MaxItems, source.CacheTTL)
+	}
+	if len(source.RequiredTokens) != 1 || source.RequiredTokens[0] != "win-x64-zip" {
+		t.Errorf("required_tokens = %v", source.RequiredTokens)
+	}
+	// §7以降のtableは中身を解釈せず保持する。
+	if platform.Artifact == nil || platform.Install == nil ||
+		platform.Runtime == nil || platform.Validation == nil {
 		t.Errorf("raw tableが保持されていない: %+v", platform)
 	}
 	if platform.Storage == nil || len(platform.Storage) != 0 {
@@ -274,7 +312,7 @@ func TestParseRequiresEveryKey(t *testing.T) {
 // TestParseRejectsTableRemoval は必須tableの欠落を固定する。
 func TestParseRejectsTableRemoval(t *testing.T) {
 	tables := []string{
-		"[platforms.version_source]\nkind = \"json\"\n",
+		specVersionSourceBlock,
 		"[platforms.artifact]\nid = \"primary\"\n",
 		"[platforms.install]\nstrip_components = 1\n",
 		"[platforms.runtime]\n",
