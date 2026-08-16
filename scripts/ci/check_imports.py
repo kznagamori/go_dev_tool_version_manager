@@ -43,6 +43,8 @@ ALLOWED: dict[str, set[str]] = {
     # 06-tool-definition.md §6.1の文書取得がHTTPClient portを使う（P3-03）。
     # §6.4の`W_LIFECYCLE_OVERRIDE_UNUSED`が04-storage-and-data.md §16.2の
     # ResultWarningを作るためinternal/progressを使う（P3-03の2本目）。
+    # §15のcatalog JSONはinternal/storeがcodecを持つ型であり、catalog組立ては
+    # その型をそのまま作る（P3-03の3本目）。storeはcatalogをimportしない。
     # fakeは`_test.go`からの注入だけに使う。fake upstream応答でversion sourceの
     # 取得と評価を決定的にtestするためで、production pathからのfake importは
     # 11-quality-and-ci.md §7.1に従いcheck_policy.pyが別途禁止する（P3-03）。
@@ -52,6 +54,7 @@ ALLOWED: dict[str, set[str]] = {
         "internal/domain/port/fake",
         "internal/definition",
         "internal/progress",
+        "internal/store",
     },
     # 04-storage-and-data.md §1のroot決定がmode/platform/path roleのdomain値と、
     # OS user lookupの結果（port.UserIdentity）を使うため（P2-01）。

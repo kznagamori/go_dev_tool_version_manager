@@ -407,7 +407,7 @@ probe keyは`id`, `runtime_command`, `args`, `stream`, `expect`, `regex`, `expec
 }
 ```
 
-top-level/entry keyは例の集合だけ。static sourceは`expires_at=null`を許す。channel=`stable|prerelease`、lifecycle=`supported|eol|unknown`。lifecycle evidenceは公式/providerのHTTPS URL、assessmentはUTC RFC 3339で全状態に必須。source fieldならsource URL/fetch時刻、override/staticならdefinition記録を使う。`published_at`はUTC RFC 3339とし、providerがitem公開日時を提供せずdefinitionもpointerを宣言しない場合だけ空文字を許す。catalog取得時刻で代用しない。`json-index` sourceの`source_identity`はindex文書のURLとする。unavailable reasonはinstallable=trueなら空、falseならmessage ID。`artifact_size=0`はprovider上でunknown、正値はexpected size。`artifact_digest`は§7のupstream digest形式で、Plan前に未解決のitemは`installable=true`にしない。itemsはversion comparison降順、同値ならversion byte順。
+top-level/entry keyは例の集合だけ。static sourceは`expires_at=null`を許す。channel=`stable|prerelease`、lifecycle=`supported|eol|unknown`。lifecycle evidenceは公式/providerのHTTPS URL、assessmentはUTC RFC 3339で全状態に必須。source fieldならsource URL/fetch時刻、override/staticならdefinition記録を使う。**上流がlifecycleを示さず既定の`unknown`になったitemもsource URL/fetch時刻を使う。**「この公式sourceをこの時刻に取得した時点でlifecycle情報が公開されていなかった」ことを記録する。取得元を持たない根拠不明のitemを作らない。`published_at`はUTC RFC 3339とし、providerがitem公開日時を提供せずdefinitionもpointerを宣言しない場合だけ空文字を許す。catalog取得時刻で代用しない。`json-index` sourceの`source_identity`はindex文書のURLとする。unavailable reasonはinstallable=trueなら空、falseならmessage ID。`artifact_size=0`はprovider上でunknown、正値はexpected size。`artifact_digest`は§7のupstream digest形式で、Plan前に未解決のitemは`installable=true`にしない。itemsはversion comparison降順、同値ならversion byte順。
 
 catalogはcacheでありdefinition/platform不一致時に利用しない。offline exactはidentity/digestが完全なら期限切れを`W_CACHE_STALE`付きで利用できる。`--latest`は期限切れを黙って使わない。
 
