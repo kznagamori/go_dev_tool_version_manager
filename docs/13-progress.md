@@ -12,14 +12,14 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 |---|---|
 | 全体状態 | `進行中` |
 | 現在フェーズ | `P3` |
-| 実行中タスクID | `なし（P3-04は2分割の1/2が完了、2本目は未着手）` |
+| 実行中タスクID | `P3-04（2分割の2/2）` |
 | 最後に完了したタスクID | `P3-03（version source取得・評価とcatalog組立て、3分割すべて完了）` |
 | 次に開始するタスクID | `P3-04の2本目` |
 | CI状態 | `両OS 12 checkがgreen（PR #76、run 31955206955）` |
 | blocker | `registry/tools/python.toml はdigestを取得できず作成不可（§3.3の最新recordを参照）` |
-| 最終更新日時 | `2026-08-17T01:34:09+09:00` |
+| 最終更新日時 | `2026-08-17T02:05:18+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch | `claude/feature-p3-04-tool-definitions` |
+| 作業branch | `claude/feature-p3-04-negative-fixtures` |
 | 使用環境 | `Linux container` |
 | 最新の証跡 | [P3-04 決定記録（1/2）](reviews/P3-04-tool-definitions.md)、CI 12/12 success（run 31955206955）、`internal/definition` coverage 91.8%・`internal/catalog` 88.4% |
 
