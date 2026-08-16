@@ -16,7 +16,7 @@ import (
 const goSourceBlock = `[platforms.version_source]
 kind = "json"
 url = "https://go.dev/dl/?mode=json&include=all"
-items_pointer = "/"
+items_pointer = ""
 version_pointer = "/version"
 version_regex = "^go(?P<version>[0-9]+[.][0-9]+(?:[.][0-9]+)?(?:(?:beta|rc)[1-9][0-9]*)?)$"
 channel_pointer = "/stable"
@@ -98,7 +98,7 @@ func TestVersionSourceAcceptsSpecExamples(t *testing.T) {
 			t.Fatalf("Parse = %s", describe(err))
 		}
 		source := value.Platforms[0].VersionSource
-		if source.Kind != SourceJSON || source.PublishedAtPointer != "/date" {
+		if source.Kind != SourceJSON || source.PublishedAtPointer != DeclaredPointer("/date") {
 			t.Errorf("source = %+v", source)
 		}
 	})
@@ -112,8 +112,8 @@ func TestVersionSourceAcceptsSpecExamples(t *testing.T) {
 		if source.URL != "https://go.dev/dl/?mode=json&include=all" {
 			t.Errorf("url = %q", source.URL)
 		}
-		if source.ChannelPointer != "/stable" {
-			t.Errorf("channel_pointer = %q", source.ChannelPointer)
+		if source.ChannelPointer != DeclaredPointer("/stable") {
+			t.Errorf("channel_pointer = %+v", source.ChannelPointer)
 		}
 		want := map[AssetField]string{
 			AssetName: "/filename", AssetSize: "/size", AssetDigest: "/sha256",
@@ -138,9 +138,10 @@ func TestVersionSourceAcceptsSpecExamples(t *testing.T) {
 		if source.Kind != SourceJSONIndex || source.MaxDocuments != 32 {
 			t.Errorf("source = %q/%d", source.Kind, source.MaxDocuments)
 		}
-		if source.ItemFlattenPointer != "/sdks" ||
-			source.ItemParentPublishedAtPointer != "/release-date" {
-			t.Errorf("flatten = %q/%q", source.ItemFlattenPointer, source.ItemParentPublishedAtPointer)
+		if source.ItemFlattenPointer != DeclaredPointer("/sdks") ||
+			source.ItemParentPublishedAtPointer != DeclaredPointer("/release-date") {
+			t.Errorf("flatten = %+v/%+v",
+				source.ItemFlattenPointer, source.ItemParentPublishedAtPointer)
 		}
 		want := map[string]Lifecycle{
 			"active": LifecycleSupported, "maintenance": LifecycleSupported, "eol": LifecycleEOL,
@@ -305,7 +306,7 @@ func TestVersionSourceRejectsForbiddenKeysPerKind(t *testing.T) {
 		"max_documents":                    `max_documents = 16`,
 		"document_lifecycle_pointer":       `document_lifecycle_pointer = "/support-phase"`,
 		"lifecycle_pointer":                `lifecycle_pointer = "/phase"`,
-		"items_pointer":                    `items_pointer = "/"`,
+		"items_pointer":                    `items_pointer = ""`,
 		"item_flatten_pointer":             `item_flatten_pointer = "/sdks"`,
 		"item_parent_published_at_pointer": `item_parent_published_at_pointer = "/date"`,
 		"version_pointer":                  `version_pointer = "/version"`,
@@ -603,4 +604,40 @@ func TestBoundedIntegers(t *testing.T) {
 			assertReason(t, err, reasonLimit)
 		}
 	})
+}
+
+// TestOptionalPointerDistinguishesOmissionFromEmpty は任意pointerの「未宣言」と
+// 「空文字宣言」が区別できることを固定する（P3-03の1本目で導入）。
+//
+// 空文字はRFC 6901で文書全体を指す正当なpointerであり、未宣言を空文字で表せない。
+// §6.1は`channel_pointer`を**省略した場合**に正規versionのprerelease構文から
+// channelを導出すると定めるため、両者を混同すると`channel_pointer = ""`の
+// sourceが黙って構文導出へ落ちる。
+func TestOptionalPointerDistinguishesOmissionFromEmpty(t *testing.T) {
+	// §16.2のGoは`channel_pointer`を宣言し、`published_at_pointer`を宣言しない。
+	value, err := withSource(t, goSourceBlock)
+	if err != nil {
+		t.Fatalf("Parse = %s", describe(err))
+	}
+	source := value.Platforms[0].VersionSource
+	if !source.ChannelPointer.Declared() {
+		t.Error("宣言済みの`channel_pointer`がDeclared()=false")
+	}
+	if source.PublishedAtPointer.Declared() {
+		t.Error("未宣言の`published_at_pointer`がDeclared()=true")
+	}
+	if source.PublishedAtPointer.Value() != "" {
+		t.Errorf("未宣言のValue() = %q, want \"\"", source.PublishedAtPointer.Value())
+	}
+
+	// 空文字を宣言した場合は「宣言済みで値が空」になる。
+	empty := strings.Replace(goSourceBlock, `channel_pointer = "/stable"`, `channel_pointer = ""`, 1)
+	value, err = withSource(t, empty)
+	if err != nil {
+		t.Fatalf("Parse = %s", describe(err))
+	}
+	source = value.Platforms[0].VersionSource
+	if !source.ChannelPointer.Declared() || source.ChannelPointer.Value() != "" {
+		t.Fatalf("空文字宣言 = %+v, want {declared, \"\"}", source.ChannelPointer)
+	}
 }

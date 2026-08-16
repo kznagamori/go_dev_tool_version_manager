@@ -83,9 +83,9 @@ type VersionSource struct {
 	// MaxDocuments は読む子文書数の上限である（`json-index`のみ）。
 	MaxDocuments int
 	// DocumentLifecyclePointer は子文書top-levelのlifecycle値を指す（`json-index`のみ）。
-	DocumentLifecyclePointer string
+	DocumentLifecyclePointer OptionalPointer
 	// LifecyclePointer はitem相対のlifecycle値を指す（`json-index`のみ）。
-	LifecyclePointer string
+	LifecyclePointer OptionalPointer
 	// LifecycleMap はsourceのstring値からLifecycleへの写像である。
 	//
 	// 2つのlifecycle pointerのどちらかを宣言したら必須になる。写像先が無い
@@ -95,25 +95,27 @@ type VersionSource struct {
 	// ItemsPointer はversion itemの配列を指す。
 	ItemsPointer string
 	// ItemFlattenPointer は各itemを1段だけ展開する（任意）。
-	ItemFlattenPointer string
+	ItemFlattenPointer OptionalPointer
 	// ItemParentPublishedAtPointer は展開前の親itemから公開日時を読む（任意）。
-	ItemParentPublishedAtPointer string
+	ItemParentPublishedAtPointer OptionalPointer
 	// VersionPointer はitem内のraw version文字列を指す。
 	VersionPointer string
 	// VersionRegex はraw versionから正規versionを取り出す。
 	VersionRegex string
 	// ChannelPointer はitem内のchannel値を指す（任意）。
-	ChannelPointer string
+	//
+	// 未宣言なら正規versionのprerelease構文からchannelを導出する（§6.1）。
+	ChannelPointer OptionalPointer
 	// PublishedAtPointer はitem内の公開日時を指す（任意）。
-	PublishedAtPointer string
+	PublishedAtPointer OptionalPointer
 	// AssetsPointer はitem内のasset配列を指す（任意）。
-	AssetsPointer string
+	AssetsPointer OptionalPointer
 	// AssetFields はasset fieldからJSON pointerへの写像である（任意）。
 	AssetFields map[AssetField]string
 	// MetadataFields はmetadata keyからJSON pointerへの写像である（任意）。
 	MetadataFields map[string]string
 	// RequiredTokensPointer はitem内のtoken配列を指す（任意）。
-	RequiredTokensPointer string
+	RequiredTokensPointer OptionalPointer
 	// RequiredTokens は必要なtokenである（`required_tokens_pointer`と組）。
 	RequiredTokens []string
 
@@ -276,7 +278,9 @@ func buildRequiredTokens(
 			"`required_tokens_pointer`と`required_tokens`は組で指定する")
 		return
 	}
-	value.RequiredTokensPointer = requirePointer(
+	// 組で宣言された場合だけここへ来るため、pointerは必須として検査する。
+	// 宣言の有無は他のoptional pointerと同じ表現で持つ。
+	value.RequiredTokensPointer = optionalPointer(
 		table.RequiredTokensPointer, field+".required_tokens_pointer", diagnostics)
 
 	tokens := *table.RequiredTokens
