@@ -179,7 +179,9 @@ const (
 // identifier/URL/enum/型/上限（3）、platform tupleと`license_notice`（4）、
 // version source（5）、artifact selector/checksum/template（6）、storage（7）、
 // install（8）、runtime（9）、probe（10）までを実装している。registry全体の
-// ID/alias/command衝突（11）はP4-01の範囲である。
+// ID/alias/command衝突と[07-registry-and-tools.md](../../docs/07-registry-and-tools.md)
+// contract（11）は、他のdefinitionを見られない本packageでは判定できないため、
+// registry全体を扱う`internal/registry`の[ValidateSource]が行う。
 //
 // 1件目で止めず[DiagnosticMax]件まで集約する。registry更新のたびに1件ずつしか
 // 直せないと、修正の往復が実用にならない。

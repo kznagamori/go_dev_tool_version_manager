@@ -6,8 +6,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-
-	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain"
 )
 
 // registryToolsDir は標準toolのdefinitionを置くdirectoryである
@@ -47,79 +45,12 @@ func TestRegistryToolDefinitionsParse(t *testing.T) {
 	}
 }
 
-// TestRegistryToolDefinitionsMatchSpec は§7〜§16が名指しする契約をtoolごとに
-// 固定する。仕様の表と実定義が食い違ったときにtestが落ちるようにする。
-func TestRegistryToolDefinitionsMatchSpec(t *testing.T) {
-	cases := []struct {
-		file     string
-		scheme   domain.VersionScheme
-		kind     VersionSourceKind
-		artifact ArtifactSource
-		checksum ChecksumKind
-		strip    int
-		// windowsCommands は§7.2・§8.2・§10.2のrequired command集合である。
-		windowsCommands []string
-	}{
-		{
-			// docs/07-registry-and-tools.md §7。asset listがdownload URLを持たない
-			// ため`url`/`file`をtemplateにする（§7.1）。
-			"go.toml", domain.SchemeGo, SourceJSON, SourceAsset, ChecksumAssetField, 1,
-			[]string{"go", "gofmt"},
-		},
-		{
-			// 同§8。URL templateは作れるがplatform archiveの公開有無を
-			// `required_tokens`で示す。
-			"node.toml", domain.SchemeSemver, SourceJSON, SourceTemplate, ChecksumTextFile, 1,
-			[]string{"node", "npm", "npx"},
-		},
-		{
-			// 同§10。archiveにtop-level directoryが無いため`strip_components=0`。
-			"dotnet.toml", domain.SchemeSemver, SourceJSONIndex, SourceAsset, ChecksumAssetField, 0,
-			[]string{"dotnet"},
-		},
-		{
-			// 同§9。live releaseから毎回artifactを選ばず`static_versions`へ固定する。
-			// top-level `python/`を1 component除去する。
-			"python.toml", domain.SchemePython, SourceStatic, SourceAsset, ChecksumAssetField, 1,
-			[]string{"python", "python3", "pip", "pip3"},
-		},
-	}
-	for _, c := range cases {
-		t.Run(c.file, func(t *testing.T) {
-			value := parseRegistryTool(t, filepath.Join(registryToolsDir, c.file))
-			if value.Tool.VersionScheme != c.scheme {
-				t.Errorf("version_scheme = %q, want %q", value.Tool.VersionScheme, c.scheme)
-			}
-			windows := platformByID(t, value, "windows-amd64")
-			if windows.VersionSource.Kind != c.kind {
-				t.Errorf("version_source.kind = %q, want %q", windows.VersionSource.Kind, c.kind)
-			}
-			if windows.Artifact.Source != c.artifact {
-				t.Errorf("artifact.source = %q, want %q", windows.Artifact.Source, c.artifact)
-			}
-			if windows.Artifact.Checksum.Kind != c.checksum {
-				t.Errorf("checksum.kind = %q, want %q", windows.Artifact.Checksum.Kind, c.checksum)
-			}
-			if windows.Install.StripComponents != c.strip {
-				t.Errorf("strip_components = %d, want %d", windows.Install.StripComponents, c.strip)
-			}
-			// required commandは両platformで同じ集合である。shim名がOSで変わると
-			// 利用者のscriptがplatform間で動かなくなる。
-			for _, id := range []string{"windows-amd64", "linux-amd64-glibc"} {
-				platform := platformByID(t, value, id)
-				got := commandNames(platform)
-				if len(got) != len(c.windowsCommands) {
-					t.Fatalf("%s command = %v, want %v", id, got, c.windowsCommands)
-				}
-				for index, name := range c.windowsCommands {
-					if got[index] != name {
-						t.Errorf("%s command[%d] = %q, want %q", id, index, got[index], name)
-					}
-				}
-			}
-		})
-	}
-}
+// §7〜§10の表との一致（version_scheme、version source種別、artifact source、
+// checksum種別、strip_components、required command集合）は
+// docs/07-registry-and-tools.md §5第6項のsource validationが行う。同じ表を
+// 本packageにも持つと、仕様表を変えたときに片方だけが古いままになるため、
+// internal/registryのValidateSourceへ集約した。本packageは定義の解析結果
+// そのものを検査する。
 
 // TestRegistryDotnetDeclaresWindowsLicenseNotice は§5の`license_notice`契約を
 // 固定する。
@@ -286,12 +217,4 @@ func platformByID(t *testing.T, value *Definition, id string) *Platform {
 	}
 	t.Fatalf("platform %q が無い", id)
 	return nil
-}
-
-func commandNames(platform *Platform) []string {
-	names := make([]string, 0, len(platform.Runtime.Commands))
-	for _, command := range platform.Runtime.Commands {
-		names = append(names, command.Name)
-	}
-	return names
 }
