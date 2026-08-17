@@ -6,7 +6,10 @@ toolchain go1.26.6
 
 tool golang.org/x/vuln/cmd/govulncheck
 
-require github.com/pelletier/go-toml/v2 v2.4.3
+require (
+	github.com/pelletier/go-toml/v2 v2.4.3
+	golang.org/x/text v0.41.0
+)
 
 require (
 	golang.org/x/mod v0.38.0 // indirect
