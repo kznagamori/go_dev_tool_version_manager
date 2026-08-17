@@ -26,9 +26,20 @@ const (
 )
 
 // recordingSink はprogress通知を記録する。
-type recordingSink struct{ reports []progress.Progress }
+//
+// onReportは通知のたびに呼ばれる。展開の途中でcancelするなど、通知を起点に
+// 状態を変えるtestで使う。時間ではなく通知回数で切るため決定的になる。
+type recordingSink struct {
+	reports  []progress.Progress
+	onReport func()
+}
 
-func (s *recordingSink) Report(p progress.Progress) { s.reports = append(s.reports, p) }
+func (s *recordingSink) Report(p progress.Progress) {
+	s.reports = append(s.reports, p)
+	if s.onReport != nil {
+		s.onReport()
+	}
+}
 
 // harness はdownload 1件分のfakeをまとめる。
 type harness struct {
