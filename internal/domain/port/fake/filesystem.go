@@ -20,6 +20,7 @@ const (
 	OpOpen        = "fs.Open"
 	OpReadFile    = "fs.ReadFile"
 	OpAtomicWrite = "fs.AtomicWrite"
+	OpWriteStream = "fs.WriteStream"
 	OpMkdirAll    = "fs.MkdirAll"
 	OpRename      = "fs.Rename"
 	OpRemove      = "fs.Remove"
@@ -200,6 +201,40 @@ func (f *FileSystem) AtomicWrite(p string, data []byte, perm fs.FileMode) error 
 	f.entries[cp] = &fakeEntry{data: append([]byte(nil), data...), mode: perm}
 	f.Writes = append(f.Writes, cp)
 	return nil
+}
+
+// WriteStream はsrcを読み切ってpathへ書く。
+//
+// 失敗・cancel時は書きかけのentryを削除してから返す。途中まで書けたfileを
+// 次回の再開に使わないことを再現する（docs/15-deferred.md D-24）。
+//
+// 読取り途中で失敗するreaderを渡せば、partial破棄の経路をtestできる。
+func (f *FileSystem) WriteStream(p string, perm fs.FileMode, src io.Reader) (int64, error) {
+	if err := f.injector.Check(OpWriteStream); err != nil {
+		return 0, err
+	}
+	cp := clean(p)
+
+	f.mu.Lock()
+	if _, ok := f.entries[path.Dir(cp)]; !ok {
+		f.mu.Unlock()
+		return 0, ErrNotExist
+	}
+	// 書きかけを観測できるよう、読み切る前にentryを作る。実装が途中経過を
+	// 残すかどうかではなく、失敗時に消えることをtestできるようにするため。
+	f.entries[cp] = &fakeEntry{mode: perm}
+	f.mu.Unlock()
+
+	data, err := io.ReadAll(src)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err != nil {
+		delete(f.entries, cp)
+		return int64(len(data)), err
+	}
+	f.entries[cp] = &fakeEntry{data: append([]byte(nil), data...), mode: perm}
+	f.Writes = append(f.Writes, cp)
+	return int64(len(data)), nil
 }
 
 // MkdirAll は親を含めてdirectoryを作る。
