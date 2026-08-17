@@ -121,6 +121,7 @@ var allowedGlobals = map[string]string{
 	"internal/registry.scopes":                     "同§4のcommand別registry load範囲。10 commandの閉じた対応表で、初期化後に変更しない",
 	"internal/registry.standardTools":              "同§7〜§10が標準4 toolへ定める契約表。§5第6項のsource validationが照合する閉じた対応表で、初期化後に変更しない",
 	"internal/registry.osiApprovedLicenses":        "同§5第9項のOSI承認判定表。registryが§6で4 toolに閉じるため有限で、初期化後に変更しない",
+	"internal/platform.retryBackoff":               "docs/04-storage-and-data.md §21が固定するretry backoff 1/2/4秒。要素数MaxRetriesの配列で、初期化後に変更しない",
 	"internal/domain.parameterKeyRe":               "同§7のscalar parameter key grammar。同上",
 	"internal/domain/port.logLevels":               "docs/04-storage-and-data.md §18のlog level 5値。初期化後に変更しない対応表",
 	"internal/domain/port/fake.levelOrder":         "fake Loggerのlevel詳細度表。同上",

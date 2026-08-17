@@ -1,6 +1,7 @@
 package fake
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -16,6 +17,11 @@ type Clock struct {
 	mu    sync.Mutex
 	now   time.Time
 	nanos int64
+	// sleeps は[Clock.Sleep]へ渡された待機時間を呼出し順で保持する。
+	//
+	// 実際には待たず、時計だけを進める。backoffの回数と間隔を実時間なしで
+	// 検査するためであり、これがfake Clockが待機を担う理由である。
+	sleeps []time.Duration
 }
 
 var _ port.Clock = (*Clock)(nil)
@@ -67,4 +73,30 @@ func (c *Clock) SetNow(t time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.now = t
+}
+
+// Sleep は実際には待たず、要求された待機時間を記録して時計を進める。
+//
+// cancel済みcontextではcontextのerrorを返し、時計を進めない。retryの途中cancel
+// が「待機せずに抜ける」ことを検査できるようにするためである。
+func (c *Clock) Sleep(ctx context.Context, d time.Duration) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if d <= 0 {
+		return nil
+	}
+	c.mu.Lock()
+	c.sleeps = append(c.sleeps, d)
+	c.now = c.now.Add(d)
+	c.nanos += int64(d)
+	c.mu.Unlock()
+	return nil
+}
+
+// Sleeps は[Clock.Sleep]へ渡された待機時間を呼出し順で返す。
+func (c *Clock) Sleeps() []time.Duration {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]time.Duration(nil), c.sleeps...)
 }

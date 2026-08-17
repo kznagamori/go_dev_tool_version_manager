@@ -18,7 +18,7 @@ tool固有挙動はdefinition/fixture/仕様へ置き、Go commentで補完し�
 |---|---|
 | module path | `github.com/kznagamori/go_dev_tool_version_manager` |
 | `go.mod`の`go` | `1.26.0`（minimum toolchain） |
-| `go.mod`の`toolchain` | 採用minorの最新security patch。現在は`go1.26.5` |
+| `go.mod`の`toolchain` | 採用minorの最新security patch。現在は`go1.26.6` |
 
 **Go versionの正本は`go.mod`だけ**とし、workflowへ数値を書かない。CIは`actions/setup-go`の`go-version-file: go.mod`で読み、`lint` jobが`go.mod`の`toolchain`行と実行中のGo versionの一致を検査する。二箇所に数値を持つと片方だけ更新された状態が静かに成立するためである。
 

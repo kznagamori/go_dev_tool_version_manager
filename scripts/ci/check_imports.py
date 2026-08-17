@@ -73,7 +73,18 @@ ALLOWED: dict[str, set[str]] = {
     "internal/domain/port/fake": {"internal/domain/port", "internal/domain"},
     "internal/install": set(),
     "internal/message": set(),
-    "internal/platform": set(),
+    # 02-architecture.md §1がInfrastructure adapterへHTTPを含め、§4.1の
+    # HTTPClientが「GET、HEAD、redirect、proxy、TLS、response limit」を担う。
+    # 10-security.md §9.2のURL maskとheader判定をinternal/securityから使う。
+    # mask規則を複製すると、規則を変えたときに片方だけが古いままになる（P5-01）。
+    # fakeは`_test.go`からの注入だけに使う。04-storage-and-data.md §21のretry
+    # backoff（1/2/4秒）をfake Clockで決定的にtestするためで、production pathからの
+    # fake importは11-quality-and-ci.md §7.1に従いcheck_policy.pyが別途禁止する。
+    "internal/platform": {
+        "internal/domain/port",
+        "internal/domain/port/fake",
+        "internal/security",
+    },
     # 02-architecture.md §2「型付き進捗、warning、cancel境界」。Progressと
     # ResultWarningがmessage ID、scalar、ID、tool/versionのdomain値を持つ（P1-04）。
     "internal/progress": {"internal/domain"},
