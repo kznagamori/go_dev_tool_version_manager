@@ -74,7 +74,7 @@ type Services struct {
 func NewServices(build BuildInfo, ports Ports) (Services, error)
 ```
 
-`Ports`は最低限、Filesystem、Link、Registry、HTTP、Archive、Hash、Process、Environment、UserLookup、Clock、Lock、Random、Loggerを持つ。production adapterとfakeを同じinterfaceへ注入する。progress/cancelはrequestごとに渡す。Prompt/terminalはadapter責務でありPortsへ入れない。package global mutable state、暗黙working directory、暗黙時刻/networkを使わない。
+`Ports`は最低限、Filesystem、Link、Registry、HTTP、Archive、Process、Environment、UserLookup、Clock、Lock、Random、Loggerを持つ。digest計算はportにしない。外部作用を持たない純計算で、同じ入力が常に同じ結果を返すため差し替える意味がなく、§2が「upstream SHA-256/SHA-512、内部SHA-256」を`internal/security`の責務としている。production adapterとfakeを同じinterfaceへ注入する。progress/cancelはrequestごとに渡す。Prompt/terminalはadapter責務でありPortsへ入れない。package global mutable state、暗黙working directory、暗黙時刻/networkを使わない。
 
 constructorは依存の存在とbuild metadata形式だけを検査し、filesystem/network変更を行わない。初期化は`Initialize`で行う。
 
@@ -90,7 +90,6 @@ constructorは依存の存在とbuild metadata形式だけを検査し、filesys
 | HTTPClient | GET、HEAD、redirect、proxy、TLS、response limit |
 | ProcessRunner | argv実行、環境、cwd、stdio、signal、exit code、timeout |
 | ArchiveExtractor | list、安全検査、選択展開、進捗、形式判定 |
-| HashCalculator | streaming digest計算 |
 | LockManager | process間共有/排他ロック、所有情報、timeout |
 | Environment | 親環境取得、case規則、process block生成 |
 | UserLookup | 実user/UID、Known Folder/OS account home、owner identity |
