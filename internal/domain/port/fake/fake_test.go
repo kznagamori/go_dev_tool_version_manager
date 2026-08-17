@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -630,3 +631,73 @@ func TestSharedInjectorAcrossPorts(t *testing.T) {
 		t.Fatalf("Operations = %v, want %v", got, want)
 	}
 }
+
+// TestFileSystemWriteStreamDiscardsOnReadFailure は読取り失敗で書きかけを
+// 残さないことを固定する。
+//
+// 途中まで書けたfileを次回の再開に使わない（docs/15-deferred.md D-24）。
+func TestFileSystemWriteStreamDiscardsOnReadFailure(t *testing.T) {
+	fs := NewFileSystem(nil)
+	if err := fs.MkdirAll("/data", 0o700); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	sentinel := errors.New("読取り失敗")
+	src := io.MultiReader(strings.NewReader("partial"), errReaderFake{sentinel})
+
+	if _, err := fs.WriteStream("/data/x.part", 0o600, src); !errors.Is(err, sentinel) {
+		t.Fatalf("WriteStream = %v, want %v", err, sentinel)
+	}
+	if _, err := fs.Stat("/data/x.part"); err == nil {
+		t.Error("失敗したのに書きかけが残っている")
+	}
+}
+
+// TestFileSystemWriteStreamWritesWholeStream は読み切った内容を書くことを
+// 固定する。
+func TestFileSystemWriteStreamWritesWholeStream(t *testing.T) {
+	fs := NewFileSystem(nil)
+	if err := fs.MkdirAll("/data", 0o700); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	payload := strings.Repeat("stream", 100)
+
+	written, err := fs.WriteStream("/data/x.part", 0o600, strings.NewReader(payload))
+	if err != nil {
+		t.Fatalf("WriteStream: %v", err)
+	}
+	if written != int64(len(payload)) {
+		t.Errorf("written = %d, want %d", written, len(payload))
+	}
+	got, err := fs.ReadFile("/data/x.part", 1<<20)
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if string(got) != payload {
+		t.Errorf("内容が違う（%d byte）", len(got))
+	}
+}
+
+// TestHTTPClientErrorOmitsCredential はfakeのerrorへcredentialを載せない
+// ことを固定する。
+//
+// fakeのerrorもtest logやtest failureの出力へ出る。生URLを載せると、
+// credential付きURLを扱うtestがfake経由でsecretを漏らす。
+func TestHTTPClientErrorOmitsCredential(t *testing.T) {
+	client := NewHTTPClient(nil)
+	_, err := client.Get(context.Background(), port.HTTPRequest{
+		URL: "https://user:pass@example.invalid/a?access_token=SECRETVALUE",
+	})
+	if err == nil {
+		t.Fatal("未登録URLで成功した")
+	}
+	for _, secret := range []string{"SECRETVALUE", "pass"} {
+		if strings.Contains(err.Error(), secret) {
+			t.Errorf("error messageへ %q が出た: %v", secret, err)
+		}
+	}
+}
+
+// errReaderFake は指定したerrorを返すだけのreaderである。
+type errReaderFake struct{ err error }
+
+func (r errReaderFake) Read([]byte) (int, error) { return 0, r.err }
