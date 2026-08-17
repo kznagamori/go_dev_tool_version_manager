@@ -55,6 +55,13 @@ type Entry struct {
 	Size int64
 	// CompressedSize は圧縮後のbyte数である。0は不明を表す。
 	CompressedSize int64
+	// Executable はowner execute bitが立っているかである。
+	//
+	// mode全体を運ばないのは、展開側が使うのがこの1 bitだけだからである。
+	// docs/08-install-runtime.md §6は「Linux executableのowner executeを保持し
+	// setuid/setgidを除去する」と定める。archiveのmodeをそのまま運ぶと、
+	// setuid/setgidを落とし忘れる経路ができる。
+	Executable bool
 }
 
 // InspectRequest はentry事前検査の入力である。
@@ -69,12 +76,27 @@ type InspectRequest struct {
 
 // InspectResult は検査を通ったentryである。
 type InspectResult struct {
-	// Paths は`strip_components`適用後の相対path（slash区切り）である。
+	// Entries は`strip_components`適用後の展開対象である。
 	//
 	// 宣言順を保つ。展開はこの順で行い、directoryが先に来ることを前提にしない。
-	Paths []string
+	Entries []InspectedEntry
 	// TotalBytes は展開後の総bytes（宣言値）である。
 	TotalBytes int64
+}
+
+// InspectedEntry は検査を通った1 entryである。
+type InspectedEntry struct {
+	// Index は[InspectRequest.Entries]での位置である。
+	//
+	// 展開側がformatごとのreaderと対応づけるために要る。`strip_components`で
+	// 消えるtop-level directoryは結果に現れないため、位置は連番にならない。
+	Index int
+	// Path は`strip_components`適用後の相対path（slash区切り）である。
+	Path string
+	// Kind、Size、Executable は入力entryの写しである。
+	Kind       EntryKind
+	Size       int64
+	Executable bool
 }
 
 // InspectEntries はarchiveの全entryを展開前に検査する。
@@ -90,15 +112,24 @@ type InspectResult struct {
 // 宣言sizeでの検査は上限の第一段である。zip bombは宣言を偽れるため、
 // 実展開bytesでの打ち切りは展開側が別に行う。
 func InspectEntries(req InspectRequest) *domain.Error {
+	_, err := InspectEntriesResult(req)
+	return err
+}
+
+// InspectEntriesResult は検査を通ったentryを展開順に返す。
+//
+// [InspectEntries]と同じ検査を行い、成功時に展開対象を返す。検査だけを行いたい
+// 呼出しと、展開へ進む呼出しの両方があるため入口を分けている。
+func InspectEntriesResult(req InspectRequest) (InspectResult, *domain.Error) {
 	if len(req.Entries) == 0 {
-		return archiveUnsafe(errors.New("install: archiveにentryが無い"))
+		return InspectResult{}, archiveUnsafe(errors.New("install: archiveにentryが無い"))
 	}
 	if len(req.Entries) > ArchiveEntryMax {
-		return archiveUnsafe(fmt.Errorf(
+		return InspectResult{}, archiveUnsafe(fmt.Errorf(
 			"install: entry数が上限%dを超える（%d件）", ArchiveEntryMax, len(req.Entries)))
 	}
 	if req.StripComponents < 0 || req.StripComponents > 1 {
-		return archiveUnsafe(fmt.Errorf(
+		return InspectResult{}, archiveUnsafe(fmt.Errorf(
 			"install: strip_componentsは0か1だけ（%d）", req.StripComponents))
 	}
 
@@ -116,17 +147,17 @@ func InspectEntries(req InspectRequest) *domain.Error {
 	// 見る。** `bin/go`と`BIN/other`はfile名が違ってもWindowsでは同じ
 	// directoryを指し、展開後の構成が一意にならない。
 	prefixSeen := make(map[string]string, len(req.Entries))
-	paths := make([]string, 0, len(req.Entries))
+	inspected := make([]InspectedEntry, 0, len(req.Entries))
 
 	for index, entry := range req.Entries {
 		name, err := checkEntry(entry, windows)
 		if err != nil {
-			return archiveUnsafe(fmt.Errorf("install: entry[%d] %q: %w", index, entry.Name, err))
+			return InspectResult{}, archiveUnsafe(fmt.Errorf("install: entry[%d] %q: %w", index, entry.Name, err))
 		}
 
 		stripped, keep, err := stripComponents(name, req.StripComponents)
 		if err != nil {
-			return archiveUnsafe(fmt.Errorf("install: entry[%d] %q: %w", index, entry.Name, err))
+			return InspectResult{}, archiveUnsafe(fmt.Errorf("install: entry[%d] %q: %w", index, entry.Name, err))
 		}
 		if !keep {
 			// strip対象のtop-level directory自身は展開先を持たない。
@@ -136,7 +167,7 @@ func InspectEntries(req InspectRequest) *domain.Error {
 		// 完全一致の重複を拒否する。
 		key := foldKey(stripped)
 		if _, taken := entrySeen[key]; taken {
-			return archiveUnsafe(fmt.Errorf(
+			return InspectResult{}, archiveUnsafe(fmt.Errorf(
 				"install: entry[%d] %q が重複またはcase衝突している", index, entry.Name))
 		}
 		entrySeen[key] = struct{}{}
@@ -145,19 +176,19 @@ func InspectEntries(req InspectRequest) *domain.Error {
 		// `Bin/go.exe`と`bin/go.exe`が同じfileを指す。Linuxでも衝突させないのは、
 		// 同じarchiveを両OSで同じ構成へ展開するためである。
 		if previous, conflict := registerPrefixes(prefixSeen, stripped); conflict {
-			return archiveUnsafe(fmt.Errorf(
+			return InspectResult{}, archiveUnsafe(fmt.Errorf(
 				"install: entry[%d] %q が %q とcase衝突する", index, entry.Name, previous))
 		}
 
 		if entry.Kind == KindFile {
 			if entry.Size > ArchiveFileMaxBytes {
-				return archiveUnsafe(fmt.Errorf(
+				return InspectResult{}, archiveUnsafe(fmt.Errorf(
 					"install: entry[%d] %q の展開後sizeが上限%d byteを超える（%d byte）",
 					index, entry.Name, ArchiveFileMaxBytes, entry.Size))
 			}
 			// 加算overflowをfail closedで扱う（§21）。
 			if total > ArchiveTotalMaxBytes-entry.Size {
-				return archiveUnsafe(fmt.Errorf(
+				return InspectResult{}, archiveUnsafe(fmt.Errorf(
 					"install: 展開後の総sizeが上限%d byteを超える", ArchiveTotalMaxBytes))
 			}
 			total += entry.Size
@@ -167,45 +198,27 @@ func InspectEntries(req InspectRequest) *domain.Error {
 			}
 
 			if err := checkRatio(entry.Size, entry.CompressedSize); err != nil {
-				return archiveUnsafe(fmt.Errorf(
+				return InspectResult{}, archiveUnsafe(fmt.Errorf(
 					"install: entry[%d] %q: %w", index, entry.Name, err))
 			}
 		}
-		paths = append(paths, stripped)
+		inspected = append(inspected, InspectedEntry{
+			Index:      index,
+			Path:       stripped,
+			Kind:       entry.Kind,
+			Size:       entry.Size,
+			Executable: entry.Executable,
+		})
 	}
 
-	if len(paths) == 0 {
-		return archiveUnsafe(errors.New("install: strip_components適用後にentryが残らない"))
+	if len(inspected) == 0 {
+		return InspectResult{}, archiveUnsafe(errors.New("install: strip_components適用後にentryが残らない"))
 	}
 	// 全体の圧縮比。entryごとに閾値内でも、合計で異常な比になるarchiveを拒否する。
 	if err := checkRatio(ratioExpanded, ratioCompressed); err != nil {
-		return archiveUnsafe(fmt.Errorf("install: archive全体の%w", err))
+		return InspectResult{}, archiveUnsafe(fmt.Errorf("install: archive全体の%w", err))
 	}
-	return nil
-}
-
-// InspectEntriesResult は検査を通ったpathを返す。
-//
-// [InspectEntries]と同じ検査を行い、成功時に展開対象を返す。検査だけを行いたい
-// 呼出しと、展開へ進む呼出しの両方があるため分けている。
-func InspectEntriesResult(req InspectRequest) (InspectResult, *domain.Error) {
-	if err := InspectEntries(req); err != nil {
-		return InspectResult{}, err
-	}
-	// 検査を通ったので再走査は失敗しない。
-	var result InspectResult
-	for _, entry := range req.Entries {
-		name, _ := checkEntry(entry, req.Host.OS() == domain.OSWindows)
-		stripped, keep, _ := stripComponents(name, req.StripComponents)
-		if !keep {
-			continue
-		}
-		result.Paths = append(result.Paths, stripped)
-		if entry.Kind == KindFile {
-			result.TotalBytes += entry.Size
-		}
-	}
-	return result, nil
+	return InspectResult{Entries: inspected, TotalBytes: total}, nil
 }
 
 // checkEntry は1 entryのnameと種別を検査し、正規化したnameを返す。
@@ -330,12 +343,16 @@ func checkRatio(expanded, compressed int64) error {
 }
 
 // archiveUnsafe はarchive安全検査の失敗をtyped errorにする。
+//
+// roleは`payload`とする。docs/04-storage-and-data.md §17.2は`staging`を
+// 「payloadとして扱う展開後内容を**除く**」と定め、archive entryが行き着く先は
+// staging内であってもpayloadである。同§は「最も具体的なroleを使う」と定める。
 func archiveUnsafe(cause error) *domain.Error {
 	return &domain.Error{
 		Code: domain.CodeArchiveUnsafe,
 		// 同じarchiveを展開し直しても同じ結果になる（docs/02-architecture.md §14）。
 		Retryable: false,
-		PathRole:  domain.RoleStaging,
+		PathRole:  domain.RolePayload,
 		Cause:     cause,
 	}
 }

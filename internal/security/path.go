@@ -44,8 +44,10 @@ type JoinRequest struct {
 // 同§は「すべての書込み前にlogical rootからabsolute pathを組み立て、canonical
 // parent containmentを検査する。absolute component、`..`、空component、予約名、
 // ADS、NUL、separator混在、symlink/reparse point経由の逸脱を拒否する」と定める。
-// このうちfilesystemを触らずに判定できるものをここで拒否し、canonical parent
-// containmentとsymlink/reparse経由の逸脱は[VerifyContainment]が扱う。
+// このうちfilesystemを触らずに判定できるものをここで拒否する。canonical parent
+// containmentとsymlink/reparse経由の逸脱は、呼出し側がpathをrealpathへ解決して
+// から[IsContained]で判定する。解決はfilesystemを触るため、純計算のこのpackage
+// では行わない（docs/02-architecture.md §4）。
 //
 // 文字列連結ではなくcomponent列を受け取るのは、呼出し側が`filepath.Join`で先に
 // 潰した`..`を検出できなくするためである。componentのまま受ければ、`..`が
@@ -150,14 +152,15 @@ func PathSeparator(host domain.Platform) string {
 // 判定はcomponent単位で行う。文字列prefixで比べると`/data/gdtvm`に対して
 // `/data/gdtvm-evil`が配下と誤判定される。
 func IsContained(root, child string, host domain.Platform) bool {
-	separator := PathSeparator(host)
-	rootParts := splitPath(root, separator)
-	childParts := splitPath(child, separator)
+	windows := host.OS() == "windows"
+	rootParts := splitPath(root, windows)
+	childParts := splitPath(child, windows)
 
-	if len(childParts) < len(rootParts) {
+	// component 0件のrootは何にでも一致してしまう。空文字列やfilesystem rootを
+	// 封じ込め先として受けるとfail openになるため、判定そのものを拒否する。
+	if len(rootParts) == 0 || len(childParts) < len(rootParts) {
 		return false
 	}
-	windows := host.OS() == "windows"
 	for i, part := range rootParts {
 		if !sameComponent(part, childParts[i], windows) {
 			return false
@@ -166,12 +169,21 @@ func IsContained(root, child string, host domain.Platform) bool {
 	return true
 }
 
-func splitPath(path, separator string) []string {
-	trimmed := strings.Trim(path, separator)
-	if trimmed == "" {
-		return nil
+// splitPath はpathをcomponent列へ分ける。
+//
+// Windowsでは`/`も区切りとして受け付ける。OS自身が両方を区切りとして扱い、
+// `D:\gdtvm`と`D:/gdtvm/bin`は同じ位置を指す。片方だけで分けると、同じ位置を
+// 指すpathを別物と判定してcontainment検査が誤って失敗する。
+//
+// 連続した区切りは1つとして扱う。`a//b`と`a/b`は同じ位置を指すためである。
+func splitPath(p string, windows bool) []string {
+	separators := "/"
+	if windows {
+		separators = `/\`
 	}
-	return strings.Split(trimmed, separator)
+	return strings.FieldsFunc(p, func(r rune) bool {
+		return strings.ContainsRune(separators, r)
+	})
 }
 
 // sameComponent はplatformのcase規則でcomponentを比較する。

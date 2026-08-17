@@ -12,16 +12,16 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 |---|---|
 | 全体状態 | `進行中` |
 | 現在フェーズ | `P5` |
-| 実行中タスクID | `P5-03（2分割の1/2）` |
+| 実行中タスクID | `P5-03（2分割の2/2）` |
 | 最後に完了したタスクID | `P5-02（download pipeline、2分割すべて完了）` |
-| 次に開始するタスクID | `P5-03の2本目（実展開）` |
+| 次に開始するタスクID | `P5-04（ProcessRunner）` |
 | CI状態 | `PR作成前。ローカルで全検証成功` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-08-17T13:22:41+09:00` |
+| 最終更新日時 | `2026-08-17T15:48:10+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch | `claude/feature-p5-03-archive-extract` |
+| 作業branch | `claude/feature-p5-03-archive-extract-apply` |
 | 使用環境 | `Linux container` |
-| 最新の証跡 | [P5-03 決定記録（1/2）](reviews/P5-03-archive-inspect.md)、`internal/install` coverage 91.8% |
+| 最新の証跡 | [P5-03 決定記録（2/2）](reviews/P5-03-archive-extract.md)、`internal/install` coverage 92.0% |
 
 全体状態は`未着手|進行中|停止中|blocked|完了`。実行中taskは同時に1件だけ。値なしは`なし`と記す。
 

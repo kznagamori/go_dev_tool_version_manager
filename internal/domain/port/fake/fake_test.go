@@ -198,6 +198,49 @@ func TestFileSystemOpenReturnsContent(t *testing.T) {
 	}
 }
 
+func TestFileSystemOpenAtReadsAtOffset(t *testing.T) {
+	fsys := NewFileSystem(nil)
+	fsys.AddFile("/a", []byte("0123456789"), 0o644)
+
+	handle, err := fsys.OpenAt("/a")
+	if err != nil {
+		t.Fatalf("OpenAt: %v", err)
+	}
+	defer func() { _ = handle.Close() }()
+	buffer := make([]byte, 3)
+	if _, err := handle.ReadAt(buffer, 6); err != nil {
+		t.Fatalf("ReadAt: %v", err)
+	}
+	if string(buffer) != "678" {
+		t.Fatalf("ReadAt内容 = %q, want %q", buffer, "678")
+	}
+	if _, err := fsys.OpenAt("/missing"); !errors.Is(err, ErrNotExist) {
+		t.Fatalf("OpenAt(missing) = %v, want ErrNotExist", err)
+	}
+}
+
+// TestFileSystemMkdirAllKeepsExistingEntry はMkdirAllが既存entryを置き換えない
+// ことを固定する。
+//
+// 実OSのMkdirAllはfileやsymlinkのある位置をdirectoryへ作り替えない。fake側で
+// 置き換えると、docs/10-security.md §5のsymlink race——検査した実体と書込み先が
+// 違う状態——をfakeが消してしまい、その検査のtestが素通りする。
+func TestFileSystemMkdirAllKeepsExistingEntry(t *testing.T) {
+	fsys := NewFileSystem(nil)
+	fsys.AddLink("/payload/bin", port.LinkSymlink, "/elsewhere")
+
+	if err := fsys.MkdirAll("/payload/bin", 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	info, err := fsys.Stat("/payload/bin")
+	if err != nil {
+		t.Fatalf("Stat: %v", err)
+	}
+	if !info.IsSymlink {
+		t.Error("MkdirAllがsymlinkをdirectoryへ置き換えた")
+	}
+}
+
 func TestFileSystemRenameMovesTree(t *testing.T) {
 	fsys := NewFileSystem(nil)
 	fsys.AddFile("/staging/bin/tool", []byte("x"), 0o755)
