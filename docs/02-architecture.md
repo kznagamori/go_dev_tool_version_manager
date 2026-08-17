@@ -84,7 +84,7 @@ constructorは依存の存在とbuild metadata形式だけを検査し、filesys
 
 | ポート | 操作 |
 |---|---|
-| FileSystem | stat、read、atomic write、mkdir、rename、remove、walk、permission、realpath |
+| FileSystem | stat、read、atomic write、stream write、mkdir、rename、remove、walk、permission、realpath |
 | LinkManager | junction/symlink/hardlink作成、リンク種別取得、安全な除去、能力検査 |
 | Registry | Windows HKCU valueのraw/type読書き、再読、通知 |
 | HTTPClient | GET、HEAD、redirect、proxy、TLS、response limit |

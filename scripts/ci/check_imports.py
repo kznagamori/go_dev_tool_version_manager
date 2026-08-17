@@ -71,7 +71,21 @@ ALLOWED: dict[str, set[str]] = {
     "internal/domain/port": {"internal/domain"},
     # fakeは対象interfaceを実装するため、portとそのsignatureが使うdomainをimportできる。
     "internal/domain/port/fake": {"internal/domain/port", "internal/domain"},
-    "internal/install": set(),
+    # 02-architecture.md §2「ダウンロード、検証、安全展開、probe、receipt、
+    # transaction」。downloadがHTTPClient/FileSystem portとdomainのdigest/path/
+    # error値を扱い、05-configuration.md §3.5のstream処理へP5-02(1/2)の
+    # StreamHasherと10-security.md §9.2のURL maskをinternal/securityから使う。
+    # §10のprogress通知にinternal/progressのPhase/Unitを使う（P5-02）。
+    # fakeは`_test.go`からの注入だけに使う。partial破棄とoffline判定を
+    # 決定的にtestするためで、production pathからのfake importは
+    # 11-quality-and-ci.md §7.1に従いcheck_policy.pyが別途禁止する。
+    "internal/install": {
+        "internal/domain",
+        "internal/domain/port",
+        "internal/domain/port/fake",
+        "internal/progress",
+        "internal/security",
+    },
     "internal/message": set(),
     # 02-architecture.md §1がInfrastructure adapterへHTTPを含め、§4.1の
     # HTTPClientが「GET、HEAD、redirect、proxy、TLS、response limit」を担う。
