@@ -1,8 +1,11 @@
 package port
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
-// Clock は現在時刻と単調時間を供給する（docs/02-architecture.md §4.1）。
+// Clock は現在時刻、単調時間、待機を供給する（docs/02-architecture.md §4.1）。
 //
 // 暗黙の時刻取得を禁止するために存在する。receiptのinstalled_at、catalog cacheの
 // 有効期限、timeout判定がwall clockへ直接依存すると、testがhostの時計に左右され
@@ -18,6 +21,16 @@ type Clock interface {
 
 	// Monotonic は現在の単調時間点を返す。
 	Monotonic() Monotonic
+
+	// Sleep はdだけ待機する。cancelされた場合はcontextのerrorを返す。
+	//
+	// 待機を時刻取得と同じportへ置くのは、docs/10-security.md §10のretryが要求
+	// するbackoff（docs/04-storage-and-data.md §21で1/2/4秒に固定）を決定的に
+	// testするためである。実装が`time.Sleep`を直接呼ぶと、backoffのtestが実時間
+	// で7秒かかり、回数と間隔を検査できない。
+	//
+	// dが0以下の場合は待機せず、cancel済みcontextのerrorだけを返す。
+	Sleep(ctx context.Context, d time.Duration) error
 }
 
 // Monotonic は単調増加する時間点である。wall clockとは別の型にして、
