@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -83,7 +84,7 @@ func (h *HTTPClient) do(ctx context.Context, op string, req port.HTTPRequest, wi
 		stub, ok := h.stubs[current]
 		h.mu.Unlock()
 		if !ok {
-			return nil, errors.New("fake: no stub registered for " + current)
+			return nil, errors.New("fake: no stub registered for " + safeURL(current))
 		}
 		if stub.RedirectTo == "" {
 			if int64(len(stub.Body)) > req.MaxBodyBytes {
@@ -115,4 +116,21 @@ func (h *HTTPClient) Get(ctx context.Context, req port.HTTPRequest) (*port.HTTPR
 // Head はmetadataだけを取得する。
 func (h *HTTPClient) Head(ctx context.Context, req port.HTTPRequest) (*port.HTTPResponse, error) {
 	return h.do(ctx, OpHTTPHead, req, false)
+}
+
+// safeURL はerror messageへ載せるURLからuserinfoとqueryを落とす。
+//
+// fakeのerrorもtest logやtest failureの出力へ出る。生URLを載せると、
+// credential付きURLを扱うtestがfake経由でsecretを漏らす。maskの正本は
+// internal/securityだが、fakeはdocs/02-architecture.md §1の依存方向により
+// internal/domain配下しかimportできないため、ここでは落とすだけにする。
+func safeURL(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return "<unparsable url>"
+	}
+	parsed.User = nil
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	return parsed.String()
 }
