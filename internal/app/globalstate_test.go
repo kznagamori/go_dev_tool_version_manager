@@ -128,6 +128,7 @@ var allowedGlobals = map[string]string{
 	"internal/progress.phases":                     "docs/02-architecture.md §10のphase 10値。同上",
 	"internal/progress.units":                      "同§10のunit 4値。同上",
 	"internal/progress.resultWarningCodes":         "docs/04-storage-and-data.md §16.2のResultWarningCode 5値。同上",
+	"internal/install.errArchiveTooLarge":          "展開中の上限超過を表すsentinel error。errors.Isで上限超過とfilesystem失敗を区別するため値として持つ。初期化後に再代入しない",
 	"internal/security.windowsReservedNames":       "docs/04-storage-and-data.md §6のWindows予約device名。初期化後に変更しない対応表",
 	"internal/security.ErrSizeLimit":               "stream上限超過を表すsentinel error。errors.Isで上限超過と読取り失敗を区別するため値として公開する。初期化後に再代入しない",
 	"internal/security.secretEnvSuffixes":          "docs/10-security.md §9.2の除去対象環境変数名pattern。初期化後に変更しないslice",

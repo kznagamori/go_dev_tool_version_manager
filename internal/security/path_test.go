@@ -204,6 +204,14 @@ func TestIsContainedComparesComponents(t *testing.T) {
 		{"windows case違いは同一", windowsHost(t), `D:\gdtvm`, `d:\GDTVM\tools`, true},
 		{"windows prefixが同じ別directory", windowsHost(t), `D:\gdtvm`, `D:\gdtvm-evil\x`, false},
 		{"windows別drive", windowsHost(t), `D:\gdtvm`, `C:\gdtvm\tools`, false},
+		// Windowsは`/`も区切りとして扱う。片方だけで分けると、同じ位置を指す
+		// pathを別物と判定してcontainment検査が誤って失敗する。
+		{"windows区切り混在", windowsHost(t), `D:\gdtvm`, `D:/gdtvm/tools`, true},
+		{"windows区切り混在（root側）", windowsHost(t), `D:/gdtvm`, `D:\gdtvm\tools`, true},
+		{"連続区切りは同じ位置", linuxHost(t), "/data/gdtvm", "/data//gdtvm/tools", true},
+		// component 0件のrootは何にでも一致する。fail openにしない。
+		{"rootが空", linuxHost(t), "", "/data/gdtvm", false},
+		{"rootがfilesystem root", linuxHost(t), "/", "/etc/passwd", false},
 	}
 
 	for _, test := range tests {

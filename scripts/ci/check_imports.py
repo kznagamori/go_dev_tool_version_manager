@@ -79,7 +79,11 @@ ALLOWED: dict[str, set[str]] = {
     # fakeは`_test.go`からの注入だけに使う。partial破棄とoffline判定を
     # 決定的にtestするためで、production pathからのfake importは
     # 11-quality-and-ci.md §7.1に従いcheck_policy.pyが別途禁止する。
+    # 08-install-runtime.md §6の安全展開が、06-tool-definition.md §7.1の
+    # archive形式（`zip|tar.gz`）と`strip_components`を入力に取る。形式enumを
+    # installへ複製すると、値を変えたときに片方だけが古いままになる（P5-03）。
     "internal/install": {
+        "internal/definition",
         "internal/domain",
         "internal/domain/port",
         "internal/domain/port/fake",

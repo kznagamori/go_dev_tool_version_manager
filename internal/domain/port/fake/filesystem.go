@@ -18,6 +18,7 @@ import (
 const (
 	OpStat        = "fs.Stat"
 	OpOpen        = "fs.Open"
+	OpOpenAt      = "fs.OpenAt"
 	OpReadFile    = "fs.ReadFile"
 	OpAtomicWrite = "fs.AtomicWrite"
 	OpWriteStream = "fs.WriteStream"
@@ -117,12 +118,17 @@ func (f *FileSystem) AddLink(p string, kind port.LinkKind, target string) {
 	}
 }
 
+// mkdirAllLocked は親を含めてdirectoryを作る。
+//
+// **既存のentryを置き換えない。** 実OSのMkdirAllはfileやsymlinkがある位置を
+// directoryへ作り替えないため、置き換えると「検査した実体と書込み先が違う」
+// 状態そのものをfakeが消してしまい、symlink raceのtestが素通りする。
 func (f *FileSystem) mkdirAllLocked(p string, perm fs.FileMode) {
 	p = clean(p)
 	if p == "/" {
 		return
 	}
-	if e, ok := f.entries[p]; ok && e.isDir {
+	if _, ok := f.entries[p]; ok {
 		return
 	}
 	f.mkdirAllLocked(path.Dir(p), perm)
@@ -168,6 +174,28 @@ func (f *FileSystem) Open(p string) (io.ReadCloser, error) {
 	}
 	return io.NopCloser(bytes.NewReader(append([]byte(nil), e.data...))), nil
 }
+
+// OpenAt はrandom access読取り用に開く。
+func (f *FileSystem) OpenAt(p string) (port.ReaderAtCloser, error) {
+	if err := f.injector.Check(OpOpenAt); err != nil {
+		return nil, err
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.entries[clean(p)]
+	if !ok || e.isDir {
+		return nil, ErrNotExist
+	}
+	return readerAtCloser{bytes.NewReader(append([]byte(nil), e.data...))}, nil
+}
+
+// readerAtCloser はbytes.ReaderへCloseを足す。
+//
+// 実装がhandleを閉じ忘れてもtestが緑になる状態を避けるため、Closeを持つ型を
+// 返してport.ReaderAtCloserを満たす。memory上のfakeでは解放するものが無い。
+type readerAtCloser struct{ *bytes.Reader }
+
+func (readerAtCloser) Close() error { return nil }
 
 // ReadFile はfile全体を読む。limitを超える場合はerrorを返す。
 func (f *FileSystem) ReadFile(p string, limit int64) ([]byte, error) {

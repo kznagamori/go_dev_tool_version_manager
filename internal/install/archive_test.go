@@ -37,12 +37,19 @@ func TestInspectEntriesAcceptsStandardLayout(t *testing.T) {
 				t.Fatalf("InspectEntriesResult = %v", err.Cause)
 			}
 			want := []string{"bin", "bin/go", "bin/gofmt"}
-			if len(result.Paths) != len(want) {
-				t.Fatalf("Paths = %v, want %v", result.Paths, want)
+			// 入力の`go/`はstripで消えるため、Indexは1から始まり連番にならない。
+			wantIndex := []int{1, 2, 3}
+			if len(result.Entries) != len(want) {
+				t.Fatalf("Entries = %v, want %v", result.Entries, want)
 			}
 			for index := range want {
-				if result.Paths[index] != want[index] {
-					t.Errorf("Paths[%d] = %q, want %q", index, result.Paths[index], want[index])
+				if result.Entries[index].Path != want[index] {
+					t.Errorf("Entries[%d].Path = %q, want %q",
+						index, result.Entries[index].Path, want[index])
+				}
+				if result.Entries[index].Index != wantIndex[index] {
+					t.Errorf("Entries[%d].Index = %d, want %d",
+						index, result.Entries[index].Index, wantIndex[index])
 				}
 			}
 			if result.TotalBytes != 1800 {
@@ -68,8 +75,9 @@ func TestInspectEntriesStripComponentsZero(t *testing.T) {
 	}
 	want := []string{"dotnet", "sdk", "sdk/8.0.400"}
 	for index := range want {
-		if result.Paths[index] != want[index] {
-			t.Errorf("Paths[%d] = %q, want %q", index, result.Paths[index], want[index])
+		if result.Entries[index].Path != want[index] {
+			t.Errorf("Entries[%d].Path = %q, want %q",
+				index, result.Entries[index].Path, want[index])
 		}
 	}
 }

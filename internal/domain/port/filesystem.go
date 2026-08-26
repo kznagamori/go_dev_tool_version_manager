@@ -8,8 +8,9 @@ import (
 
 // FileSystem はfile操作を抽象化する（docs/02-architecture.md §4.1）。
 //
-// 操作は stat、read、atomic write、stream write、mkdir、rename、remove、walk、
-// permission、realpath である。docs/10-security.md が要求する「中断しても壊れた
+// 操作は stat、read、random access read、atomic write、stream write、mkdir、
+// rename、remove、walk、permission、realpath である。
+// docs/10-security.md が要求する「中断しても壊れた
 // 状態を残さない」を型で強制するため、**書込みhandle（io.WriteCloser）を呼出し側へ
 // 渡さない**。Close忘れやrename忘れで壊れたfileが残る経路を、そもそも作らせない
 // ためである。
@@ -29,6 +30,16 @@ type FileSystem interface {
 
 	// Open は読取り用に開く。呼出側がCloseする。
 	Open(path string) (io.ReadCloser, error)
+
+	// OpenAt はrandom access読取り用に開く。呼出側がCloseする。sizeはStatで得る。
+	//
+	// zipのcentral directoryはfile末尾にあり、entry dataは任意のoffsetから
+	// 始まる。`archive/zip`が[io.ReaderAt]を要求するため、[FileSystem.Open]の
+	// sequential readでは読めない。
+	//
+	// Openと分けるのは、random accessを要求するのがzipだけであり、読取り一般へ
+	// ReadAtを義務づける理由が無いためである。
+	OpenAt(path string) (ReaderAtCloser, error)
 
 	// ReadFile はfile全体を読む。上限を超える場合はerrorを返す。
 	// 上限を引数で受けるのは、schema fileとarchiveで許す大きさが異なるためである。
@@ -75,6 +86,15 @@ type FileSystem interface {
 	// RealPath はsymlinkとreparse pointを解決した絶対pathを返す。
 	// path containment検査は解決後のpathで行う。
 	RealPath(path string) (string, error)
+}
+
+// ReaderAtCloser はrandom accessで読めるfile handleである。
+//
+// [FileSystem.OpenAt]が返す。読取り専用にするのは、書込みhandleを呼出し側へ
+// 渡さないというFileSystemの設計をrandom access側でも崩さないためである。
+type ReaderAtCloser interface {
+	io.ReaderAt
+	io.Closer
 }
 
 // WalkFunc はWalkがentryごとに呼ぶ。errorを返すとWalkは中断してそれを返す。
