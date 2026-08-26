@@ -190,3 +190,116 @@ func TestMaskParameters(t *testing.T) {
 		t.Error("nilのMaskParametersがnilでない")
 	}
 }
+
+// TestOutputMaskerRemovesSecretEnvValues は環境から来たsecret値の除去を固定する。
+//
+// docs/10-security.md §7「install/probeでcaptureするstdout/stderrを…secretを
+// maskする」。§9.2のsecret名を持つentryの値を、出現位置によらず落とす。
+func TestOutputMaskerRemovesSecretEnvValues(t *testing.T) {
+	env := map[string]string{
+		"GITHUB_TOKEN": "ghp_secret",
+		"API_KEY":      "k",
+		"MY_PASSWORD":  "pw",
+		"MY_SECRET":    "sv",
+		"PATH":         "/usr/bin",
+		"EMPTY_TOKEN":  "",
+	}
+	masker := NewOutputMasker(nil, env)
+	got := masker.Mask("token=ghp_secret key=k pw=pw sv=sv path=/usr/bin")
+
+	for _, secret := range []string{"ghp_secret", "pw", "sv"} {
+		if strings.Contains(got, secret) {
+			t.Errorf("secret %q が残った: %q", secret, got)
+		}
+	}
+	// secretでない値は残す。落とすと診断できなくなる。
+	if !strings.Contains(got, "/usr/bin") {
+		t.Errorf("secretでない値まで落とした: %q", got)
+	}
+}
+
+// TestOutputMaskerAppliesLongestSecretFirst は部分文字列関係のsecretを固定する。
+//
+// 短い値を先に置換すると、長い値の置換規則が効かなくなり残りが露出する。
+func TestOutputMaskerAppliesLongestSecretFirst(t *testing.T) {
+	masker := NewOutputMasker(nil, map[string]string{
+		"SHORT_TOKEN": "abc",
+		"LONG_TOKEN":  "abcdef",
+	})
+	if got := masker.Mask("value=abcdef"); strings.Contains(got, "def") {
+		t.Errorf("長いsecretの残りが露出した: %q", got)
+	}
+}
+
+// TestOutputMaskerMasksURLsInText は自由文字列中のURLの除去を固定する。
+func TestOutputMaskerMasksURLsInText(t *testing.T) {
+	masker := NewOutputMasker(nil, nil)
+	tests := []struct {
+		name    string
+		text    string
+		absent  []string
+		present []string
+	}{
+		{
+			name:    "userinfo",
+			text:    "fetching https://alice:pw@example.invalid/a now",
+			absent:  []string{"alice:pw@"},
+			present: []string{"example.invalid", "fetching", "now"},
+		},
+		{
+			name:    "query値",
+			text:    "GET http://example.invalid/x?access_token=abc123&page=2",
+			absent:  []string{"abc123"},
+			present: []string{"access_token", "page"},
+		},
+		{
+			name:    "文末の句読点はURLに含めない",
+			text:    "詳細は https://example.invalid/a?t=zzz を参照。",
+			absent:  []string{"zzz"},
+			present: []string{"を参照。"},
+		},
+		{
+			name:    "URLでない文字列",
+			text:    "no url here at all",
+			present: []string{"no url here at all"},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := masker.Mask(test.text)
+			for _, absent := range test.absent {
+				if strings.Contains(got, absent) {
+					t.Errorf("%q が残った: %q", absent, got)
+				}
+			}
+			for _, present := range test.present {
+				if !strings.Contains(got, present) {
+					t.Errorf("%q が失われた: %q", present, got)
+				}
+			}
+		})
+	}
+}
+
+// TestOutputMaskerAppliesPathMasker はpath maskerを併用することを固定する。
+func TestOutputMaskerAppliesPathMasker(t *testing.T) {
+	masker := NewOutputMasker(NewPathMasker("/home/alice", "alice", "devbox"), nil)
+	got := masker.Mask("cwd=/home/alice/work host=devbox")
+	if strings.Contains(got, "/home/alice") || strings.Contains(got, "devbox") {
+		t.Errorf("path/hostが残った: %q", got)
+	}
+	if !strings.Contains(got, HomePlaceholder) || !strings.Contains(got, HostPlaceholder) {
+		t.Errorf("placeholderが無い: %q", got)
+	}
+}
+
+// TestOutputMaskerHandlesEmptyInput は空入力とnil receiverを固定する。
+func TestOutputMaskerHandlesEmptyInput(t *testing.T) {
+	var nilMasker *OutputMasker
+	if got := nilMasker.Mask("text"); got != "text" {
+		t.Errorf("nil masker = %q, want %q", got, "text")
+	}
+	if got := NewOutputMasker(nil, nil).Mask(""); got != "" {
+		t.Errorf("空文字列 = %q", got)
+	}
+}
