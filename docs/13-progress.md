@@ -12,14 +12,14 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 |---|---|
 | 全体状態 | `進行中` |
 | 現在フェーズ | `P5` |
-| 実行中タスクID | `なし` |
+| 実行中タスクID | `P5-04（2分割の1/2）` |
 | 最後に完了したタスクID | `P5-03（安全展開、2分割すべて完了）` |
-| 次に開始するタスクID | `P5-04（ProcessRunner）` |
-| CI状態 | `PR #106 で12 check成功` |
+| 次に開始するタスクID | `P5-04の2本目（記録wrapper）` |
+| CI状態 | `PR作成前` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-08-17T16:24:33+09:00` |
+| 最終更新日時 | `2026-08-17T17:02:18+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch | `claude/feature-p5-03-archive-extract-apply` |
+| 作業branch | `claude/feature-p5-04-process-runner` |
 | 使用環境 | `Linux container` |
 | 最新の証跡 | [P5-03 決定記録（2/2）](reviews/P5-03-archive-extract.md)、`internal/install` coverage 92.0% |
 
@@ -183,7 +183,7 @@ G-TOOLS達成後は、G-E2E/G-DONEの完了を待たずにDF-01（§17）のド�
 - [x] **P5-01** Go標準proxy/OS trust、HTTPS、timeout/retry/redirect/body上限/secret maskを実装・testする。依存: P1-03,P2-02。証跡: [P5-01 決定記録](reviews/P5-01-http-client.md)と本書§3.3のrecord
 - [x] **P5-02** `.part` streamで内部/cache SHA-256とprovider指定SHA-256/SHA-512を1 pass計算し、progress、partial破棄、cache identity、offline判定を実装・testする。対象がdigest計算基盤とdownload pipeline（`.part` write、progress、partial破棄、cache identity、offline判定）に及び規模が大きいため、**2 PRへ分割**する（task IDはP5-02のまま、本項目は2本目のmerge後に`[x]`とする）。(1) `internal/security`のstreaming multi-algorithm digestと[02-architecture.md](02-architecture.md)§4.1・§7の同期修正＝`claude/feature-p5-02-download-stream`、(2) `.part` write／progress／partial破棄／cache identity／offline判定＝`claude/feature-p5-02-download-pipeline`。依存: P5-01。証跡: [P5-02 決定記録（1/2）](reviews/P5-02-download-stream.md)、[（2/2）](reviews/P5-02-download-pipeline.md)と本書§3.3の2 record
 - [x] **P5-03** zip/tar.gzのentry事前検査（両OSのcollision/traversal/link/bomb規則）、same-volume staging、permission正規化、atomic rename、cleanupをfailure injection testする。対象が[10-security.md](10-security.md)§5の全entry検査と実展開（staging・permission・rename・cleanup）に及び規模が大きいため、**2 PRへ分割**する（task IDはP5-03のまま、本項目は2本目のmerge後に`[x]`とする）。(1) entry事前検査＋`golang.org/x/text`採用＋[02-architecture.md](02-architecture.md)§4.1・§7のport一般則＝`claude/feature-p5-03-archive-extract`、(2) zip/tar.gz読取り、実展開、展開中の実bytes打ち切り、same-volume staging、permission正規化、atomic rename、cleanupのfailure injection test＝`claude/feature-p5-03-archive-extract-apply`。依存: P1-03,P2-05。証跡: [P5-03 決定記録（1/2）](reviews/P5-03-archive-inspect.md)・[（2/2）](reviews/P5-03-archive-extract.md)、PR #103／#106 で各12 check成功
-- [ ] **P5-04** ProcessRunner（両OS）のabsolute target/argv/env/cwd/stdio/timeout/cancel/tree終了/output上限と、Plan外probe/write/download拒否および書込み範囲記録wrapperを実装・testする。依存: P5-01,P2-04。証跡: 未記録
+- [-] **P5-04** ProcessRunner（両OS）のabsolute target/argv/env/cwd/stdio/timeout/cancel/tree終了/output上限と、Plan外probe/write/download拒否および書込み範囲記録wrapperを実装・testする。対象が[10-security.md](10-security.md)§7のprocess実行規則そのものと[11-quality-and-ci.md](11-quality-and-ci.md)§7.2の記録wrapperという別層に及び規模が大きいため、**2 PRへ分割**する（task IDはP5-04のまま、本項目は2本目のmerge後に`[x]`とする）。(1) production ProcessRunner（両OSのtree終了、timeout/cancel、output上限とmask）＝`claude/feature-p5-04-process-runner`、(2) §7.2の書込み範囲記録wrapperとPlan外probe/write/download拒否＝`claude/feature-p5-04-record-wrapper`。依存: P5-01,P2-04。証跡: 未記録
 
 ## 12. P6 catalog・install・selection・runtime
 
