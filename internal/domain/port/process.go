@@ -18,6 +18,11 @@ type ProcessSpec struct {
 	// Dir はworking directoryである。空は拒否する。暗黙のcwdを使わないためである。
 	Dir string
 	// Env は完全な環境である。nilは空環境を意味し、親環境の暗黙継承はしない。
+	//
+	// 唯一の例外として、docs/10-security.md §7が定める「OSが起動に要求する最小
+	// 変数」だけをprocess adapterが補う。schema 1ではWindowsの`SystemRoot`だけで、
+	// Linuxでは何も補わない。同名を宣言していればその値を優先する。集合が仕様で
+	// 固定されているため、Planと書込み範囲記録はこの差分を既知として扱える。
 	Env map[string]string
 	// Stdin はnil可。
 	Stdin io.Reader

@@ -70,6 +70,7 @@ install engineが起動できる外部processはstaging payloadのdefinition-dec
 
 - executableとargvを分離し、shellへ再結合しない。
 - install/probeはsanitized allowlist環境、runtimeは親環境＋receipt profileを使う。
+- sanitized環境へは、**OSが起動に要求する最小変数だけ**をprocess adapterが補う。補う変数はWindowsの`SystemRoot`だけとし、Linuxでは何も補わない。呼出し側が同名（Windowsはcase非依存）を宣言していればその値を優先する。これ以外の変数を親環境から引き継がない。この集合は固定であり、Planと[11-quality-and-ci.md](11-quality-and-ci.md)§7.2の記録照合はこの差分を既知として扱う。
 - cwd、stdin/stdout/stderr、timeout、cancel、process tree終了を明示する。
 - executable containmentと完全versionを実行直前に再検査する。
 - install/probeでcaptureするstdout/stderrを組込み上限で打ち切り、secretをmaskする。shim経由の直接stdio透過はgdtvmが内容を保存・maskせず、利用者processへそのまま渡す。

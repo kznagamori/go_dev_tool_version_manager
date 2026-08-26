@@ -2,6 +2,7 @@ package security
 
 import (
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -95,6 +96,73 @@ func MaskURL(raw string) string {
 	}
 	parsed.Fragment = ""
 	return parsed.String()
+}
+
+// urlInText は自由文字列中のURLらしき部分を拾う。
+//
+// schemeは英字始まりで英数字と`+-.`だけ（RFC 3986）。以降は空白と、URLの
+// 区切りとして使われない引用符・山括弧・backslashで止める。
+var urlInText = regexp.MustCompile(`[a-zA-Z][a-zA-Z0-9+.\-]*://[^\s"'<>\\` + "`" + `]+`)
+
+// urlTrailing はURLの直後に付きやすい句読点である。
+//
+// 「詳細は https://example.com/a?token=x を参照。」のような文でURLの一部として
+// 取り込まないために落とす。落としすぎてもmask対象は減らない——句読点はcredential
+// を含まないためである。
+const urlTrailing = `.,;:!?)]}`
+
+// OutputMasker は外部processが出力した自由文字列からsecretを除去する。
+//
+// docs/10-security.md §7「install/probeでcaptureするstdout/stderrを組込み上限で
+// 打ち切り、secretをmaskする」。自由文字列が対象のため[PathMasker]だけでは足りず、
+// 次の3つを順に適用する。
+//
+//  1. 渡した環境のうちsecret名（§9.2の`*_TOKEN`等）を持つentryの**値**
+//  2. 文字列中のURLのuserinfoとquery値（[MaskURL]）
+//  3. home/user名/hostname（[PathMasker]）
+//
+// 1を最初に行うのは、URLやpathの一部として現れたsecret値も落とすためである。
+type OutputMasker struct {
+	paths *PathMasker
+	// secrets は完全一致で除去する値である。長い順に適用する。
+	secrets []string
+}
+
+// NewOutputMasker はprocessへ渡した環境からmaskerを作る。
+//
+// envはそのprocessへ渡した完全な環境である。secret名を持つentryの値だけを
+// 除去対象にする。**値の長さで下限を設けない。** 短い値を見逃さないためであり、
+// 出力が読みにくくなる代わりに漏えいしない側へ倒す。sanitized allowlist環境
+// （§7）にsecret名のentryが入っていること自体が異常であり、通常経路では
+// この置換は働かない。
+func NewOutputMasker(paths *PathMasker, env map[string]string) *OutputMasker {
+	masker := &OutputMasker{paths: paths}
+	for name, value := range env {
+		if value != "" && IsSecretEnvName(name) {
+			masker.secrets = append(masker.secrets, value)
+		}
+	}
+	// 長い値から先に置換する。短い値が長い値の部分文字列だと、短い方を先に
+	// 適用したときに長い方の置換規則が効かなくなる。
+	sort.SliceStable(masker.secrets, func(i, j int) bool {
+		return len(masker.secrets[i]) > len(masker.secrets[j])
+	})
+	return masker
+}
+
+// Mask は文字列からsecretを除去する。
+func (m *OutputMasker) Mask(text string) string {
+	if m == nil || text == "" {
+		return text
+	}
+	for _, secret := range m.secrets {
+		text = strings.ReplaceAll(text, secret, Redacted)
+	}
+	text = urlInText.ReplaceAllStringFunc(text, func(match string) string {
+		trimmed := strings.TrimRight(match, urlTrailing)
+		return MaskURL(trimmed) + match[len(trimmed):]
+	})
+	return m.paths.Mask(text)
 }
 
 // PathMasker は個人を識別しうるpath要素を置換する（docs/10-security.md §9.2）。

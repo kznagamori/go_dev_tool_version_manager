@@ -9,13 +9,13 @@
 // CLI、TOML libraryのいずれも参照しない。production adapterとfakeは同じ
 // interfaceを実装し、[Ports] 経由でApplication Serviceへ注入する。
 //
-// docs/02-architecture.md §4.1 は14 portを定義する。本packageが持つのは
+// docs/02-architecture.md §4.1 は12 portを定義する。本packageが持つのは
 // docs/11-quality-and-ci.md §6 が決定的検査の前提とする6件（P0-03）と、
 // structured logと128 bit IDのためのLogger／Random（P1-04）、process間lockの
 // ためのLockManager（P2-05）の計9件である。
-// 残る6件（Registry、Archive、Hash、Lock、Environment、ProgressSink）のうち
-// ProgressSinkは§4が`Ports`へ入れずrequestごとに渡すと定めるため
-// internal/progressが持ち、他は最初に必要とするtaskで追加する。
+// 残る3件（Registry、Environment、ProgressSink）のうちProgressSinkは§4が
+// `Ports`へ入れずrequestごとに渡すと定めるためinternal/progressが持ち、
+// 他は最初に必要とするtaskで追加する。
 package port
 
 // Ports は外部作用の注入口である。
@@ -24,7 +24,7 @@ package port
 // 入れ替えられるようにする。Prompt/terminalはadapter責務のため持たない。
 // progress/cancelはrequestごとに渡すため、ここには置かない。
 //
-// 現在は6 portだけを持つ。field追加時はdocs/13-progress.mdの該当taskと
+// 現在は9 portだけを持つ。field追加時はdocs/13-progress.mdの該当taskと
 // docs/02-architecture.md §4.1 を同じ変更で更新する。
 type Ports struct {
 	Clock         Clock
