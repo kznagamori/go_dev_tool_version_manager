@@ -104,7 +104,7 @@ func (r *ProcessRunner) Run(ctx context.Context, spec port.ProcessSpec) (port.Pr
 
 	cmd := exec.Command(spec.Executable, spec.Args...)
 	cmd.Dir = spec.Dir
-	cmd.Env = environmentSlice(spec.Env)
+	cmd.Env = environmentSlice(withOSRequiredEnv(spec.Env))
 	cmd.Stdin = spec.Stdin
 
 	var stdout, stderr *limitedBuffer
@@ -243,7 +243,7 @@ func validateProcessSpec(spec port.ProcessSpec) error {
 
 // environmentSlice はenv mapを`NAME=VALUE`列へ変換する。
 //
-// **nilでも空でない空sliceを返す。** [exec.Cmd]はEnvがnilのとき呼出しprocessの
+// **nilでも非nilの空sliceを返す。** [exec.Cmd]はEnvがnilのとき呼出しprocessの
 // 環境を継承する。[port.ProcessSpec]は「nilは空環境を意味し、親環境の暗黙継承は
 // しない」と定めるため、nilを渡すと契約が逆になる。
 //

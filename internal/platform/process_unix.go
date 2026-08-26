@@ -58,3 +58,9 @@ func (c *processControl) signalGroup(signal syscall.Signal) error {
 
 // release は解放するhandleが無いため何もしない。
 func (c *processControl) release() {}
+
+// withOSRequiredEnv はOSが起動に要求する最小変数を補う。
+//
+// docs/10-security.md §7は補う変数を「WindowsのSystemRootだけ」と定める。
+// Linuxは何も補わない。空環境の子processもそのまま起動できるためである。
+func withOSRequiredEnv(env map[string]string) map[string]string { return env }

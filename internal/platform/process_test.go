@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"syscall"
@@ -296,22 +297,71 @@ func TestProcessRunnerDoesNotInheritEnvironment(t *testing.T) {
 		t.Fatalf("Run = %v", err)
 	}
 	got := strings.Split(result.Stdout, "\n")
-	want := []string{
-		"EXPECTED=value",
-		helperArgEnv + "=",
-		helperEnv + "=env",
+	// 渡した環境に、docs/10-security.md §7が認めた「OSが起動に要求する最小変数」
+	// だけが加わる。Linuxでは何も加わらない。
+	want := make([]string, 0, len(spec.Env)+1)
+	for name, value := range withOSRequiredEnv(spec.Env) {
+		want = append(want, name+"="+value)
 	}
 	sort.Strings(want)
+
 	if len(got) != len(want) {
 		t.Fatalf("環境 = %q, want %q", got, want)
 	}
 	for index := range want {
-		if got[index] != want[index] {
+		// Windowsは環境変数名をupper caseで返す。名前のcaseだけの差は同じ変数である。
+		if !strings.EqualFold(got[index], want[index]) {
 			t.Errorf("環境[%d] = %q, want %q", index, got[index], want[index])
 		}
 	}
 	if strings.Contains(result.Stdout, "GDTVM_MUST_NOT_LEAK") {
 		t.Error("親環境の変数が子へ漏れた")
+	}
+}
+
+// TestWithOSRequiredEnvSuppliesOnlySpecifiedVariables は補う変数がplatformごとに
+// 仕様どおりの1件だけであることを固定する。
+//
+// docs/10-security.md §7「補う変数はWindowsの`SystemRoot`だけとし、Linuxでは
+// 何も補わない」。ここが広がると、sanitized allowlist環境の意味が崩れる。
+func TestWithOSRequiredEnvSuppliesOnlySpecifiedVariables(t *testing.T) {
+	given := map[string]string{"A": "1"}
+	got := withOSRequiredEnv(given)
+
+	if got["A"] != "1" {
+		t.Errorf("宣言した値が変わった: %q", got["A"])
+	}
+	added := make([]string, 0, 1)
+	for name := range got {
+		if _, declared := given[name]; !declared {
+			added = append(added, name)
+		}
+	}
+	switch runtime.GOOS {
+	case "windows":
+		if len(added) != 1 || !strings.EqualFold(added[0], "SystemRoot") {
+			t.Errorf("補った変数 = %q, want [SystemRoot]", added)
+		}
+	default:
+		if len(added) != 0 {
+			t.Errorf("補った変数 = %q, want なし", added)
+		}
+	}
+}
+
+// TestWithOSRequiredEnvKeepsDeclaredValue は呼出し側の宣言を優先することを固定する。
+func TestWithOSRequiredEnvKeepsDeclaredValue(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windowsだけが変数を補う")
+	}
+	// case違いで宣言しても2重に足さない。Windowsの環境変数名はcase非依存である。
+	given := map[string]string{"SYSTEMROOT": "C:\\Declared"}
+	got := withOSRequiredEnv(given)
+	if len(got) != 1 {
+		t.Fatalf("補った結果 = %v, want 1件", got)
+	}
+	if got["SYSTEMROOT"] != "C:\\Declared" {
+		t.Errorf("宣言した値が上書きされた: %q", got["SYSTEMROOT"])
 	}
 }
 

@@ -5,7 +5,9 @@ package platform
 import (
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -120,4 +122,37 @@ func (c *processControl) release() {
 		_ = windows.CloseHandle(c.job)
 		c.job = 0
 	}
+}
+
+// systemRootName はWindowsが起動に要求する環境変数名である。
+//
+// docs/10-security.md §7が補う対象をこの1件に限定している。crypto APIやDLL探索が
+// この値を参照するため、無いとprobeが起動時点で失敗する。
+const systemRootName = "SystemRoot"
+
+// withOSRequiredEnv はOSが起動に要求する最小変数を補う。
+//
+// **補わないとGoが黙って補う。** `os/exec`はWindowsでのみ、SYSTEMROOTを持たない
+// 環境へ親processの値を追加する（`addCriticalEnv`）。[port.ProcessSpec]の
+// 「親環境の暗黙継承はしない」契約に対して見えない例外ができ、Planや
+// docs/11-quality-and-ci.md §7.2の記録と実際に渡る環境がずれる。こちらで
+// 明示的に足せば、渡す環境と記録が一致する。
+//
+// 呼出し側が宣言していればその値を優先する。Windowsの環境変数名はcase非依存の
+// ため、比較もcase非依存で行う。case違いで2重に足すと、どちらが効くかが
+// `os/exec`のdedup順に依存する。
+func withOSRequiredEnv(env map[string]string) map[string]string {
+	for name := range env {
+		if strings.EqualFold(name, systemRootName) {
+			return env
+		}
+	}
+	merged := make(map[string]string, len(env)+1)
+	for name, value := range env {
+		merged[name] = value
+	}
+	// 親の値が空でも足す。足さなければGoが同じ値で足すため、
+	// 「渡した環境＝実際に渡る環境」を保つには同じ結果にする必要がある。
+	merged[systemRootName] = os.Getenv(systemRootName)
+	return merged
 }
