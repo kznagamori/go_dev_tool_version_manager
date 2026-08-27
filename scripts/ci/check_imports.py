@@ -58,12 +58,17 @@ ALLOWED: dict[str, set[str]] = {
     # fakeは`_test.go`からの注入だけに使う。fake upstream応答でversion sourceの
     # 取得と評価を決定的にtestするためで、production pathからのfake importは
     # 11-quality-and-ci.md §7.1に従いcheck_policy.pyが別途禁止する（P3-03）。
+    # 04-storage-and-data.md §15のcatalog cache pathを§2が同領域へ割り当てた
+    # 「カタログcache」の責務として組み立てるため、§6のlogical rootからのpath
+    # 組立て（security.Join）を使う。path検査規則を複製すると、規則を変えたときに
+    # 片方だけが古いままになる（P6-01）。
     "internal/catalog": {
         "internal/domain",
         "internal/domain/port",
         "internal/domain/port/fake",
         "internal/definition",
         "internal/progress",
+        "internal/security",
         "internal/store",
     },
     # 04-storage-and-data.md §1のroot決定がmode/platform/path roleのdomain値と、

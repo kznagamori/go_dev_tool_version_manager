@@ -12,14 +12,14 @@ checkboxを満たすために仕様を弱めない。仕様変更時は番号付
 |---|---|
 | 全体状態 | `進行中` |
 | 現在フェーズ | `P5` |
-| 実行中タスクID | `なし` |
+| 実行中タスクID | `P6-01（2分割の1/2）` |
 | 最後に完了したタスクID | `P5-04（ProcessRunnerと記録wrapper、2分割すべて完了）` |
-| 次に開始するタスクID | `P6-01` |
-| CI状態 | `PR #112 で12 check成功` |
+| 次に開始するタスクID | `P6-01の2本目（refresh orchestration）` |
+| CI状態 | `PR作成前` |
 | blocker | `なし` |
-| 最終更新日時 | `2026-08-26T21:38:52+09:00` |
+| 最終更新日時 | `2026-08-26T22:15:40+09:00` |
 | 更新者 | `Claude Code` |
-| 作業branch | `claude/feature-p5-04-record-wrapper` |
+| 作業branch | `claude/feature-p6-01-catalog-refresh` |
 | 使用環境 | `Linux container` |
 | 最新の証跡 | [P5-04 決定記録（2/2）](reviews/P5-04-record-wrapper.md)、`internal/app` coverage 88.0% |
 
@@ -189,7 +189,7 @@ G-TOOLS達成後は、G-E2E/G-DONEの完了を待たずにDF-01（§17）のド�
 
 ## 12. P6 catalog・install・selection・runtime
 
-- [ ] **P6-01** catalog refresh/cache/platform availability/exact/latest/not-found/EOLを実装・testする。依存: P3,P5-01。証跡: 未記録
+- [-] **P6-01** catalog refresh/cache/platform availability/exact/latest/not-found/EOLを実装・testする。cache層（path/鮮度/保存）と解決層（exact/latest/一覧）に対し、refreshはsource kindごとの取得orchestrationとonline/offline方針という別層になるため、**2 PRへ分割**する（task IDはP6-01のまま、本項目は2本目のmerge後に`[x]`とする）。(1) cache path・鮮度判定・保存とexact/latest/一覧の解決＝`claude/feature-p6-01-catalog-refresh`、(2) source kindごとの取得orchestration、online/offline方針、`W_CACHE_STALE`＝`claude/feature-p6-01-catalog-fetch`。依存: P3,P5-01。証跡: 未記録
 - [ ] **P6-02** typed Plan、重要要約と全詳細、`inputs`/`PathValue`/`PlanArg`、operation排他の`SetupPlan`、download/extract/probe/storageと利用者可視`writes`、書込み封じ込め、任意helper process拒否、`PlanWarningCode`/approval category、stale判定を実装・testする。依存: P2-04,P6-01。証跡: 未記録
 - [ ] **P6-03** Resolve→Plan→Approve→Execute→Commit、progress/cancel、中断後tmp cleanup、archive install/probe/receipt/index/idempotence、`install`非選択を実装・failure injection testする。依存: P5,P6-02。証跡: 未記録
 - [ ] **P6-04** user/project use/current、Windows junction・Linux symlink transaction、native shim resolver/index/project precedence/env/fixed args/recursion/exitを実装・testする。依存: P6-03,P7-01,P7-02。証跡: 未記録
