@@ -35,7 +35,17 @@ ALLOWED: dict[str, set[str]] = {
     # port.Portsを受け取るため、appはportをimportする（P1-03）。
     # fakeは`_test.go`からの注入だけに使う。production pathからのfake importは
     # 11-quality-and-ci.md §7.1に従いcheck_policy.pyが別途禁止する。
-    "internal/app": {"internal/domain/port", "internal/domain/port/fake"},
+    # 11-quality-and-ci.md §7.2の書込み範囲記録wrapperと02-architecture.md §8手順5の
+    # Execute時不変条件を、§2が同領域へ割り当てた「transaction境界」として実装する。
+    # 封じ込め判定はrole付きpathとcanonical containmentを使うためdomainと
+    # internal/securityを、記録するURLのmaskも同packageのmask規則を使う。
+    # 規則を複製すると、変えたときに片方だけが古いままになる（P5-04）。
+    "internal/app": {
+        "internal/domain",
+        "internal/domain/port",
+        "internal/domain/port/fake",
+        "internal/security",
+    },
     # 02-architecture.md §2「配布元照会、版正規化、channel/lifecycle判定」。
     # 06-tool-definition.md §6.1・§6.3のchannel導出とlifecycle優先順位が、
     # domainのVersion/Channel/Lifecycle/Scalarと、definitionが読んだ
