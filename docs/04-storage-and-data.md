@@ -737,6 +737,11 @@ v0.1の言語は日本語だけだが、message ID機構はそのまま保持す
 | lifecycle override / static version / static asset per version | 10,000 / 10,000 / 16 |
 | platform内storage / runtime command / environment profile / probe | 32 / 64 / 16 / 64 |
 | その他definition array | 256 |
+| version source `cache_ttl` | 1分〜30日 |
+| JSON pointer | 255 byte |
+| `version_regex` | 1024 byte |
+| SPDX expression | 128 byte |
+| URL hostname | 253 byte |
 | registry manifest各file | 2 MiB |
 | receipt各file | 1 MiB |
 | catalog JSON各file | 64 MiB |

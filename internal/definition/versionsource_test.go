@@ -641,3 +641,35 @@ func TestOptionalPointerDistinguishesOmissionFromEmpty(t *testing.T) {
 		t.Fatalf("空文字宣言 = %+v, want {declared, \"\"}", source.ChannelPointer)
 	}
 }
+
+// TestSpecifiedLimitsMatchSpec はdocs/04-storage-and-data.md §21へ昇格した上限が
+// Go側の定数と一致することを固定する。
+//
+// この5件はP3-01が仕様に無いまま導入し、P6-01の利用者判断で§21の表へ昇格した。
+// 定数だけを変えると仕様と実装がずれるため、期待値を§21の値そのままで持つ。
+// **この検査を変えるときは§21の表も同じ変更で直す。**
+func TestSpecifiedLimitsMatchSpec(t *testing.T) {
+	tests := []struct {
+		name string
+		got  int
+		want int
+	}{
+		{"JSON pointer 255 byte", PointerMaxBytes, 255},
+		{"version_regex 1024 byte", RegexMaxBytes, 1024},
+		{"SPDX expression 128 byte", LicenseMaxBytes, 128},
+		{"URL hostname 253 byte", hostMaxBytes, 253},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if test.got != test.want {
+				t.Errorf("%d, want %d（§21の表と食い違う）", test.got, test.want)
+			}
+		})
+	}
+	if CacheTTLMin != time.Minute {
+		t.Errorf("CacheTTLMin = %v, want 1分（§21の表と食い違う）", CacheTTLMin)
+	}
+	if CacheTTLMax != 30*24*time.Hour {
+		t.Errorf("CacheTTLMax = %v, want 30日（§21の表と食い違う）", CacheTTLMax)
+	}
+}
