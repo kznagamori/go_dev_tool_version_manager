@@ -476,6 +476,13 @@ func buildRedirectHosts(raw *[]string, field string, diagnostics *Diagnostics) [
 	return append([]string{}, hosts...)
 }
 
+// hostMaxBytes はURL hostnameの上限である。
+//
+// docs/04-storage-and-data.md §21「URL hostname 253 byte」。DNS名の全長上限に
+// 合わせる。これを超える値はhost名として解決できず、redirect許可hostとして
+// 宣言しても到達できない。
+const hostMaxBytes = 253
+
 // hostnameRe はASCII lowercaseの完全hostである。wildcardとportを許さない。
 var hostnameRe = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$`)
 
@@ -483,8 +490,8 @@ func checkHostname(host string) error {
 	switch {
 	case host == "":
 		return fmt.Errorf("hostが空")
-	case len(host) > 253:
-		return fmt.Errorf("host %q が253 byteを超える", host)
+	case len(host) > hostMaxBytes:
+		return fmt.Errorf("host %q が%d byteを超える", host, hostMaxBytes)
 	case strings.Contains(host, "*"):
 		return fmt.Errorf("host %q にwildcardを使えない", host)
 	case !hostnameRe.MatchString(host):
