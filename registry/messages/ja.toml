@@ -16,7 +16,9 @@
 # --- catalog（内部catalog組立て。docs/06-tool-definition.md §6・§7、§15） ---
 
 catalog.artifact_not_found = "このplatform向けのartifactが配布元に見つかりません。"
+catalog.cache_stale = "{tool}（{platform}）のversion一覧は {expires_at} に期限切れですが、network へ到達できないため保存済みの内容を使いました。"
 catalog.lifecycle_override_unused = "lifecycle_overridesのversion {version}（{status}）が配布元のversion一覧に無いため適用されませんでした。"
+catalog.missing_offline = "{tool}（{platform}）のversion一覧が保存されておらず、network へも到達できません。接続できる状態で実行し直してください。"
 catalog.source_fetch_failed = "配布元 {url} からversion一覧を取得できませんでした: {reason}"
 catalog.source_invalid = "配布元のversion情報の {field} を解釈できませんでした: {reason}"
 

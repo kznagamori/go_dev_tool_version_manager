@@ -129,6 +129,7 @@ var allowedGlobals = map[string]string{
 	"internal/progress.units":                      "同§10のunit 4値。同上",
 	"internal/progress.resultWarningCodes":         "docs/04-storage-and-data.md §16.2のResultWarningCode 5値。同上",
 	"internal/install.errArchiveTooLarge":          "展開中の上限超過を表すsentinel error。errors.Isで上限超過とfilesystem失敗を区別するため値として持つ。初期化後に再代入しない",
+	"internal/domain/port.ErrOffline":              "接続そのものが無い状態を表すsentinel error。docs/03-cli.md §7がE_OFFLINEとE_NETWORKを分けるため、HTTPClient adapterがport境界で正規化し呼出し側がerrors.Isで判定する。初期化後に再代入しない",
 	"internal/platform.ErrOutputLimit":             "process出力の上限超過を表すsentinel error。docs/04-storage-and-data.md §21が超過を失敗と定めるため、呼出し側がerrors.Isで判定できるよう値として公開する。初期化後に再代入しない",
 	"internal/security.urlInText":                  "自由文字列中のURLを拾うcompile済みregexp。docs/10-security.md §9.2のmask対象を見つけるための定数patternで、初期化後に変更しない",
 	"internal/security.windowsReservedNames":       "docs/04-storage-and-data.md §6のWindows予約device名。初期化後に変更しない対応表",
