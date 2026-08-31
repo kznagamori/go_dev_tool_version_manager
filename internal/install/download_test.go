@@ -6,15 +6,14 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"os"
 	"strings"
-	"syscall"
 	"testing"
 
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain"
+	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain/port"
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain/port/fake"
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/progress"
 )
@@ -510,41 +509,12 @@ func TestDownloadDiscardsPartialOnWriteFailure(t *testing.T) {
 	}
 }
 
-// TestIsOfflineDistinguishesUnreachableNetwork は接続そのものが無い状態と
-// 一時障害を区別することを固定する。
-//
-// 利用者が取るべき行動が違う。`E_NETWORK`は再実行で直りうる一時障害、
-// `E_OFFLINE`は接続が無い状態を指す。
-func TestIsOfflineDistinguishesUnreachableNetwork(t *testing.T) {
-	cases := []struct {
-		name string
-		err  error
-		want bool
-	}{
-		{"DNS解決失敗", &net.DNSError{Err: "no such host", IsNotFound: true}, true},
-		{"network unreachable", &net.OpError{
-			Op: "dial", Err: os.NewSyscallError("connect", syscall.ENETUNREACH)}, true},
-		{"host unreachable", &net.OpError{
-			Op: "dial", Err: os.NewSyscallError("connect", syscall.EHOSTUNREACH)}, true},
-		// 到達できたうえでの失敗は一時障害である。
-		{"connection refused", &net.OpError{
-			Op: "dial", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)}, false},
-		{"HTTP 503", errors.New("platform: HTTP 503"), false},
-		{"無関係なerror", errors.New("plain"), false},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			if got := isOffline(c.err); got != c.want {
-				t.Errorf("isOffline = %t, want %t", got, c.want)
-			}
-		})
-	}
-}
-
 // TestNetworkErrorSelectsCode はofflineとnetworkでcodeが変わることを固定する。
 func TestNetworkErrorSelectsCode(t *testing.T) {
 	req := Request{URL: testURL}
-	offline := networkError(req, &net.DNSError{Err: "no such host"})
+	// offlineの判定はHTTPClient adapterがport.ErrOfflineで正規化する。
+	// installはsyscall errnoを見ず、sentinelだけで分ける。
+	offline := networkError(req, fmt.Errorf("%w: dial失敗", port.ErrOffline))
 	if offline.Code != domain.CodeOffline {
 		t.Errorf("offline時のcode = %s, want %s", offline.Code, domain.CodeOffline)
 	}
