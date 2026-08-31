@@ -120,6 +120,19 @@ error.internal = "内部errorが発生しました。"
 
 license.dotnet.windows_library_license = ".NET SDKのWindows配布archiveは、OSI承認のOSS licenseではなく .NET Library License（Microsoft独自の使用許諾契約）で提供されています。導入前に許諾内容を確認し、同意できる場合だけ続行してください。"
 
+# --- plan（docs/04-storage-and-data.md §16.1のPlan warning） ---
+#
+# install operationで立てうるのは4件である。残る4件（W_DESTRUCTIVE、
+# W_SHELL_MODIFICATION、W_MODE_CHANGE、W_RESTART_REQUIRED）はuninstall・setupの
+# 条件であり、該当taskで追加する。
+
+plan.eol = "{tool} {version} は配布元がsupport終了（EOL）としたversionです。security修正が提供されない可能性があります。根拠: {evidence}"
+plan.prerelease = "{tool} {version} はprerelease版です。安定版ではないため、動作が変わる可能性があります。"
+plan.probe_reason = "導入した実体が正しく動作することを確認します。"
+plan.restrictive_license = "{tool} {version} の配布物は、OSI承認のOSS licenseではないlicenseで提供されています。詳細: {notice}"
+plan.stale = "Plan作成後に設定・registry・配布元情報・導入状態のいずれかが変化しました。もう一度実行してください。"
+plan.third_party = "{tool} {version} の配布物は、tool本体のprojectではなく第三者 {provider} が提供しています。採用理由: {reason}"
+
 # --- provider（docs/07-registry-and-tools.md §9.1のthird-party採用理由） ---
 
 provider.python.standalone_reason = "CPython公式のWindows installerはsystem/user installationとして動作し、公式sourceからLinuxでbuildする方式はcompilerとsystem libraryを必要とします。Windows/Linux共通・非管理者権限・短時間・複数の完全version併存・可搬という条件を満たすため、Astralの python-build-standalone が配布するCPython install-only archiveを採用しています。"

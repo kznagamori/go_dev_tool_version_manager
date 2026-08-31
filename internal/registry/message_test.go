@@ -224,7 +224,8 @@ func TestRepositoryMessageCatalog(t *testing.T) {
 		prefixes[strings.SplitN(id, ".", 2)[0]]++
 	}
 	wantPrefixes := []string{
-		"catalog", "config", "definition", "error", "license", "provider", "registry"}
+		"catalog", "config", "definition", "error", "license", "plan", "provider",
+		"registry"}
 	got := make([]string, 0, len(prefixes))
 	for prefix := range prefixes {
 		got = append(got, prefix)
