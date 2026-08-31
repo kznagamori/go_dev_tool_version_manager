@@ -28,6 +28,33 @@ var templateRe = regexp.MustCompile(`\{\{[^{}]*\}\}`)
 // storageTemplateRe は`{{storage.<id>}}`のIDを取り出す。
 var storageTemplateRe = regexp.MustCompile(`^\{\{storage\.([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\}\}$`)
 
+// ReplaceTemplateVars はtextのtemplate変数を`replace`の戻り値で置換する（§12）。
+//
+// §12のgrammarをこのpackageの1箇所に閉じるために公開する。render側
+// （`internal/catalog`のartifact template、`internal/install`のpath/text）が
+// 各自で正規表現を持つと、grammarの変更が複数packageへ散る。検証側の
+// [templateContext.checkRoot]と同じ切り出し方を共有することで、
+// 「検証は通るがrenderが拾わない」形の食い違いも防ぐ。
+//
+// `replace`はtoken全体（`{{`と`}}`を含む）を受け取る。未知変数の扱いは
+// 呼出し側の責務である——素通りさせるとliteralとして残るため、呼出し側は
+// 必ずerrorにする。
+func ReplaceTemplateVars(text string, replace func(token string) string) string {
+	return templateRe.ReplaceAllStringFunc(text, replace)
+}
+
+// StorageTemplateID は`{{storage.<id>}}`のIDを返す（§12）。
+//
+// tokenがその形でなければ`ok`がfalseになる。IDのgrammarは§3のkebab-case
+// identifierである。
+func StorageTemplateID(token string) (string, bool) {
+	match := storageTemplateRe.FindStringSubmatch(token)
+	if match == nil {
+		return "", false
+	}
+	return match[1], true
+}
+
 // metadataTemplateRe は`{{metadata.<key>}}`のkeyを取り出す。
 var metadataTemplateRe = regexp.MustCompile(`^\{\{metadata\.([a-z][a-z0-9_]*)\}\}$`)
 
