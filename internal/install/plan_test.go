@@ -121,6 +121,7 @@ func testPlanRequest(t *testing.T) PlanRequest {
 		Item:                testCatalogItem(t),
 		Platform:            testDefinitionPlatform(t),
 		Roots:               testRoots(t, "linux-amd64-glibc"),
+		ProbeTempRoot:       renderPathValue(t, domain.RoleStaging, probeTempParent),
 		DownloadDestination: renderPathValue(t, domain.RoleDownloadCache, "/data/gdtvm/cache/downloads"),
 		StagingDestination:  renderPathValue(t, domain.RoleStaging, "/data/gdtvm/tmp/staging"),
 		Inputs: store.PlanInputs{
@@ -194,8 +195,20 @@ func TestBuildInstallPlanExpandsProbe(t *testing.T) {
 	if probe.ExpectedVersion != "1.25.0" {
 		t.Errorf("expected_version = %q, want 1.25.0", probe.ExpectedVersion)
 	}
-	if probe.WorkingDirectory.Path() != payloadRoot {
-		t.Errorf("cwd = %q, want %q", probe.WorkingDirectory.Path(), payloadRoot)
+	// docs/06-tool-definition.md §11「**probeのcwdはその probe temp とし、
+	// 呼出し元のcurrent directoryを継承しない**」。docs/08-install-runtime.md
+	// §7手順2も同じ。**payloadをcwdにしない**——payload内の`global.json`や
+	// `.nvmrc`のようなfileがprobe結果を変えうる。
+	wantCwd := probeTempParent + "/go-version"
+	if probe.WorkingDirectory.Path() != wantCwd {
+		t.Errorf("cwd = %q, want %q", probe.WorkingDirectory.Path(), wantCwd)
+	}
+	if probe.WorkingDirectory.Path() == payloadRoot {
+		t.Error("cwdがpayload rootになっている（§11違反）")
+	}
+	// probeが書けるのはprobe tempだけである。
+	if len(probe.WritePaths) != 1 || probe.WritePaths[0].Path() != wantCwd {
+		t.Errorf("write_paths = %+v, want [%s]", probe.WritePaths, wantCwd)
 	}
 	if probe.TimeoutMillis != 30_000 {
 		t.Errorf("timeout = %dms, want 30000", probe.TimeoutMillis)
@@ -274,31 +287,73 @@ func TestBuildInstallPlanRejectsUndeclaredCommand(t *testing.T) {
 	}
 }
 
-// TestBuildInstallPlanRejectsProbeTempOutsideProbe は`{{probe_temp}}`の扱いを固定する。
+// TestBuildInstallPlanRequiresProbeTempPerProbe はprobe tempの割当てを固定する。
 //
-// docs/06-tool-definition.md §12「`{{probe_temp}}`はvalidation probe内だけ」。
-// ProbeTempを渡していなければ解決できず、渡していれば書込み先として載る。
-func TestBuildInstallPlanRejectsProbeTempOutsideProbe(t *testing.T) {
-	req := testPlanRequest(t)
-	req.Platform.Validation.Probes[0].Args = []string{"{{probe_temp}}/out"}
-
-	t.Run("渡していない", func(t *testing.T) {
-		local := req
-		local.Roots.ProbeTemp = domain.PathValue{}
-		if _, err := BuildInstallPlan(local); err == nil {
-			t.Fatal("probe temp未設定でも通った")
+// docs/06-tool-definition.md §11「**probeごとに**空のowner-only probe tempを作り、
+// 成功/失敗/cancel後にengineが削除する」。probe間で共有すると、先に走ったprobeが
+// 残したfileが後のprobeの結果を変えうる。
+func TestBuildInstallPlanRequiresProbeTempPerProbe(t *testing.T) {
+	t.Run("probeがあるのにrootが無ければ拒否する", func(t *testing.T) {
+		req := testPlanRequest(t)
+		req.ProbeTempRoot = domain.PathValue{}
+		if _, err := BuildInstallPlan(req); err == nil {
+			t.Fatal("probe temp root無しでPlanが作れた")
 		}
 	})
-	t.Run("渡している", func(t *testing.T) {
+	t.Run("probeが無ければrootは要らない", func(t *testing.T) {
+		req := testPlanRequest(t)
+		req.ProbeTempRoot = domain.PathValue{}
+		req.Platform.Validation.Probes = nil
+		if _, err := BuildInstallPlan(req); err != nil {
+			t.Fatalf("probe無しで拒否された: %v", err)
+		}
+	})
+	t.Run("probeごとに別のdirectoryを割り当てる", func(t *testing.T) {
+		req := testPlanRequest(t)
+		second := req.Platform.Validation.Probes[0]
+		second.ID = "go-env"
+		req.Platform.Validation.Probes = append(req.Platform.Validation.Probes, second)
+
 		plan, err := BuildInstallPlan(req)
 		if err != nil {
 			t.Fatalf("BuildInstallPlan = %v", err)
 		}
-		writes := plan.Probes[0].WritePaths
-		if len(writes) != 1 || writes[0].Path() != probeTempRoot {
-			t.Errorf("write_paths = %+v, want [%s]", writes, probeTempRoot)
+		if len(plan.Probes) != 2 {
+			t.Fatalf("probes = %d件, want 2", len(plan.Probes))
+		}
+		first, other := plan.Probes[0].WorkingDirectory.Path(), plan.Probes[1].WorkingDirectory.Path()
+		if first == other {
+			t.Errorf("probe間でtempを共有している: %q", first)
+		}
+		if first != probeTempParent+"/go-version" || other != probeTempParent+"/go-env" {
+			t.Errorf("probe temp = %q, %q", first, other)
 		}
 	})
+	t.Run("rootのroleが違えば拒否する", func(t *testing.T) {
+		req := testPlanRequest(t)
+		req.ProbeTempRoot = renderPathValue(t, domain.RolePayload, probeTempParent)
+		if _, err := BuildInstallPlan(req); err == nil {
+			t.Fatal("staging以外のroleが通った")
+		}
+	})
+}
+
+// TestBuildInstallPlanResolvesProbeTempTemplate は`{{probe_temp}}`がprobe固有の
+// directoryへ解決することを固定する。
+func TestBuildInstallPlanResolvesProbeTempTemplate(t *testing.T) {
+	req := testPlanRequest(t)
+	req.Platform.Validation.Probes[0].Args = []string{"{{probe_temp}}/out"}
+	plan, err := BuildInstallPlan(req)
+	if err != nil {
+		t.Fatalf("BuildInstallPlan = %v", err)
+	}
+	args := plan.Probes[0].Args
+	if len(args) != 1 || args[0].Kind != store.ArgPath {
+		t.Fatalf("args = %+v, want path 1件", args)
+	}
+	if want := probeTempParent + "/go-version/out"; args[0].Path.Path() != want {
+		t.Errorf("probe temp arg = %q, want %q", args[0].Path.Path(), want)
+	}
 }
 
 // TestBuildInstallPlanOmitsInternalWrites はdata root内部を`writes[]`へ出さないことを固定する。
