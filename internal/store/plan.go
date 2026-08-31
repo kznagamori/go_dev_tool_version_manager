@@ -348,6 +348,28 @@ type PlanWarning struct {
 	RequiresExplicitApproval bool
 }
 
+// NewPlanWarning は§16.1の表から承認要否を引いてwarningを作る。
+//
+// **承認要否をPlan作成側に決めさせないために公開する。** §16.1は
+// 「`requires_explicit_approval=true`のcode集合がApprovalの単位」と定めており、
+// codeごとの真偽は表が一意に決める。作成側が自分で真偽を置けるようにすると、
+// 同じcodeが場面によって承認要否を変えられてしまう。表はこのpackageが持つため、
+// 外のpackageが正しい値を得る唯一の経路をここにする。
+//
+// 未知codeは`requires_explicit_approval=false`のwarningを作らず、codeをそのまま
+// 載せて返す。[EncodePlan]が§16.1の8件に無いcodeとして拒否するため、
+// 誤りは黙って通らない。
+func NewPlanWarning(
+	code PlanWarningCode, messageID domain.MessageID, parameters domain.Parameters,
+) PlanWarning {
+	return PlanWarning{
+		Code:                     code,
+		MessageID:                messageID,
+		Parameters:               parameters,
+		RequiresExplicitApproval: planWarningApproval[code],
+	}
+}
+
 // Plan は変更operationのtyped表現である（§16）。
 //
 // 永続fileではないが、human表示とapprovalの正本となる。human簡略表示の都合で
