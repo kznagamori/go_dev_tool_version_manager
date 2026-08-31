@@ -2,8 +2,22 @@ package port
 
 import (
 	"context"
+	"errors"
 	"io"
 )
+
+// ErrOffline は接続そのものが無い状態を表すsentinel errorである。
+//
+// docs/03-cli.md §7が`E_OFFLINE`と`E_NETWORK`を別のcodeとし、利用者が取るべき
+// 行動を分ける。`E_NETWORK`は再実行で直りうる一時障害、`E_OFFLINE`は接続が無い
+// 状態である。
+//
+// **判定をport境界へ置く。** DNS解決失敗や経路不達はsyscall errnoとnet package
+// の型で表れる具体的なOS事情であり、それを見分けられるのはHTTPClientを実装する
+// adapterだけである。呼出し側それぞれが`net.DNSError`や`syscall.ENETUNREACH`を
+// 直接見ると、規則が複数箇所へ散り、fakeがsyscall errorを作れないためtestでも
+// 再現できない。adapterがこのsentinelでwrapし、呼出し側は[errors.Is]で判定する。
+var ErrOffline = errors.New("port: offline")
 
 // HTTPRequest はGET/HEADの要求である。
 //

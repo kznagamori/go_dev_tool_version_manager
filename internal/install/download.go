@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net"
-	"os"
 	"strings"
-	"syscall"
 
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain"
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain/port"
@@ -314,7 +311,10 @@ func validateRequest(req Request) *domain.Error {
 // `E_OFFLINE`は接続そのものが無い状態を指す。
 func networkError(req Request, cause error) *domain.Error {
 	code := domain.CodeNetwork
-	if isOffline(cause) {
+	// offline判定はHTTPClient adapterがport境界で正規化する（[port.ErrOffline]）。
+	// syscall errnoをここで見ると規則が2箇所へ散り、fakeがsyscall errorを
+	// 作れないためtestでも再現できない。
+	if errors.Is(cause, port.ErrOffline) {
 		code = domain.CodeOffline
 	}
 	return &domain.Error{
@@ -324,26 +324,6 @@ func networkError(req Request, cause error) *domain.Error {
 		Cause: fmt.Errorf("install: %s の取得に失敗した: %w",
 			security.MaskURL(req.URL), cause),
 	}
-}
-
-// isOffline は接続そのものが無い状態かを判定する。
-//
-// DNS解決失敗と経路不達をofflineとして扱う。到達できたうえでの5xxやtimeoutは
-// 一時障害であり、offlineと区別する。
-func isOffline(err error) bool {
-	var dnsErr *net.DNSError
-	if errors.As(err, &dnsErr) {
-		return true
-	}
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
-		var sysErr *os.SyscallError
-		if errors.As(opErr.Err, &sysErr) {
-			return errors.Is(sysErr.Err, syscall.ENETUNREACH) ||
-				errors.Is(sysErr.Err, syscall.EHOSTUNREACH)
-		}
-	}
-	return false
 }
 
 func checksumError(cause error) *domain.Error {

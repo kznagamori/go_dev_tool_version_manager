@@ -10,8 +10,10 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain/port"
@@ -243,8 +245,7 @@ func (c *Client) send(
 			// 呼出し側のcancelはretryしない。
 			return nil, ctxErr
 		}
-		wrapped := fmt.Errorf(
-			"platform: %s の取得に失敗した: %w", security.MaskURL(target), unwrapURLError(err))
+		wrapped := wrapNetworkError(target, err)
 		if isTemporaryNetwork(err) {
 			return nil, &retryableError{cause: wrapped}
 		}
@@ -437,6 +438,43 @@ func retryAfterOf(clock port.Clock, response *http.Response) time.Duration {
 		return 0
 	}
 	return wait
+}
+
+// wrapNetworkError はnetwork失敗をmaskして包み、offlineなら印を付ける。
+//
+// 接続そのものが無い状態を[port.ErrOffline]でwrapし、port境界で正規化する。
+// 呼出し側がsyscall errnoを直接見なくて済み、fakeでも再現できる。
+func wrapNetworkError(target string, err error) error {
+	wrapped := fmt.Errorf(
+		"platform: %s の取得に失敗した: %w", security.MaskURL(target), unwrapURLError(err))
+	if isOffline(err) {
+		return fmt.Errorf("%w: %w", port.ErrOffline, wrapped)
+	}
+	return wrapped
+}
+
+// isOffline は接続そのものが無い状態かを返す。
+//
+// DNS解決失敗と経路不達をofflineとして扱う。到達できたうえでの5xxやtimeoutは
+// 一時障害であり、offlineと区別する（docs/03-cli.md §7が`E_OFFLINE`と
+// `E_NETWORK`を別のcodeとする）。
+//
+// **判定はここだけに置く。** syscall errnoとnet packageの型を見分けられるのは
+// HTTPClientを実装するこのadapterだけであり、呼出し側へ持ち出すと規則が散る。
+func isOffline(err error) bool {
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return true
+	}
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		var sysErr *os.SyscallError
+		if errors.As(opErr.Err, &sysErr) {
+			return errors.Is(sysErr.Err, syscall.ENETUNREACH) ||
+				errors.Is(sysErr.Err, syscall.EHOSTUNREACH)
+		}
+	}
+	return false
 }
 
 // isTemporaryNetwork は一時的なnetwork失敗かを返す。
