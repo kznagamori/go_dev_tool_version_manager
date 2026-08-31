@@ -119,6 +119,7 @@ Linux containerで実行した（Go 1.26.6）。両OSの判定はCI matrixで行
 | `go test ./... -race -shuffle=on -covermode=atomic` | 全package成功。`internal/install` 92.5%・`internal/definition` 92.5% |
 | `check_policy.py` / `check_imports.py` / `check_docs.py` / `check_licenses.py` / `check_messages.py` | すべて成功 |
 | `git diff --check` | 出力なし |
+| CI（PR #121） | 12 check成功 |
 
 ## 6. 未実施・制約
 
