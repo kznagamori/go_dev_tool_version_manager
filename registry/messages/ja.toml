@@ -126,6 +126,7 @@ license.dotnet.windows_library_license = ".NET SDKのWindows配布archiveは、O
 # W_SHELL_MODIFICATION、W_MODE_CHANGE、W_RESTART_REQUIRED）はuninstall・setupの
 # 条件であり、該当taskで追加する。
 
+plan.approval_required = "続行するには、表示された警告への明示的な承認が必要です。内容を確認して承認するか、--yes を付けて実行してください。"
 plan.eol = "{tool} {version} は配布元がsupport終了（EOL）としたversionです。security修正が提供されない可能性があります。根拠: {evidence}"
 plan.prerelease = "{tool} {version} はprerelease版です。安定版ではないため、動作が変わる可能性があります。"
 plan.probe_reason = "導入した実体が正しく動作することを確認します。"
