@@ -8,8 +8,10 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -673,5 +675,66 @@ func TestRetryableErrorWrapsCause(t *testing.T) {
 	}
 	if !errors.Is(err, cause) {
 		t.Error("Unwrapでcauseへ辿れない")
+	}
+}
+
+// TestIsOfflineDistinguishesUnreachableNetwork は接続そのものが無い状態と
+// 一時障害を区別することを固定する。
+//
+// 利用者が取るべき行動が違う。`E_NETWORK`は再実行で直りうる一時障害、
+// `E_OFFLINE`は接続が無い状態を指す（docs/03-cli.md §7）。判定はport境界の
+// このadapterだけが行い、呼出し側は[port.ErrOffline]で見分ける。
+func TestIsOfflineDistinguishesUnreachableNetwork(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"DNS解決失敗", &net.DNSError{Err: "no such host", IsNotFound: true}, true},
+		{"network unreachable", &net.OpError{
+			Op: "dial", Err: os.NewSyscallError("connect", syscall.ENETUNREACH)}, true},
+		{"host unreachable", &net.OpError{
+			Op: "dial", Err: os.NewSyscallError("connect", syscall.EHOSTUNREACH)}, true},
+		// 到達できたうえでの失敗は一時障害である。
+		{"connection refused", &net.OpError{
+			Op: "dial", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)}, false},
+		{"HTTP 503", errors.New("platform: HTTP 503"), false},
+		{"無関係なerror", errors.New("plain"), false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := isOffline(test.err); got != test.want {
+				t.Errorf("isOffline = %t, want %t", got, test.want)
+			}
+		})
+	}
+}
+
+// TestWrapNetworkErrorMarksOffline は到達できない相手のerrorをport.ErrOfflineで
+// wrapすることを固定する。
+//
+// 呼出し側がsyscall errnoを見ずに判定できることが、この正規化の目的である。
+// 実networkを使わずに固定するため、wrap部分だけを直接呼ぶ。
+func TestWrapNetworkErrorMarksOffline(t *testing.T) {
+	offline := wrapNetworkError("https://example.invalid/a",
+		&net.DNSError{Err: "no such host", IsNotFound: true})
+	if !errors.Is(offline, port.ErrOffline) {
+		t.Errorf("offline = %v, want port.ErrOffline でwrapされていること", offline)
+	}
+
+	transient := wrapNetworkError("https://example.invalid/a",
+		&net.OpError{Op: "dial", Err: os.NewSyscallError("connect", syscall.ECONNREFUSED)})
+	if errors.Is(transient, port.ErrOffline) {
+		t.Errorf("一時障害がofflineとしてwrapされた: %v", transient)
+	}
+}
+
+// TestWrapNetworkErrorMasksURL はwrapしたerrorへcredentialを載せないことを固定する。
+func TestWrapNetworkErrorMasksURL(t *testing.T) {
+	wrapped := wrapNetworkError(
+		"https://user:pw@example.invalid/a?access_token=SECRETVALUE", errors.New("boom"))
+	if strings.Contains(wrapped.Error(), "SECRETVALUE") ||
+		strings.Contains(wrapped.Error(), "user:pw@") {
+		t.Errorf("errorへcredentialが載った: %v", wrapped)
 	}
 }
