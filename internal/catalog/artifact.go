@@ -105,7 +105,7 @@ type templateValues struct {
 // がbasename grammarを検査する。
 func renderTemplate(text string, values templateValues, escape bool) (string, error) {
 	var failure error
-	rendered := templateVarRe.ReplaceAllStringFunc(text, func(token string) string {
+	rendered := definition.ReplaceTemplateVars(text, func(token string) string {
 		value, err := templateValue(token, values)
 		if err != nil {
 			if failure == nil {
@@ -128,9 +128,6 @@ func renderTemplate(text string, values templateValues, escape bool) (string, er
 	}
 	return rendered, nil
 }
-
-// templateVarRe はtemplate変数の出現を切り出す（§12）。
-var templateVarRe = regexp.MustCompile(`\{\{[^{}]*\}\}`)
 
 // templateValue は1つのtemplate変数の値を返す。
 func templateValue(token string, values templateValues) (string, error) {
