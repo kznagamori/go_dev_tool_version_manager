@@ -30,7 +30,7 @@ const MessageMaxBytes = 8 << 10
 // production GoとregistryのTOMLが出しうるmessage IDの数と一致する。件数を定数で
 // 持つのは、message IDを増減させたときにcatalogの更新漏れへ気付くためである。
 // 網羅そのものはscripts/ci/check_messages.pyがsource全体を走査して検査する。
-const MessageCount = 87
+const MessageCount = 93
 
 // MessageCatalog は`messages/ja.toml`のtyped表現である。
 type MessageCatalog struct {

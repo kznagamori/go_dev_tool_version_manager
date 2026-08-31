@@ -40,11 +40,17 @@ ALLOWED: dict[str, set[str]] = {
     # 封じ込め判定はrole付きpathとcanonical containmentを使うためdomainと
     # internal/securityを、記録するURLのmaskも同packageのmask規則を使う。
     # 規則を複製すると、変えたときに片方だけが古いままになる（P5-04）。
+    # 02-architecture.md §8手順5の「全書込みがdata root、distribution root、
+    # 宣言済みintegration対象、project fileの中にあり、任意helper/backend process
+    # を起動しない」をPlanから導くため、internal/storeのPlan型を読む。Scopeは
+    # このpackageの型であり、Planを読む側がここになる。storeはappをimportしない
+    # ためcycleにならない（P6-02）。
     "internal/app": {
         "internal/domain",
         "internal/domain/port",
         "internal/domain/port/fake",
         "internal/security",
+        "internal/store",
     },
     # 02-architecture.md §2「配布元照会、版正規化、channel/lifecycle判定」。
     # 06-tool-definition.md §6.1・§6.3のchannel導出とlifecycle優先順位が、
@@ -97,6 +103,13 @@ ALLOWED: dict[str, set[str]] = {
     # 08-install-runtime.md §6の安全展開が、06-tool-definition.md §7.1の
     # archive形式（`zip|tar.gz`）と`strip_components`を入力に取る。形式enumを
     # installへ複製すると、値を変えたときに片方だけが古いままになる（P5-03）。
+    # 04-storage-and-data.md §16のPlanはinternal/storeがcodecを持つ型であり、
+    # install Planの組立てはその型をそのまま作る。02-architecture.md §2が
+    # 同領域へ割り当てた「ダウンロード、検証、安全展開、probe、receipt、
+    # transaction」がPlan本体の内容そのものである。storeはinstallをimportしない
+    # ためcycleにならない（internal/catalogが§15のcatalog型で先例）。
+    # §16.1のwarning承認要否はstore.NewPlanWarningが表から引く。表を複製すると、
+    # 同じcodeが場面によって承認要否を変えられる（P6-02）。
     "internal/install": {
         "internal/definition",
         "internal/domain",
@@ -104,6 +117,7 @@ ALLOWED: dict[str, set[str]] = {
         "internal/domain/port/fake",
         "internal/progress",
         "internal/security",
+        "internal/store",
     },
     "internal/message": set(),
     # 02-architecture.md §1がInfrastructure adapterへHTTPを含め、§4.1の
