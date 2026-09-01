@@ -1,4 +1,4 @@
-# P6-03 決定記録（1/2）: ApprovalとExecute前半（staging）
+# P6-03 決定記録（1/4）: ApprovalとExecute前半（staging）
 
 対象タスク: `docs/13-progress.md` P6-03の1本目。規範仕様は[02-architecture.md](../02-architecture.md)§2・§4・§8、[08-install-runtime.md](../08-install-runtime.md)§2・§4・§5・§6、[04-storage-and-data.md](../04-storage-and-data.md)§2・§16・§16.1・§17.2、[03-cli.md](../03-cli.md)§7。
 

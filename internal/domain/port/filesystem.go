@@ -83,6 +83,26 @@ type FileSystem interface {
 	// Chmod はpermissionを設定する。Windows実装はfile属性へ写像できる範囲だけを扱う。
 	Chmod(path string, perm fs.FileMode) error
 
+	// HardenReadExecute は1 entryを通常利用でread/execute onlyへ正規化する。
+	//
+	// docs/08-install-runtime.md §7手順5「payloadを通常利用でread/execute onlyへ
+	// 正規化する。**Windowsは現在userのwrite ACEを除き**、Linuxはdirectory 0555、
+	// executable 0555、その他0444を基本とする」。
+	//
+	// **[Chmod]と別operationにする。** Windowsの要求はACE除去であり、
+	// POSIX mode bitへ写像できない（[Chmod]のdoc commentが「file属性へ写像できる
+	// 範囲だけ」と断っているとおり）。modeを渡す形にすると、Windows adapterが
+	// 表現できない要求を受け取ることになる。**達成すべき結果**をkindで渡し、
+	// OS固有の実現方法はadapterへ委ねる。
+	//
+	// docs/02-architecture.md §1が「DomainとApplication Serviceから具体的OS APIを
+	// 参照することを禁止する」と定めるため、ACLをそのまま公開しない。
+	//
+	// treeの走査は呼出し側が[Walk]で行う。走査までportへ入れると、どのentryを
+	// 正規化したのかをfakeで確かめられなくなる（同§4「効果がすべて既存portの
+	// 背後へ閉じているorchestrationはportにしない」）。
+	HardenReadExecute(path string, kind PermissionKind) error
+
 	// RealPath はsymlinkとreparse pointを解決した絶対pathを返す。
 	// path containment検査は解決後のpathで行う。
 	RealPath(path string) (string, error)
@@ -110,4 +130,46 @@ type FileInfo struct {
 	IsDir   bool
 	// IsSymlink はsymlinkまたはWindowsのreparse pointである。
 	IsSymlink bool
+}
+
+// PermissionKind は[FileSystem.HardenReadExecute]が正規化する対象の種別である。
+//
+// docs/08-install-runtime.md §7手順5がLinuxのmodeを種別ごとに定める
+// （directory 0555、executable 0555、その他0444）。Windowsは3種別とも
+// 「現在userのwrite ACEを除く」で足りるが、adapterが種別を知らないと
+// directoryとfileで別の扱いが要るOSへ対応できない。
+type PermissionKind uint8
+
+// PermissionKind のexactly 3値。
+const (
+	// PermissionDirectory はdirectoryである（Linux 0555）。
+	PermissionDirectory PermissionKind = iota + 1
+	// PermissionExecutable は実行可能fileである（Linux 0555）。
+	//
+	// 展開時にowner executeを保持したfileが該当する（§6）。
+	PermissionExecutable
+	// PermissionRegular はそれ以外のfileである（Linux 0444）。
+	PermissionRegular
+)
+
+// PermissionKindCount は§7手順5が区別する種別数である。
+const PermissionKindCount = 3
+
+// IsValid は定義済みの種別かを返す。
+func (k PermissionKind) IsValid() bool {
+	return k >= PermissionDirectory && k <= PermissionRegular
+}
+
+// String は診断へ出す名前を返す。
+func (k PermissionKind) String() string {
+	switch k {
+	case PermissionDirectory:
+		return "directory"
+	case PermissionExecutable:
+		return "executable"
+	case PermissionRegular:
+		return "regular"
+	default:
+		return "unknown"
+	}
 }
