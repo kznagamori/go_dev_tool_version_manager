@@ -34,9 +34,19 @@ type PlanRequest struct {
 
 	// Roots は§12のpath render rootである。
 	//
-	// `ProbeTemp`はprobeを組み立てるときだけ使う。probe以外の文脈で
-	// `{{probe_temp}}`が現れたら[RenderPath]が拒否する。
+	// `ProbeTemp`はここで設定しない。probeごとに[ProbeTempRoot]配下の別
+	// directoryを割り当てるためである。probe以外の文脈で`{{probe_temp}}`が
+	// 現れたら[RenderPath]が拒否する。
 	Roots RenderRoots
+	// ProbeTempRoot はprobe専用temp directoryの親である（role=staging）。
+	//
+	// docs/06-tool-definition.md §11「**probeごとに**空のowner-only probe tempを
+	// 作り、成功/失敗/cancel後にengineが削除する。**probeのcwdはその probe temp
+	// とし、呼出し元のcurrent directoryを継承しない**」。probe IDごとに
+	// この配下へdirectoryを割り当てる。
+	//
+	// probeを持つdefinitionでは必須である。渡されなければPlanを作らない。
+	ProbeTempRoot domain.PathValue
 	// DownloadDestination はartifactの保存先である（role=download-cache|staging）。
 	DownloadDestination domain.PathValue
 	// StagingDestination は展開先である（role=staging）。
@@ -155,6 +165,11 @@ func (r PlanRequest) validate() error {
 	}
 	if r.Roots.Payload.IsZero() {
 		return errors.New("install: payload rootが未設定")
+	}
+	if !r.ProbeTempRoot.IsZero() && r.ProbeTempRoot.Role() != domain.RoleStaging {
+		// §11のprobe tempはoperation staging内に置く。別roleを許すと、
+		// probeがpayloadやstorageへ書ける経路ができる。
+		return fmt.Errorf("install: probe temp rootのroleが%sである", r.ProbeTempRoot.Role())
 	}
 	if r.Roots.Host.IsZero() {
 		return errors.New("install: host platformが未設定")
