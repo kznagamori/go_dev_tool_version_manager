@@ -96,6 +96,7 @@ var allowedGlobals = map[string]string{
 	"internal/store.shells":                    "§17.1のshell exact 3値。同上",
 	"internal/store.integrationKinds":          "§17.1のintegration_identity.kind exact 3値。同上",
 	"internal/store.backupKinds":               "§17.1のsetup backup kind exact 2値。同上",
+	"internal/app.approvalModes":               "docs/02-architecture.md §8のapproval mode exact 2値（`InteractiveYes|AssumeYes`）。初期化後に変更しない閉じた集合",
 	"internal/app.calVerRe":                    "docs/11-quality-and-ci.md §2のCalVer grammar。compile済みregexpで、初期化後に再代入しない",
 	"internal/app.commitRe":                    "40桁小文字hexのcommit ID grammar。同上",
 	"internal/app.goToolchainRe":               "go toolchain名のgrammar。同上",
