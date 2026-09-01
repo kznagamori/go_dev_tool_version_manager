@@ -1,4 +1,4 @@
-# P6-03 決定記録（3/4）: permission正規化と`E_CONFLICT`判定
+# P6-03 決定記録（3/5）: permission正規化と`E_CONFLICT`判定
 
 対象タスク: `docs/13-progress.md` P6-03の3本目。規範仕様は[08-install-runtime.md](../08-install-runtime.md)§6・§7、[04-storage-and-data.md](../04-storage-and-data.md)§14、[02-architecture.md](../02-architecture.md)§1・§2・§4・§4.1、[10-security.md](../10-security.md)§5・§6。
 
