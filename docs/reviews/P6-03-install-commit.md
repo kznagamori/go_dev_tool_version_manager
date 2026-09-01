@@ -1,6 +1,6 @@
-# P6-03 決定記録（2/3）: probe cwd規定の是正と`command_targets`
+# P6-03 決定記録（2/4）: probe cwd規定の是正と`command_targets`
 
-対象タスク: `docs/13-progress.md` P6-03の2本目。規範仕様は[06-tool-definition.md](../06-tool-definition.md)§10.1・§11・§12、[08-install-runtime.md](../08-install-runtime.md)§7、[04-storage-and-data.md](../04-storage-and-data.md)§7・§14・§16・§21、[02-architecture.md](../02-architecture.md)§2・§4。
+対象タスク: `docs/13-progress.md` P6-03の2本目（着手時は3分割の想定だった。3本目で4分割へ変更した）。規範仕様は[06-tool-definition.md](../06-tool-definition.md)§10.1・§11・§12、[08-install-runtime.md](../08-install-runtime.md)§7、[04-storage-and-data.md](../04-storage-and-data.md)§7・§14・§16・§21、[02-architecture.md](../02-architecture.md)§2・§4。
 
 ## 1. P6-02で入れた仕様違反を1件修正した
 

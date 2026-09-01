@@ -231,6 +231,17 @@ func (f *guardedFileSystem) Chmod(path string, perm fs.FileMode) error {
 	return f.inner.Chmod(path, perm)
 }
 
+// HardenReadExecute はpermission正規化もPlanの書込み範囲として記録する。
+//
+// docs/11-quality-and-ci.md §7.2の記録対象は書込みそのものであり、permission
+// 変更も対象の実体を変える。[Chmod]と同じくWritePermissionとして扱う。
+func (f *guardedFileSystem) HardenReadExecute(path string, kind port.PermissionKind) error {
+	if err := f.guard.authorizeWrite(f.inner, WritePermission, path); err != nil {
+		return err
+	}
+	return f.inner.HardenReadExecute(path, kind)
+}
+
 // guardedProcessRunner はPlan外のprocess起動を拒否するport.ProcessRunnerである。
 type guardedProcessRunner struct {
 	inner port.ProcessRunner

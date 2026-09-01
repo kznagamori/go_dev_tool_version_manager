@@ -3,6 +3,7 @@ package fake
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"path"
@@ -26,6 +27,7 @@ const (
 	OpRename      = "fs.Rename"
 	OpRemove      = "fs.Remove"
 	OpRemoveAll   = "fs.RemoveAll"
+	OpHarden      = "fs.HardenReadExecute"
 	OpWalk        = "fs.Walk"
 	OpChmod       = "fs.Chmod"
 	OpRealPath    = "fs.RealPath"
@@ -59,6 +61,8 @@ type FileSystem struct {
 	// Writes はAtomicWriteが成功したpathを順に記録する。
 	// 書込み封じ込め検査（docs/11-quality-and-ci.md §7.2）で使う。
 	Writes []string
+	// hardened はHardenReadExecuteが成功したentryを順に記録する。
+	hardened []HardenRecord
 }
 
 var _ port.FileSystem = (*FileSystem)(nil)
@@ -373,6 +377,49 @@ func (f *FileSystem) Chmod(p string, perm fs.FileMode) error {
 	}
 	e.mode = (e.mode &^ fs.ModePerm) | (perm & fs.ModePerm)
 	return nil
+}
+
+// HardenReadExecute は通常利用でread/execute onlyへ正規化する。
+//
+// fakeはLinuxのmode表現で記録する（docs/08-install-runtime.md §7手順5の
+// directory 0555／executable 0555／その他0444）。Windowsのwrite ACE除去は
+// production adapterの責務であり、fakeで模す意味がない——検査したいのは
+// 「どのentryをどの種別で正規化したか」であって、OS固有の実現方法ではない。
+func (f *FileSystem) HardenReadExecute(p string, kind port.PermissionKind) error {
+	if err := f.injector.Check(OpHarden); err != nil {
+		return err
+	}
+	if !kind.IsValid() {
+		return fmt.Errorf("fake: 未知のPermissionKind %d", kind)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	e, ok := f.entries[clean(p)]
+	if !ok {
+		return ErrNotExist
+	}
+	perm := fs.FileMode(0o444)
+	if kind == port.PermissionDirectory || kind == port.PermissionExecutable {
+		perm = 0o555
+	}
+	e.mode = (e.mode &^ fs.ModePerm) | perm
+	f.hardened = append(f.hardened, HardenRecord{Path: clean(p), Kind: kind})
+	return nil
+}
+
+// Hardened は正規化した順に記録を返す。
+//
+// 「どのentryをどの種別で正規化したか」を検査するために公開する。
+func (f *FileSystem) Hardened() []HardenRecord {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]HardenRecord(nil), f.hardened...)
+}
+
+// HardenRecord は1件のpermission正規化である。
+type HardenRecord struct {
+	Path string
+	Kind port.PermissionKind
 }
 
 // RealPath はlinkを解決した絶対pathを返す。
