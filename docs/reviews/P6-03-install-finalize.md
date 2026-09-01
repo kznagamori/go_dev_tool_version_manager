@@ -1,4 +1,4 @@
-# P6-03 決定記録（4/5）: probe実行
+# P6-03 決定記録（4/6）: probe実行
 
 対象タスク: `docs/13-progress.md` P6-03の4本目。規範仕様は[08-install-runtime.md](../08-install-runtime.md)§2・§7、[06-tool-definition.md](../06-tool-definition.md)§11、[10-security.md](../10-security.md)§7、[04-storage-and-data.md](../04-storage-and-data.md)§16、[03-cli.md](../03-cli.md)§7。
 
