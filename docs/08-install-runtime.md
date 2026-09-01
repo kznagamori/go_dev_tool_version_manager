@@ -106,7 +106,7 @@ operation tmpは完成先と同じvolumeへ作り、`tmp/operations/<operation-i
 
 手順7のrenameが完了した時点でinstallは成功とみなす。rename前の中断は未導入、rename後の中断は導入成功でindexだけ古い状態であり、次回起動時の再構築で解消する。
 
-完成先が競合して作られた場合、両receiptと`command_targets`が完全一致すれば後発stagingを破棄して成功、違えば`E_CONFLICT`。probe失敗やcommit前cancelはstagingを破棄し、既存install/selectionを変更しない。
+完成先が競合して作られた場合、両receiptと`command_targets`が完全一致すれば後発stagingを破棄して成功、違えば`E_CONFLICT`。この一致判定からは`install_id`、`installed_at`、`probes[].finished_at`だけを除く。この3件は同一内容の導入でも定義上必ず異なる値であり、含めると一致が到達不能になる。`client_version`と`client_commit`は除かない——同じclientを2回動かせば同じ値になるため、異なるclient版が書いたreceiptは競合として表面化させる。probe失敗やcommit前cancelはstagingを破棄し、既存install/selectionを変更しない。
 
 required probeの起動後nonzero、timeout、output上限、version/root/path/能力不一致は`E_PROBE_FAILED`。実行file欠落やdefinition参照不正は`E_DEFINITION_INVALID`、permission/OS起動失敗は対応するplatform/filesystem errorとし、probe stderr末尾はmask/上限後だけhuman errorへ含める。
 
