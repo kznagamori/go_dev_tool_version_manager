@@ -12,6 +12,9 @@ const (
 	payloadRoot   = "/data/gdtvm/tools/go/1.25.0/payload"
 	probeTempRoot = "/data/gdtvm/tmp/operations/op1/probe"
 	cacheRoot     = "/data/gdtvm/tools/node/shared/npm-cache"
+	// probeTempParent はprobeごとのtemp directoryの親である
+	// （docs/06-tool-definition.md §11「probeごとに空のowner-only probe tempを作り」）。
+	probeTempParent = "/data/gdtvm/tmp/operations/op1/probes"
 )
 
 // renderPathValue はrole付きpathを作る。

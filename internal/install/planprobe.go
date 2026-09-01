@@ -7,6 +7,7 @@ import (
 
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/definition"
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain"
+	"github.com/kznagamori/go_dev_tool_version_manager/internal/security"
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/store"
 )
 
@@ -24,13 +25,20 @@ func buildPlanProbes(req PlanRequest) ([]store.PlanProbe, error) {
 	if len(declared) == 0 {
 		return nil, nil
 	}
-	// probe文脈だけが`{{probe_temp}}`を解決できる（docs/06-tool-definition.md §12）。
-	// 呼出し側がProbeTempを渡していなければ、`{{probe_temp}}`を含むprobeは
-	// [RenderPath]が拒否する。ここで先回りして空へ潰さない。
-	roots := req.Roots
+	// docs/06-tool-definition.md §11「**probeごとに**空のowner-only probe tempを
+	// 作り、成功/失敗/cancel後にengineが削除する」。**probe間でtempを共有しない。**
+	// 共有すると、先に走ったprobeが残したfileが後のprobeの結果を変えうる。
+	if req.ProbeTempRoot.IsZero() {
+		return nil, errors.New(
+			"install: probeがあるのにprobe temp rootが渡されていない")
+	}
 
 	values := make([]store.PlanProbe, 0, len(declared))
 	for index := range declared {
+		roots, err := probeRoots(req, declared[index].ID)
+		if err != nil {
+			return nil, fmt.Errorf("install: probe %q: %w", declared[index].ID, err)
+		}
 		probe, err := buildPlanProbe(req, declared[index], roots)
 		if err != nil {
 			return nil, fmt.Errorf("install: probe %q: %w", declared[index].ID, err)
@@ -38,6 +46,23 @@ func buildPlanProbes(req PlanRequest) ([]store.PlanProbe, error) {
 		values = append(values, probe)
 	}
 	return values, nil
+}
+
+// probeRoots はprobe 1件ぶんのrender rootを作る。
+//
+// `{{probe_temp}}`をprobe固有のdirectoryへ解決する（§11「probeごとに空の
+// owner-only probe tempを作り」）。probe IDでdirectoryを分けるため、IDが
+// platform内一意であること（§11）がそのままdirectoryの一意性になる。
+func probeRoots(req PlanRequest, probeID string) (RenderRoots, error) {
+	roots := req.Roots
+	temp, err := security.Join(security.JoinRequest{
+		Root: req.ProbeTempRoot, Components: []string{probeID}, Host: req.Roots.Host,
+	})
+	if err != nil {
+		return RenderRoots{}, fmt.Errorf("probe temp: %w", err)
+	}
+	roots.ProbeTemp = temp
+	return roots, nil
 }
 
 // buildPlanProbe は1件のprobeを展開する。
@@ -111,12 +136,18 @@ func buildPlanProbe(
 		License:         req.Platform.Provider.License,
 		ReasonMessageID: reason,
 		Args:            args,
-		// probeのcwdはpayload rootとする。§11はcwdを宣言させないため、
-		// payload外を指す余地を作らない一意な選び方はこれだけである。
-		WorkingDirectory: roots.Payload,
-		// §11のprobeは読取り専用である。書込みを許すのは`{{probe_temp}}`を
-		// 渡した場合だけで、渡していなければ空になる。
-		WritePaths:      probeWritePaths(roots),
+		// docs/06-tool-definition.md §11「**probeのcwdはその probe temp とし、
+		// 呼出し元のcurrent directoryを継承しない**」。
+		// docs/08-install-runtime.md §7手順2も「probe専用のowner-only temp
+		// directoryをcwdとして」と定める。
+		//
+		// **payloadをcwdにしない。** payloadをcwdにすると、payload内に
+		// `global.json`や`.nvmrc`のようなfileを含むtoolでprobe結果が変わる。
+		// §11がこの規定を置く理由そのものである。
+		WorkingDirectory: roots.ProbeTemp,
+		// §11のprobeが書けるのはprobe tempだけである。利用者projectやtool
+		// storageへprobe fileを書かない（同§）。
+		WritePaths:      []domain.PathValue{roots.ProbeTemp},
 		Stream:          stream,
 		Expect:          expect,
 		Regex:           declared.Regex,
@@ -182,17 +213,6 @@ func buildRequiredPaths(
 		values = append(values, store.PlanRequiredPath{Kind: kind, Path: path})
 	}
 	return values, nil
-}
-
-// probeWritePaths はprobeへ許す書込み先を返す。
-//
-// §11のprobeは導入物の検証であり、書込みを要するのは`{{probe_temp}}`を使う
-// 場合だけである。渡されていなければ0件とし、[Guard]が全書込みを拒否する。
-func probeWritePaths(roots RenderRoots) []domain.PathValue {
-	if roots.ProbeTemp.IsZero() {
-		return nil
-	}
-	return []domain.PathValue{roots.ProbeTemp}
 }
 
 // lookupCommand は§10.1のcommandを名前で引く。
