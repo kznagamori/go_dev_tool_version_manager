@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain"
@@ -346,6 +347,32 @@ type PlanWarning struct {
 	MessageID                domain.MessageID
 	Parameters               domain.Parameters
 	RequiresExplicitApproval bool
+}
+
+// IsPlanWarningCode はcodeが§16.1のexactly 8件に含まれるかを返す。
+//
+// 表はこのpackageが持つため、外のpackageが件数を複製せずに検査できるよう公開する。
+func IsPlanWarningCode(code PlanWarningCode) bool {
+	_, ok := planWarningApproval[code]
+	return ok
+}
+
+// ApprovalRequiredCodes は明示承認が必要なcodeをcode順で返す（§16.1）。
+//
+// 「`requires_explicit_approval=true`のcode集合がApprovalの単位」であり、
+// `--yes`が承認できるのはこの集合そのものである（docs/08-install-runtime.md §4）。
+// 呼出し側が自分で7件を並べると、表を変えたときに片方だけが古いままになる。
+//
+// 毎回新しいsliceを返す。呼出し側が書き換えても表に影響しないようにするためである。
+func ApprovalRequiredCodes() []PlanWarningCode {
+	codes := make([]PlanWarningCode, 0, PlanApprovalCodeCount)
+	for code, required := range planWarningApproval {
+		if required {
+			codes = append(codes, code)
+		}
+	}
+	sort.Slice(codes, func(i, j int) bool { return codes[i] < codes[j] })
+	return codes
 }
 
 // NewPlanWarning は§16.1の表から承認要否を引いてwarningを作る。
