@@ -58,12 +58,14 @@ func ConflictReason(left, right store.Receipt) string {
 		{"definition_sha256", left.DefinitionSHA256 == right.DefinitionSHA256},
 		{"payload_path", left.PayloadPath == right.PayloadPath},
 		{"artifact", reflect.DeepEqual(left.Artifact, right.Artifact)},
-		{"storage", reflect.DeepEqual(left.Storage, right.Storage)},
-		{"commands", reflect.DeepEqual(left.Commands, right.Commands)},
-		{"environment_profiles",
-			reflect.DeepEqual(left.EnvironmentProfiles, right.EnvironmentProfiles)},
-		{"command_targets",
-			reflect.DeepEqual(left.CommandTargets, right.CommandTargets)},
+		{"storage", reflect.DeepEqual(
+			emptyToNil(left.Storage), emptyToNil(right.Storage))},
+		{"commands", reflect.DeepEqual(
+			emptyToNil(left.Commands), emptyToNil(right.Commands))},
+		{"environment_profiles", reflect.DeepEqual(
+			emptyToNil(left.EnvironmentProfiles), emptyToNil(right.EnvironmentProfiles))},
+		{"command_targets", reflect.DeepEqual(
+			emptyToNil(left.CommandTargets), emptyToNil(right.CommandTargets))},
 		{"probes", reflect.DeepEqual(
 			comparableProbes(left.Probes), comparableProbes(right.Probes))},
 	}
@@ -88,12 +90,30 @@ func comparableReceipt(value store.Receipt) store.Receipt {
 	value.InstallID = ""
 	value.InstalledAt = time.Time{}
 	value.Probes = comparableProbes(value.Probes)
+	// **空sliceとnilを同じに扱う。** TOMLを往復したreceiptは空arrayを長さ0の
+	// sliceとして持ち、memory上で組み立てたreceiptはnilを持つ。区別すると、
+	// diskのreceiptと今作ったreceiptが同一内容でも常に不一致になり、
+	// §7の「一致すれば成功」が実際には到達しない。§14も「arrayはstorageだけ
+	// 空可」として空と不在を区別していない。
+	value.Storage = emptyToNil(value.Storage)
+	value.Commands = emptyToNil(value.Commands)
+	value.EnvironmentProfiles = emptyToNil(value.EnvironmentProfiles)
+	value.CommandTargets = emptyToNil(value.CommandTargets)
+	value.Probes = emptyToNil(value.Probes)
 	return value
+}
+
+// emptyToNil は長さ0のsliceをnilへ落とす。
+func emptyToNil[T any](values []T) []T {
+	if len(values) == 0 {
+		return nil
+	}
+	return values
 }
 
 // comparableProbes はprobeの終了時刻を落とした複製を返す。
 func comparableProbes(probes []store.ReceiptProbe) []store.ReceiptProbe {
-	if probes == nil {
+	if len(probes) == 0 {
 		return nil
 	}
 	copied := make([]store.ReceiptProbe, len(probes))
