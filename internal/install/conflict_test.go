@@ -31,16 +31,36 @@ func conflictReceipt(t *testing.T) store.Receipt {
 		DefinitionSHA256: strings.Repeat("b", 64),
 		PayloadPath:      "payload",
 		Artifact: store.ReceiptArtifact{
-			ProviderKind: store.ProviderOfficial,
-			ProviderName: "Go project",
+			ProviderKind:    store.ProviderOfficial,
+			ProviderName:    "Go project",
+			ProviderRelease: "go1.25.0",
+			URL:             "https://go.dev/dl/go1.25.0.linux-amd64.tar.gz",
+			File:            "go1.25.0.linux-amd64.tar.gz",
+			Size:            1024,
+			Digest:          testDigest(t),
+			ChecksumSource:  store.ChecksumAssetField,
 		},
-		Storage:             nil,
-		Commands:            []store.ReceiptCommand{{Name: "go"}},
+		Storage: nil,
+		Commands: []store.ReceiptCommand{{
+			Name:               "go",
+			Target:             "{{payload}}/bin/go",
+			EnvironmentProfile: "default",
+			WorkingDirectory:   store.WorkingInherit,
+		}},
 		EnvironmentProfiles: []store.ReceiptEnvironmentProfile{{ID: "default"}},
 		Probes: []store.ReceiptProbe{{
-			ID:         "go-version",
-			Status:     store.ProbePassed,
-			FinishedAt: time.Date(2026, 9, 1, 10, 0, 5, 0, time.UTC),
+			ID:              "go-version",
+			RuntimeCommand:  "go",
+			Args:            []string{"version"},
+			Stream:          store.StreamStdout,
+			Expect:          store.ExpectVersion,
+			Regex:           `go(\d+\.\d+\.\d+)`,
+			ExpectedVersion: "1.25.0",
+			ReportedVersion: "1.25.0",
+			TimeoutMillis:   30_000,
+			Required:        true,
+			Status:          store.ProbePassed,
+			FinishedAt:      time.Date(2026, 9, 1, 10, 0, 5, 0, time.UTC),
 		}},
 		CommandTargets: []store.ReceiptCommandTarget{{
 			Path: "payload/bin/go", Size: 2, SHA256: strings.Repeat("c", 64),
@@ -193,5 +213,37 @@ func TestSameInstallHandlesNilProbes(t *testing.T) {
 	right = conflictReceipt(t)
 	if SameInstall(left, right) {
 		t.Error("probeの有無が無視された")
+	}
+}
+
+// TestSameInstallSurvivesCodecRoundTrip はTOML往復後も同一と判定されることを固定する。
+//
+// **これが実際の比較の形である。** 完成先のreceiptはdiskから読んだもの、
+// 比較相手は今memoryで組み立てたものであり、両者は同じ経路を通っていない。
+// TOMLを往復すると空arrayは長さ0のsliceになるが、memory側はnilを持つ。
+// 区別すると同一内容でも常に不一致になり、§7の「一致すれば成功」が実際には
+// 到達しない。
+func TestSameInstallSurvivesCodecRoundTrip(t *testing.T) {
+	original := conflictReceipt(t)
+	data, err := store.EncodeReceipt(original)
+	if err != nil {
+		t.Fatalf("EncodeReceipt: %v", err)
+	}
+	parsed, parseErr := store.ParseReceipt(data)
+	if parseErr != nil {
+		t.Fatalf("ParseReceipt: %v", parseErr)
+	}
+	// 独立したinstallとして必ず異なる値を入れる。
+	parsed.InstallID = strings.Repeat("7", 32)
+	parsed.InstalledAt = original.InstalledAt.Add(time.Hour)
+
+	if !SameInstall(original, parsed) {
+		t.Errorf("往復後に不一致と判定された（不一致field: %s）",
+			ConflictReason(original, parsed))
+	}
+	// 内容が違えばやはり検出する。
+	parsed.CommandTargets[0].SHA256 = strings.Repeat("0", 64)
+	if SameInstall(original, parsed) {
+		t.Error("往復後に内容差を見逃した")
 	}
 }
