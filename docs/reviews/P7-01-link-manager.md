@@ -133,7 +133,7 @@ Linux containerで実行した（Go 1.26.6）。両OSの判定はCI matrixで行
 
 ## 6. 未実施・制約
 
-- **junction経路をこの環境で実行できていない。** Linux containerでの実行であり、`CreateJunction`／`readReparsePoint`／`fileLinkCount`のsyscallは`windows-latest` jobが初めて動かす。reparse bufferの組立てと解釈は両OSで走るtestに切り出したが、**DeviceIoControlの呼出しそのものはCI待ちである。**
+- **junction経路をローカルで実行できていない。** Linux containerでの実行であり、`CreateJunction`／`readReparsePoint`／`fileLinkCount`のsyscallは`windows-latest` jobが初めて動かした。**PR #145の`unit (windows-latest)`が成功しており、`DeviceIoControl`によるjunctionの作成・読取り・除去・置換はCI上で確認済みである**（ローカル再現手段は無い）。
 - **`Capabilities`が失敗理由を運べない。** [port.LinkCapabilities](../../internal/domain/port/link.go)は真偽値だけを持ち、「権限が無い」と「filesystemが対応しない」を区別できない。§3.1の「理由付き拒否」はsetup（P7-03）が自分で検査して報告する。**portへ理由fieldを足していない** —— 使う側が無いうちに足すとCLAUDE.md §7の「未使用のfieldを将来のために残さない」に反する。
 - **§3.1の残る必須能力を検査していない。** atomic replace、file identity、ACL、long path、Windows予約名・末尾dot/space・ADS・Unicode case-foldの検査はP7-03（setup probe）とP2-03（`internal/security`）の範囲であり、P7-01はlink 3種の作成可否だけを扱う。
 - **`Kind`のhardlink判定はlink countだけを見る。** どの名前が「元」かは判定しない —— filesystemにその区別が無いためである。§3.3が求めるshim実体の同一性検査（SHA-256/version/owner）はP7-02が行う。
