@@ -2,7 +2,6 @@ package shim
 
 import (
 	"errors"
-	"path/filepath"
 	"testing"
 
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain"
@@ -194,12 +193,14 @@ func TestResolveCommandRejectsUnusableIndex(t *testing.T) {
 func TestIdentifyDerivesDataRootFromShimPath(t *testing.T) {
 	t.Parallel()
 	linux := mustPlatform(t, domain.PlatformLinuxAMD64Glibc)
-	root := filepath.Join(string(filepath.Separator), "home", "u", ".local", "share", "gdtvm")
-	argv0 := filepath.Join(root, ShimDirName, "go")
+	// **`filepath`で組まない。** 実行中OSの区切りで組むとWindows jobで
+	// `\home\u\...`になり、Linux規則の分割に掛からない。
+	root := "/home/u/.local/share/gdtvm"
+	argv0 := root + "/" + ShimDirName + "/go"
 	// Linuxのshimはclientへのrelative symlinkであり、module pathは辿った先の
 	// client本体を指す。両者が違うことがdocs/02-architecture.md §9の
 	// InvocationRequestがargv0とmodule pathの両方を持つ理由である。
-	modulePath := filepath.Join(root, "gdtvm")
+	modulePath := root + "/gdtvm"
 
 	identity, err := Identify(argv0, modulePath, linux)
 	if err != nil {
@@ -211,8 +212,8 @@ func TestIdentifyDerivesDataRootFromShimPath(t *testing.T) {
 	if identity.CommandName != "go" {
 		t.Errorf("CommandName = %q, want %q", identity.CommandName, "go")
 	}
-	if identity.ShimDir != filepath.Join(root, ShimDirName) {
-		t.Errorf("ShimDir = %q, want %q", identity.ShimDir, filepath.Join(root, ShimDirName))
+	if identity.ShimDir != root+"/"+ShimDirName {
+		t.Errorf("ShimDir = %q, want %q", identity.ShimDir, root+"/"+ShimDirName)
 	}
 	// docs/04-storage-and-data.md §11「shim pathはdata root相対`shims`固定」を
 	// 逆に辿る。ここを誤ると別rootのstateを読む（§2.3）。
@@ -246,9 +247,11 @@ func TestIdentifyRejectsShimOutsideShimDir(t *testing.T) {
 	linux := mustPlatform(t, domain.PlatformLinuxAMD64Glibc)
 	// data rootを決められないままstateを読みに行くと、別rootのstateを混ぜる
 	// （docs/09-platform.md §2.3「別rootのstate/linkを混在させない」）。
+	// **`filepath`で組まない。** 実行中OSの区切りで組むとWindows jobで`\`になり、
+	// Linux規則の分割に掛からない。host platformの規則で書いたpathをそのまま渡す。
 	cases := map[string]string{
-		"shims配下でない":       filepath.Join(string(filepath.Separator), "usr", "local", "bin", "go"),
-		"shimsがfs rootの直下": filepath.Join(string(filepath.Separator), ShimDirName, "go"),
+		"shims配下でない":       "/usr/local/bin/go",
+		"shimsがfs rootの直下": "/" + ShimDirName + "/go",
 	}
 	for name, argv0 := range cases {
 		t.Run(name, func(t *testing.T) {

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"path/filepath"
 	"sort"
 
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain"
@@ -137,7 +136,7 @@ func (d *Deployer) Deploy(req DeployRequest) ([]Result, error) {
 
 // deployOne は1件のshimを配置する。
 func (d *Deployer) deployOne(req DeployRequest, command string) (Result, error) {
-	path := filepath.Join(req.ShimDir, ShimFileName(command, req.Host))
+	path := joinPath(req.ShimDir, ShimFileName(command, req.Host), req.Host)
 	result := Result{CommandName: command, Path: path}
 
 	existing, err := d.inspect(path, req)
@@ -210,8 +209,9 @@ func (d *Deployer) pointsAtClient(path string, req DeployRequest) (bool, error) 
 		// 保存値はrelativeである（docs/09-platform.md §5.1）。shim directoryを
 		// 基準に解決してから比べる。絶対化せずに比べると、正しいshimを毎回
 		// 作り直す。
-		resolved := filepath.Clean(filepath.Join(filepath.Dir(path), target))
-		return resolved == filepath.Clean(req.ClientPath), nil
+		shimDir, _ := splitPath(path, req.Host)
+		resolved := cleanPath(joinPath(shimDir, target, req.Host), req.Host)
+		return resolved == cleanPath(req.ClientPath, req.Host), nil
 	}
 	// hardlinkはtargetを保存しない。同じ実体かどうかはfile identityで比べる。
 	return d.sameFile(path, req.ClientPath)
@@ -275,9 +275,9 @@ func (r DeployRequest) validate() error {
 	switch {
 	case r.Host.IsZero():
 		return errors.New("shim: host platformが未設定")
-	case !filepath.IsAbs(r.ShimDir):
+	case !isAbsolutePath(r.ShimDir, r.Host):
 		return fmt.Errorf("shim: shim directoryがabsoluteでない（%q）", r.ShimDir)
-	case !filepath.IsAbs(r.ClientPath):
+	case !isAbsolutePath(r.ClientPath, r.Host):
 		return fmt.Errorf("shim: client pathがabsoluteでない（%q）", r.ClientPath)
 	case r.Strategy != StrategyHardlink && r.Strategy != StrategySymlink:
 		return fmt.Errorf("shim: strategyが%s|%sでない（%q）",

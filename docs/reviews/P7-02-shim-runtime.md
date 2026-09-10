@@ -72,7 +72,7 @@ shim pathに通常のfileやdirectoryがあった場合は`ErrForeignShim`で止
 
 利用者判断（1本目）により、内蔵fallback resolverはP11-04で扱う。`Strategy`は`hardlink`／`symlink`の2値だけを持ち、`fallback-resolver`を渡すと要求検査で落ちる。
 
-## 3. fakeの契約違反を1件修正した
+## 3. fakeの契約違反を2件修正した
 
 `fake.LinkManager.CreateSymlink`が`relative`引数を**無視して**いた（`_ = relative`）。productionは§5.1に従い相対形へ直して保存するため、**同じ呼出しでfakeとproductionの保存値が違っていた**。
 
@@ -82,9 +82,11 @@ shim pathに通常のfileやdirectoryがあった場合は`ErrForeignShim`で止
 
 **判定に`clean`を通した値を使わない**という点も直した。`clean`は相対pathへ`/`を前置するため、すべてがabsoluteに見えてしまう。生の値で判定する。
 
+2件目は`FileSystem.RealPath`である。`/`始まりだけをabsoluteと見なしており、Windows形式の`C:\a`をrelativeとして呼出し元directoryへ繋いでいた。hardlinkのfixtureをWindows形式のpathへ直した時点で、実在しないpathを解決しようとして落ちた。fakeが受けるpath形式（`clean`は`\`も受ける）と判定が食い違っていた。
+
 ## 4. 検査が固定したこと
 
-`internal/shim`で29 case、fakeで5 caseを追加した。
+`internal/shim`で49 case、fakeで5 caseを追加した。
 
 | 検査 | 対象 |
 |---|---|
@@ -112,7 +114,7 @@ shim pathに通常のfileやdirectoryがあった場合は`ErrForeignShim`で止
 
 ### 4.1 変異test
 
-10件入れ、いずれも検査が落ちた。生き残りは無い。
+14件入れ、いずれも検査が落ちた。生き残りは無い。
 
 | 変異 | 結果 |
 |---|---|
@@ -126,8 +128,36 @@ shim pathに通常のfileやdirectoryがあった場合は`ErrForeignShim`で止
 | 既に一致していても作り直す | 落ちた |
 | symlinkをabsoluteで作る | 落ちた |
 | 結果をcommand名順に並べない | 落ちた |
+| rootの区切りを正規化しない | 落ちた |
+| drive相対をabsoluteとして受ける | 落ちた |
+| `..`をrootより上へ突き抜けさせる | 落ちた |
+| Windowsのabsolute検査を`filepath`任せにする | 落ちた |
 
-### 4.2 test自身の誤りを1件直した
+### 4.2 Windows jobが欠陥を2件見つけた
+
+**Linuxのtestは全て通っていたが、`unit (windows-latest)`が落ちた。** 原因は2件とも
+「§2.1で`resolve.go`に対して直した誤りを、`deploy.go`とtest fixtureへ適用していな
+かった」ことである。
+
+1. **`deploy.go`が`filepath.IsAbs`／`filepath.Join`を使っていた。** `DeployRequest`は
+   `Host`を持つのに、絶対path判定とpath組立てが**実行中OSの規則**で行われていた。
+   Windowsでは`/root/shims`がabsoluteでないため要求検査が落ちる。`isAbsolutePath`／
+   `joinPath`／`cleanPath`をhost platform規則で実装し直した。
+2. **test fixtureが片方のOSのpath規則だけを使っていた。** `filepath.Join`で組んだ
+   pathをLinux platformへ渡していたため、Windows jobでは`\home\u\...`になり分割に
+   掛からなかった。fixtureをhost規則どおりのliteralへ直した。
+
+**Windows専用のfixtureも足りていなかった。** hardlink（Windows）のfixtureがLinux形式
+のpathを使っており、`C:\root`形式へ直した。これに伴いfake側でも2件直した ——
+`RealPath`が`/`始まりだけをabsoluteと見なし、Windows形式の`C:\a`をrelativeとして
+呼出し元directoryへ繋いでいた。
+
+さらに`cleanPath`の実装で1件見つかった。`splitRoot`は入力の区切りをそのまま返すため、
+`C:/`のrootへ`\`区切りのcomponentを繋ぐと`C:/a\b`という混在した形になる。**混在した
+形どうしは同じ実体を指していても文字列一致しない**ため、shimが毎回作り直される。root
+の区切りも正規化するよう直し、変異testで固定した。
+
+### 4.3 test自身の誤りを1件直した
 
 `C:go`（drive相対path）を`NormalizeCommandName`が拒否すると想定していたが、**command名としては`go`が正しい** —— drive指定はcomponent境界であり名前の一部ではない。fail closedが必要なのはdata rootの逆算側であり、`Identify`が`ErrNotShimPath`で止める。検査対象をそちらへ移し、code側の誤ったコメントも直した。
 
@@ -140,7 +170,7 @@ Linux containerで実行した（Go 1.26.6）。両OSの判定はCI matrixで行
 | `gofmt -l .` / `go build ./...` / `GOOS=windows go build ./...` | 出力なし・成功 |
 | `go vet ./...` / `GOOS=windows go vet ./...` | 成功 |
 | `GOOS=windows go test -c` | 成功 |
-| `go test ./... -race -shuffle=on -covermode=atomic` | 全package成功。`internal/shim` 86.8% |
+| `go test ./... -race -shuffle=on -covermode=atomic` | 全package成功。`internal/shim` 89.4% |
 | `check_policy.py` / `check_imports.py` / `check_docs.py` / `check_licenses.py` / `check_messages.py` | すべて成功 |
 | `git diff --check` | 出力なし |
 

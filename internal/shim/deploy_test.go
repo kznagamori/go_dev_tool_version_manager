@@ -23,10 +23,16 @@ type deployFixture struct {
 // production adapterがCIで確かめており、ここで固定するのは配置の判断である。
 func newDeployFixture(t *testing.T, strategy Strategy) *deployFixture {
 	t.Helper()
+	// **pathもstrategyに合わせる。** Windowsで`/root`はabsoluteではなく、
+	// 要求検査が正しく落とす。fixtureが片方のOSのpath規則だけを使うと、
+	// もう一方のCI jobでだけ落ちる。
 	platformID := domain.PlatformLinuxAMD64Glibc
 	root := "/root"
+	separator := "/"
 	if strategy == StrategyHardlink {
 		platformID = domain.PlatformWindowsAMD64
+		root = `C:\root`
+		separator = `\`
 	}
 	filesystem := fake.NewFileSystem(fake.NewInjector())
 	links := fake.NewLinkManager(filesystem)
@@ -34,7 +40,7 @@ func newDeployFixture(t *testing.T, strategy Strategy) *deployFixture {
 	if err != nil {
 		t.Fatalf("NewDeployer: %v", err)
 	}
-	clientPath := root + "/gdtvm"
+	clientPath := root + separator + "gdtvm"
 	filesystem.AddDir(root, 0o700)
 	filesystem.AddFile(clientPath, []byte("client"), 0o700)
 	return &deployFixture{
@@ -42,7 +48,7 @@ func newDeployFixture(t *testing.T, strategy Strategy) *deployFixture {
 		links:    links,
 		deployer: deployer,
 		req: DeployRequest{
-			ShimDir:    root + "/" + ShimDirName,
+			ShimDir:    root + separator + ShimDirName,
 			ClientPath: clientPath,
 			Commands:   []string{"go", "node", "npm"},
 			Host:       mustPlatform(t, platformID),
@@ -152,7 +158,7 @@ func TestDeployReplacesShimPointingElsewhere(t *testing.T) {
 	t.Parallel()
 	fixture := newDeployFixture(t, StrategySymlink)
 	fixture.req.Commands = []string{"go"}
-	shimPath := fixture.req.ShimDir + "/go"
+	shimPath := fixture.req.ShimDir + "/go" // symlink fixtureのみ（Linux path）
 
 	// 旧clientを指すshimがある状態（clientを入れ替えたあとのsetup再実行）。
 	fixture.fs.AddDir(fixture.req.ShimDir, 0o700)
@@ -184,7 +190,7 @@ func TestDeployReplacesShimOfWrongKind(t *testing.T) {
 	t.Parallel()
 	fixture := newDeployFixture(t, StrategySymlink)
 	fixture.req.Commands = []string{"go"}
-	shimPath := fixture.req.ShimDir + "/go"
+	shimPath := fixture.req.ShimDir + "/go" // symlink fixtureのみ（Linux path）
 
 	// 方式が変わった場合（setup再実行でstrategyが変わる）は作り直す。
 	// link同士の置換であり、実体を消さない。
@@ -222,7 +228,7 @@ func TestDeployRefusesForeignEntry(t *testing.T) {
 			t.Parallel()
 			fixture := newDeployFixture(t, StrategySymlink)
 			fixture.req.Commands = []string{"go"}
-			shimPath := fixture.req.ShimDir + "/go"
+			shimPath := fixture.req.ShimDir + "/go" // symlink fixtureのみ（Linux path）
 			fixture.fs.AddDir(fixture.req.ShimDir, 0o700)
 			place(fixture, shimPath)
 

@@ -132,6 +132,125 @@ func isPathRoot(path string, host domain.Platform) bool {
 	return base == ""
 }
 
+// componentSeparators はcomponentの境界となる文字である。
+//
+// [pathSeparators]と違いdrive指定の`:`を含めない。`C:\a`のcomponentは`a`だけで
+// あり、`C`はdriveであってdirectory名ではない。
+func componentSeparators(host domain.Platform) string {
+	if host.OS() == domain.OSWindows {
+		return `/\`
+	}
+	return "/"
+}
+
+// primarySeparator はpathを組み立てるときに使う区切りである。
+func primarySeparator(host domain.Platform) string {
+	if host.OS() == domain.OSWindows {
+		return `\`
+	}
+	return "/"
+}
+
+// splitRoot はpathをroot部分と残りへ分ける。
+//
+// rootが空ならrelative pathである。Windowsの`\a`はdrive相対であり、driveの
+// current directory次第で実体が変わるためrootとして扱わない。
+func splitRoot(path string, host domain.Platform) (string, string) {
+	if host.OS() != domain.OSWindows {
+		if strings.HasPrefix(path, "/") {
+			return "/", path[1:]
+		}
+		return "", path
+	}
+	// UNC（`\\server\share`）。docs/09-platform.md §2.3はnetwork shareを拒否
+	// するが、pathとしては解釈できる必要がある。
+	if len(path) >= 2 && strings.ContainsRune(`/\`, rune(path[0])) &&
+		strings.ContainsRune(`/\`, rune(path[1])) {
+		return path[:2], path[2:]
+	}
+	if len(path) >= 3 && isDriveLetter(path[0]) && path[1] == ':' &&
+		strings.ContainsRune(`/\`, rune(path[2])) {
+		return path[:3], path[3:]
+	}
+	return "", path
+}
+
+// isDriveLetter はWindowsのdrive letterかどうかを返す。
+func isDriveLetter(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+
+// isAbsolutePath はhost platformの規則でabsoluteかどうかを返す。
+//
+// **[filepath.IsAbs]を使わない。** 実行中OSの規則で判定するため、`host`を
+// 引数に取る側の意味と食い違う（[splitPath]と同じ理由）。
+func isAbsolutePath(path string, host domain.Platform) bool {
+	root, _ := splitRoot(path, host)
+	return root != ""
+}
+
+// joinPath はhost platformの規則でdirectoryと名前を繋ぐ。
+func joinPath(dir, name string, host domain.Platform) string {
+	if dir == "" {
+		return name
+	}
+	separator := primarySeparator(host)
+	if strings.ContainsRune(componentSeparators(host), rune(dir[len(dir)-1])) {
+		// rootは区切りを含んだ形（`/`・`C:\`）である。重ねない。
+		return dir + name
+	}
+	return dir + separator + name
+}
+
+// cleanPath はhost platformの規則で`.`と`..`を畳む。
+//
+// 保存されたrelative targetを解決してから比べるために要る。畳まずに比べると、
+// 同じ実体を指すpathどうしが形式差で不一致になる。
+func cleanPath(path string, host domain.Platform) string {
+	root, rest := splitRoot(path, host)
+	separators := componentSeparators(host)
+	parts := strings.FieldsFunc(rest, func(r rune) bool {
+		return strings.ContainsRune(separators, r)
+	})
+	resolved := make([]string, 0, len(parts))
+	for _, part := range parts {
+		switch part {
+		case ".":
+			// current directoryは何も足さない。
+		case "..":
+			if len(resolved) > 0 && resolved[len(resolved)-1] != ".." {
+				resolved = resolved[:len(resolved)-1]
+				continue
+			}
+			if root == "" {
+				// relative pathでrootより上へは畳めない。形として残す。
+				resolved = append(resolved, "..")
+			}
+			// absolute pathのrootより上は存在しない。捨てる。
+		default:
+			resolved = append(resolved, part)
+		}
+	}
+	separator := primarySeparator(host)
+	joined := strings.Join(resolved, separator)
+	if root != "" {
+		// **rootの区切りも正規化する。** `splitRoot`は入力の区切りをそのまま返す
+		// ため、`C:/`のrootへ`\`区切りのcomponentを繋ぐと`C:/a\b`という混在した
+		// 形になる。混在した形どうしは同じ実体を指していても文字列一致しない。
+		normalizedRoot := strings.Map(func(r rune) rune {
+			if strings.ContainsRune(componentSeparators(host), r) {
+				return []rune(separator)[0]
+			}
+			return r
+		}, root)
+		return normalizedRoot + joined
+	}
+	if joined == "" {
+		return "."
+	}
+	return joined
+}
+
 // ResolveMode は呼出名がCLIとshimのどちらかを返す。
 //
 // docs/08-install-runtime.md §10「起動basenameが`gdtvm`ならCLI、shim indexの

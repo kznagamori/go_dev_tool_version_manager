@@ -112,9 +112,20 @@ func (l *LinkManager) CreateSymlink(linkPath, target string, relative bool) erro
 
 // isAbsoluteish は生のpathがabsoluteの形かどうかを返す。
 //
-// fakeは`/`と`\`のどちらの区切りも受ける（[clean]が正規化する）。
+// fakeは`/`と`\`のどちらの区切りも受け、Windowsのdrive付きpath（`C:\a`）も
+// absoluteとして扱う（[clean]が`/C:/a`へ正規化する）。**drive付きをrelativeと
+// 見なすと、link targetを呼出し元directoryへ繋いでしまい実在しないpathになる。**
 func isAbsoluteish(p string) bool {
-	return strings.HasPrefix(p, "/") || strings.HasPrefix(p, `\`)
+	if strings.HasPrefix(p, "/") || strings.HasPrefix(p, `\`) {
+		return true
+	}
+	return len(p) >= 3 && isDriveLetter(p[0]) && p[1] == ':' &&
+		(p[2] == '/' || p[2] == '\\')
+}
+
+// isDriveLetter はWindowsのdrive letterかどうかを返す。
+func isDriveLetter(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
 // relativeTarget はlinkPathのdirectoryから見たtargetの相対形を返す。
