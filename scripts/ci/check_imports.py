@@ -160,7 +160,15 @@ ALLOWED: dict[str, set[str]] = {
     "internal/security": {"internal/domain"},
     "internal/selection": set(),
     "internal/shell": set(),
-    "internal/shim": set(),
+    # 02-architecture.md §2「shim metadata生成、呼出名解決、実体委譲」。呼出名解決が
+    # 04-storage-and-data.md §12のshim indexをstore経由で読み、domainのToolID/Platformを
+    # 返す。実体委譲はFileSystem/LinkManager portでshimを配置する（P7-02）。
+    "internal/shim": {
+        "internal/domain",
+        "internal/domain/port",
+        "internal/domain/port/fake",
+        "internal/store",
+    },
     # 04-storage-and-data.md §7〜§18のcodecがdomainのID/digest/enum/path role/
     # scalarを扱い、§18のstructured logがport.LogRecordを直接serializeする（P2-04）。
     # 04-storage-and-data.md §4のatomic writeが公開fileのdigest照合へ内部SHA-256を
