@@ -2,6 +2,7 @@ package fake
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/kznagamori/go_dev_tool_version_manager/internal/domain/port"
 )
@@ -93,11 +94,61 @@ func (l *LinkManager) CreateJunction(linkPath, targetDir string) error {
 	return l.create(OpCreateJunction, port.LinkJunction, linkPath, targetDir)
 }
 
-// CreateSymlink はsymbolic linkを作る。relativeでもtargetはそのまま保持し、
-// 解決はRealPathが行う。
+// CreateSymlink はsymbolic linkを作る。
+//
+// `relative`がtrueでtargetがabsoluteなら、**productionと同じく相対形へ直して
+// 保存する**（[port.LinkManager]の契約、docs/09-platform.md §5.1）。保存値を
+// そのまま読み返す呼出し側が、fakeとproductionで違う値を見ないようにするため
+// である。既にrelativeなtargetはfixture記述の便宜としてそのまま保持する。
 func (l *LinkManager) CreateSymlink(linkPath, target string, relative bool) error {
-	_ = relative
-	return l.create(OpCreateSymlink, port.LinkSymlink, linkPath, target)
+	stored := target
+	// **cleanを通した値で判定しない。** cleanは相対pathへ`/`を前置するため、
+	// すべてがabsoluteに見えてしまう。生の値で見る。
+	if relative && isAbsoluteish(target) {
+		stored = relativeTarget(linkPath, target)
+	}
+	return l.create(OpCreateSymlink, port.LinkSymlink, linkPath, stored)
+}
+
+// isAbsoluteish は生のpathがabsoluteの形かどうかを返す。
+//
+// fakeは`/`と`\`のどちらの区切りも受け、Windowsのdrive付きpath（`C:\a`）も
+// absoluteとして扱う（[clean]が`/C:/a`へ正規化する）。**drive付きをrelativeと
+// 見なすと、link targetを呼出し元directoryへ繋いでしまい実在しないpathになる。**
+func isAbsoluteish(p string) bool {
+	if strings.HasPrefix(p, "/") || strings.HasPrefix(p, `\`) {
+		return true
+	}
+	return len(p) >= 3 && isDriveLetter(p[0]) && p[1] == ':' &&
+		(p[2] == '/' || p[2] == '\\')
+}
+
+// isDriveLetter はWindowsのdrive letterかどうかを返す。
+func isDriveLetter(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+
+// relativeTarget はlinkPathのdirectoryから見たtargetの相対形を返す。
+//
+// fakeのpathは[clean]が`/`区切りへ正規化するため、`filepath.Rel`ではなく
+// slash前提で計算する。`filepath.Rel`はWindowsで`\`区切りの結果を返し、
+// 同じfixtureがOSごとに違う値になる。
+func relativeTarget(linkPath, target string) string {
+	from := strings.Split(strings.TrimPrefix(dirOf(linkPath), "/"), "/")
+	to := strings.Split(strings.TrimPrefix(clean(target), "/"), "/")
+	common := 0
+	for common < len(from) && common < len(to) && from[common] == to[common] {
+		common++
+	}
+	parts := make([]string, 0, len(from)-common+len(to)-common)
+	for range from[common:] {
+		parts = append(parts, "..")
+	}
+	parts = append(parts, to[common:]...)
+	if len(parts) == 0 {
+		return "."
+	}
+	return strings.Join(parts, "/")
 }
 
 // CreateHardlink はhard linkを作る。

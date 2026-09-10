@@ -440,7 +440,9 @@ func (f *FileSystem) RealPath(p string) (string, error) {
 			return current, nil
 		}
 		target := e.linkTarget
-		if !strings.HasPrefix(target, "/") {
+		// **`/`始まりだけをabsoluteとしない。** Windows形式の`C:\a`をrelativeと
+		// 見なすと、呼出し元directoryへ繋いで実在しないpathになる。
+		if !isAbsoluteish(target) {
 			target = path.Join(path.Dir(current), target)
 		}
 		current = clean(target)
