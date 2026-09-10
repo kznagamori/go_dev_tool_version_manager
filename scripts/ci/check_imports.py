@@ -159,7 +159,17 @@ ALLOWED: dict[str, set[str]] = {
     # 10-security.md §9.2のmaskをscalar parameterへ適用するため（P1-04）。
     "internal/security": {"internal/domain"},
     "internal/selection": set(),
-    "internal/shell": set(),
+    # 02-architecture.md §2「setup、profile marker、undo」。09-platform.md §7の
+    # setup transactionが04-storage-and-data.md §16の`SetupPlan`（storeがcodecを
+    # 持つ型）を組み立て、§17.1のfilesystem capabilityを実測する。probeは
+    # FileSystem/LinkManager/UserLookup portの既存操作だけを使い、domainの
+    # Platform/Mode/Errorを扱う（P7-03）。
+    "internal/shell": {
+        "internal/domain",
+        "internal/domain/port",
+        "internal/domain/port/fake",
+        "internal/store",
+    },
     # 02-architecture.md §2「shim metadata生成、呼出名解決、実体委譲」。呼出名解決が
     # 04-storage-and-data.md §12のshim indexをstore経由で読み、domainのToolID/Platformを
     # 返す。実体委譲はFileSystem/LinkManager portでshimを配置する（P7-02）。
