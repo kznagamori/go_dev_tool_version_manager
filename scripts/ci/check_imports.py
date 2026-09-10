@@ -127,7 +127,12 @@ ALLOWED: dict[str, set[str]] = {
     # fakeは`_test.go`からの注入だけに使う。04-storage-and-data.md §21のretry
     # backoff（1/2/4秒）をfake Clockで決定的にtestするためで、production pathからの
     # fake importは11-quality-and-ci.md §7.1に従いcheck_policy.pyが別途禁止する。
+    # 02-architecture.md §1はinternal/platformを「domainとportに依存する
+    # Infrastructure adapter」と定める。09-platform.md §5.3のhost判定は
+    # domain.Platform（§2「ToolID、Version、Platform…」）を返し、§9の
+    # E_PLATFORM_UNSUPPORTEDをdomain.Errorとして返すため、domain本体を要する（P7-02）。
     "internal/platform": {
+        "internal/domain",
         "internal/domain/port",
         "internal/domain/port/fake",
         "internal/security",
